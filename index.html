@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>KPI Monitor — LIFF</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+/* ================================================================
+   LIFF GitHub Pages v1.0
+   Host บน GitHub Pages → liff.init() ทำงานได้ 100%
+   เรียก Apps Script backend ผ่าน fetch()
+   ================================================================ */
+
+:root {
+  --navy: #0d2137;
+  --blue: #1e90d4;
+  --blue-hover: #1a7bbf;
+  --green: #27ae60;
+  --green-bg: #1a7a45;
+  --red: #e74c3c;
+  --red-bg: #c0392b;
+  --gold: #f4a61d;
+  --gray: #6b7c93;
+  --gray-light: #a0b4c8;
+  --border: #dde3ec;
+  --bg: #f0f4f8;
+  --card: #fff;
+  --blue-tint: #eef4ff;
+  --blue-tint2: #f5f8ff;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0 }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  min-height: 100vh;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--navy);
+  color: #fff;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+}
+.logo {
+  background: var(--blue);
+  border-radius: var(--radius-sm);
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.topbar-info { flex: 1 }
+.topbar-title { font-size: 14px; font-weight: 700 }
+.topbar-sub { font-size: 11px; color: rgba(255,255,255,.6); margin-top: 1px }
+.avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,.3);
+}
+
+/* ── CONTAINER ── */
+.container { padding: 16px; max-width: 480px; margin: 0 auto }
+
+/* ── CARD ── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.card-title {
+  font-size: 13px; font-weight: 700; color: var(--navy);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+
+/* ── STEP BADGE ── */
+.step-badge {
+  background: var(--blue); color: #fff; border-radius: 50%;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.step-badge.done { background: var(--green) }
+
+/* ── FORM ── */
+select, input[type=number] {
+  width: 100%; padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px; outline: none;
+  background: var(--card);
+  -webkit-appearance: none; appearance: none;
+}
+select:focus, input[type=number]:focus { border-color: var(--blue) }
+
+/* ── KPI LIST ── */
+.kpi-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto }
+.kpi-item {
+  padding: 10px 12px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: all .15s; display: flex; align-items: center; justify-content: space-between;
+}
+.kpi-item:active { background: #f0f7ff; border-color: var(--blue) }
+.kpi-item.selected { background: var(--blue-tint); border-color: var(--blue) }
+.kpi-id { font-size: 11px; color: var(--gray); font-weight: 600 }
+.kpi-name { font-size: 13px; font-weight: 500; margin-top: 2px; line-height: 1.3 }
+.kpi-target { font-size: 11px; color: var(--gray); margin-top: 2px }
+.kpi-check { color: var(--blue); font-size: 18px; display: none }
+.kpi-item.selected .kpi-check { display: block }
+
+/* ── INPUT ── */
+.input-wrap { position: relative }
+.input-unit {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 13px; color: var(--gray); pointer-events: none;
+}
+
+/* ── BUTTONS ── */
+.btn-primary {
+  width: 100%; padding: 14px; background: var(--blue); color: #fff;
+  border: none; border-radius: 10px; font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.btn-primary:active { background: var(--blue-hover) }
+.btn-primary:disabled { background: var(--gray-light); cursor: not-allowed }
+.btn-secondary {
+  width: 100%; padding: 12px; background: var(--bg); color: var(--navy);
+  border: 1.5px solid var(--border); border-radius: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px;
+}
+
+/* ── LOADING ── */
+.loading-screen {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 100vh; gap: 16px; color: var(--gray);
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border); border-top-color: var(--blue);
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg) } }
+
+/* ── SUCCESS ── */
+.success-screen {
+  display: none; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 60vh; text-align: center; padding: 24px;
+}
+.success-icon { font-size: 64px; margin-bottom: 16px }
+.success-title { font-size: 20px; font-weight: 700; color: var(--green); margin-bottom: 8px }
+.success-sub { font-size: 14px; color: var(--gray); margin-bottom: 24px; line-height: 1.5; white-space: pre-line }
+
+/* ── PROFILE ── */
+.profile-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--blue-tint2);
+  border-radius: var(--radius-sm); margin-bottom: 12px;
+}
+.profile-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover }
+.profile-name { font-size: 13px; font-weight: 600; color: var(--navy) }
+.profile-sub { font-size: 11px; color: var(--gray) }
+.month-badge {
+  background: var(--gold); color: #fff; border-radius: 6px;
+  padding: 2px 8px; font-size: 11px; font-weight: 700;
+}
+
+/* ── MISC ── */
+.cur-val-display {
+  background: var(--blue-tint2); border-radius: var(--radius-sm);
+  padding: 10px 12px; margin-bottom: 10px; font-size: 13px;
+  color: var(--gray); border-left: 3px solid var(--blue);
+}
+.error-msg { color: var(--red); font-size: 12px; margin-top: 6px; display: none }
+.section-hidden { display: none }
+.toast-liff {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--navy); color: #fff; border-radius: 10px;
+  padding: 12px 20px; font-size: 13px; z-index: 999;
+  opacity: 0; transition: all .3s; white-space: nowrap;
+}
+.toast-liff.show { opacity: 1; transform: translateX(-50%) translateY(0) }
+.toast-liff.success { background: var(--green-bg) }
+.toast-liff.error { background: var(--red-bg) }
+
+/* ── DEBUG ── */
+.debug-panel {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #1a1a2e; color: #00ff88; font-family: monospace;
+  font-size: 11px; max-height: 35vh; overflow-y: auto;
+  z-index: 9999; padding: 8px 12px;
+  border-top: 2px solid #00ff88; display: none;
+}
+.debug-panel.show { display: block }
+.debug-line { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,.08) }
+.debug-line.error { color: #ff6b6b }
+.debug-line.warn { color: #ffd93d }
+.debug-line.ok { color: #6bff6b }
+.debug-toggle {
+  position: fixed; bottom: 8px; right: 8px;
+  background: #1a1a2e; color: #00ff88; border: 1px solid #00ff88;
+  border-radius: 6px; padding: 4px 8px; font-size: 10px;
+  font-family: monospace; z-index: 10000; cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-screen" id="loading-screen">
+  <div class="spinner"></div>
+  <div style="font-size:14px" id="loading-text">กำลังโหลด...</div>
+  <div style="font-size:11px;color:var(--gray-light)" id="loading-step">เริ่มต้น LIFF SDK...</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app" style="display:none">
+  <div class="topbar">
+    <div class="logo">&#127973;</div>
+    <div class="topbar-info">
+      <div class="topbar-title">KPI Monitor</div>
+      <div class="topbar-sub">โรงพยาบาลค่ายเขตอุดมศักดิ์</div>
+    </div>
+    <img id="line-avatar" class="avatar" src="" alt="" onerror="this.style.display='none'">
+  </div>
+
+  <div class="container">
+    <!-- PROFILE -->
+    <div class="card" id="profile-card">
+      <div class="profile-row">
+        <img id="profile-avatar-big" class="profile-avatar" src="" alt="" onerror="this.style.display='none'">
+        <div>
+          <div class="profile-name" id="profile-name">กำลังโหลด...</div>
+          <div class="profile-sub">กรอกค่า KPI ประจำเดือน <span class="month-badge" id="cur-month-badge"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 1 -->
+    <div class="card" id="step1-card">
+      <div class="card-title">
+        <div class="step-badge" id="step1-badge">1</div>
+        เลือกฝ่าย
+      </div>
+      <select id="dept-sel" onchange="onDeptChange()">
+        <option value="">-- เลือกฝ่าย --</option>
+      </select>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="card section-hidden" id="step2-card">
+      <div class="card-title">
+        <div class="step-badge" id="step2-badge">2</div>
+        เลือก KPI ที่จะกรอก
+      </div>
+      <div id="kpi-load" style="display:none;padding:20px;text-align:center">
+        <div class="spinner" style="margin:0 auto 8px"></div>
+        <div style="font-size:12px;color:var(--gray)">กำลังโหลด KPI...</div>
+      </div>
+      <div class="kpi-list" id="kpi-list"></div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="card section-hidden" id="step3-card">
+      <div class="card-title">
+        <div class="step-badge" id="step3-badge">3</div>
+        กรอกค่า KPI
+      </div>
+      <div id="selected-kpi-info" style="margin-bottom:12px">
+        <div style="font-size:12px;color:var(--gray);font-weight:600" id="sel-kpi-id"></div>
+        <div style="font-size:14px;font-weight:600;color:var(--navy);margin-top:2px;line-height:1.4" id="sel-kpi-name"></div>
+        <div style="font-size:12px;color:var(--gray);margin-top:4px" id="sel-kpi-target"></div>
+      </div>
+      <div id="cur-val-wrap" class="cur-val-display" style="display:none">
+        ค่าปัจจุบัน: <span id="cur-val-text" style="font-weight:700;color:var(--navy)"></span>
+      </div>
+      <div class="input-wrap">
+        <input type="number" id="kpi-value" placeholder="กรอกค่า..." step="any" inputmode="decimal">
+        <span class="input-unit" id="kpi-unit-label"></span>
+      </div>
+      <div class="error-msg" id="val-error">กรุณากรอกค่า</div>
+      <button class="btn-primary" id="btn-save" onclick="saveKPI()" style="margin-top:12px">
+        &#128190; บันทึก KPI
+      </button>
+      <button class="btn-secondary" onclick="resetToStep2()">&#8592; เลือก KPI ใหม่</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div class="success-screen" id="success-screen">
+  <div class="success-icon">&#9989;</div>
+  <div class="success-title">บันทึกสำเร็จ!</div>
+  <div class="success-sub" id="success-detail"></div>
+  <button class="btn-primary" onclick="resetAll()" style="max-width:240px">&#43; กรอก KPI อื่น</button>
+  <button class="btn-secondary" onclick="closeLiff()" style="max-width:240px;margin-top:8px">ปิด</button>
+</div>
+
+<div class="toast-liff" id="toast-liff"></div>
+<div class="debug-panel" id="debug-panel"></div>
+<div class="debug-toggle" onclick="toggleDebug()">DEBUG</div>
+
+<script>
+/* ================================================================
+   CONFIG — แก้ 2 ค่านี้
+   ================================================================ */
+var LIFF_ID = '2009680870-loqsVGDv';
+
+/* ★ ใส่ URL ของ Apps Script Web App (ที่ deploy แล้ว) ★ */
+var API_BASE = 'https://script.google.com/macros/s/AKfycbzHjmwVNx7Krv3MRkXdNu68ICdVBago1oyPbc/exec';
+
+/* ================================================================ */
+var L = { userId: null, name: null, pictureUrl: null };
+var _kpis = [];
+var _selectedKPI = null;
+var _curMonth = '';
+var _dept = '';
+var _debugLines = [];
+var _initTimer = null;
+
+/* ── DEBUG LOG ─────────────────────────────────────────────── */
+function dbg(msg, level) {
+  var lv = level || 'info';
+  var ts = new Date();
+  var time = ('0'+ts.getHours()).slice(-2) + ':' + ('0'+ts.getMinutes()).slice(-2) + ':' + ('0'+ts.getSeconds()).slice(-2);
+  var line = '[' + time + '] ' + msg;
+  _debugLines.push({ text: line, level: lv });
+  var panel = document.getElementById('debug-panel');
+  if (panel) {
+    var div = document.createElement('div');
+    div.className = 'debug-line' + (lv === 'error' ? ' error' : (lv === 'warn' ? ' warn' : (lv === 'ok' ? ' ok' : '')));
+    div.textContent = line;
+    panel.appendChild(div);
+    panel.scrollTop = panel.scrollHeight;
+  }
+}
+function toggleDebug() {
+  var p = document.getElementById('debug-panel');
+  p.className = (p.className.indexOf('show') >= 0) ? 'debug-panel' : 'debug-panel show';
+}
+
+/* ── LOADING HELPERS ───────────────────────────────────────── */
+function setLoadingStep(text) {
+  var el = document.getElementById('loading-step');
+  if (el) el.textContent = text;
+  dbg(text);
+}
+function showFatalError(title, detail) {
+  dbg('FATAL: ' + title + ' — ' + detail, 'error');
+  var ls = document.getElementById('loading-screen');
+  if (ls) {
+    ls.innerHTML = '<div style="padding:24px;text-align:center;max-width:360px">'
+      + '<div style="font-size:40px;margin-bottom:12px">&#10060;</div>'
+      + '<div style="font-size:16px;font-weight:700;color:#e74c3c;margin-bottom:8px">' + title + '</div>'
+      + '<div style="font-size:12px;color:#666;word-break:break-all;line-height:1.6;margin-bottom:16px">' + detail + '</div>'
+      + '<button onclick="location.reload()" style="padding:10px 24px;background:#1e90d4;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">ลองใหม่</button>'
+      + '</div>';
+  }
+}
+
+/* ── API CALL (แทน google.script.run) ─────────────────────── */
+function callAPI(action, params, onSuccess, onError) {
+  var url = API_BASE + '?action=' + encodeURIComponent(action);
+  if (params) {
+    Object.keys(params).forEach(function(key) {
+      url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+    });
+  }
+  dbg('API: ' + action);
+  fetch(url)
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      dbg('API OK: ' + action, 'ok');
+      if (onSuccess) onSuccess(data);
+    })
+    .catch(function(err) {
+      dbg('API FAIL: ' + action + ' — ' + err, 'error');
+      if (onError) onError(err);
+    });
+}
+
+/* ── INIT LIFF ─────────────────────────────────────────────── */
+function initLiff() {
+  dbg('=== LIFF GitHub v1.0 ===', 'ok');
+
+  var mn = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var now = new Date();
+  _curMonth = mn[now.getMonth()] + ' ' + (now.getFullYear() + 543);
+  var badge = document.getElementById('cur-month-badge');
+  if (badge) badge.textContent = _curMonth;
+  dbg('Month: ' + _curMonth);
+
+  if (typeof liff === 'undefined') {
+    showFatalError('LIFF SDK ไม่พร้อม', 'ไม่พบ liff object');
+    return;
+  }
+  dbg('liff object found', 'ok');
+
+  _initTimer = setTimeout(function() {
+    showFatalError('LIFF Timeout', 'liff.init() ใช้เวลานานเกิน 15 วินาที');
+  }, 15000);
+
+  setLoadingStep('กำลัง init LIFF SDK...');
+
+  liff.init({ liffId: LIFF_ID })
+    .then(function() {
+      clearTimeout(_initTimer);
+      dbg('liff.init() OK', 'ok');
+      setLoadingStep('ตรวจสอบสถานะล็อกอิน...');
+
+      var loggedIn = false;
+      try { loggedIn = liff.isLoggedIn(); } catch(e) { dbg('isLoggedIn error: ' + e, 'error'); }
+      dbg('isLoggedIn: ' + loggedIn);
+
+      if (!loggedIn) {
+        setLoadingStep('กำลัง redirect ไปหน้า LINE Login...');
+        liff.login();
+        return;
+      }
+
+      setLoadingStep('กำลังโหลดโปรไฟล์...');
+      return liff.getProfile();
+    })
+    .then(function(profile) {
+      if (!profile) return;
+      clearTimeout(_initTimer);
+      dbg('Profile: ' + profile.displayName, 'ok');
+
+      L.userId = profile.userId;
+      L.name = profile.displayName;
+      L.pictureUrl = profile.pictureUrl || '';
+
+      document.getElementById('profile-name').textContent = profile.displayName;
+      if (profile.pictureUrl) {
+        document.getElementById('line-avatar').src = profile.pictureUrl;
+        document.getElementById('profile-avatar-big').src = profile.pictureUrl;
+      }
+
+      setLoadingStep('กำลังโหลดรายชื่อฝ่าย...');
+      callAPI('getDepts', null,
+        function(data) {
+          if (data && data.depts) {
+            buildDeptSelect(data.depts);
+          } else {
+            showFatalError('ไม่พบข้อมูลฝ่าย', JSON.stringify(data));
+          }
+        },
+        function(err) {
+          showFatalError('โหลดฝ่ายไม่สำเร็จ', String(err));
+        }
+      );
+    })
+    .catch(function(e) {
+      clearTimeout(_initTimer);
+      var msg = e ? e.toString() : 'Unknown error';
+      dbg('LIFF error: ' + msg, 'error');
+      showFatalError('LIFF Error', msg);
+    });
+}
+
+function buildDeptSelect(depts) {
+  var sel = document.getElementById('dept-sel');
+  if (!depts || !depts.length) {
+    showFatalError('ไม่พบข้อมูลฝ่าย', 'depts is empty');
+    return;
+  }
+  depts.forEach(function(d) {
+    var opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    sel.appendChild(opt);
+  });
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  dbg('=== UI Ready ===', 'ok');
+}
+
+/* ── STEP 1 ──────────────────────────────────────────────────── */
+function onDeptChange() {
+  _dept = document.getElementById('dept-sel').value;
+  if (!_dept) return;
+  dbg('Dept: ' + _dept);
+
+  document.getElementById('step1-badge').className = 'step-badge done';
+  document.getElementById('step1-badge').innerHTML = '&#10003;';
+  document.getElementById('step2-card').classList.remove('section-hidden');
+  document.getElementById('step3-card').classList.add('section-hidden');
+  document.getElementById('kpi-list').innerHTML = '';
+  document.getElementById('kpi-load').style.display = 'block';
+  _selectedKPI = null;
+
+  callAPI('getKPIs', { dept: _dept },
+    function(data) {
+      document.getElementById('kpi-load').style.display = 'none';
+      if (data && data.kpis) {
+        dbg('KPIs: ' + data.kpis.length, 'ok');
+        buildKPIList(data.kpis);
+      } else {
+        document.getElementById('kpi-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray);font-size:13px">ไม่พบข้อมูล KPI</div>';
+      }
+    },
+    function(err) {
+      document.getElementById('kpi-load').style.display = 'none';
+      showToast('โหลด KPI ไม่ได้', 'error');
+    }
+  );
+}
+
+/* ── STEP 2 ──────────────────────────────────────────────────── */
+function buildKPIList(kpis) {
+  _kpis = kpis || [];
+  var mn = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var now = new Date();
+  var curLabel = mn[now.getMonth()] + ' ' + (now.getFullYear() + 543);
+
+  var html = '';
+  _kpis.forEach(function(kpi, idx) {
+    var curIdx = kpi.months ? kpi.months.indexOf(curLabel) : -1;
+    var curVal = (curIdx >= 0 && kpi.values) ? kpi.values[curIdx] : '';
+    var hasVal = curVal && curVal !== '' && curVal !== 'NA';
+    html += '<div class="kpi-item" data-idx="' + idx + '" onclick="selectKPI(' + idx + ')">';
+    html += '<div style="flex:1">';
+    html += '<div class="kpi-id">' + kpi.id + '</div>';
+    html += '<div class="kpi-name">' + kpi.name + '</div>';
+    html += '<div class="kpi-target">' + (kpi.direction || '') + (kpi.target || '') + ' ' + (kpi.unit || '') + '</div>';
+    if (hasVal) html += '<div style="font-size:11px;color:var(--green);margin-top:2px">&#10003; กรอกแล้ว: ' + curVal + '</div>';
+    html += '</div>';
+    html += '<span class="kpi-check">&#10003;</span>';
+    html += '</div>';
+  });
+  document.getElementById('kpi-list').innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--gray);font-size:13px">ไม่พบข้อมูล KPI</div>';
+}
+
+function selectKPI(idx) {
+  _selectedKPI = _kpis[idx];
+  dbg('Selected: ' + _selectedKPI.id);
+
+  document.querySelectorAll('.kpi-item').forEach(function(el) { el.classList.remove('selected'); });
+  var items = document.querySelectorAll('.kpi-item');
+  if (items[idx]) items[idx].classList.add('selected');
+
+  document.getElementById('step2-badge').className = 'step-badge done';
+  document.getElementById('step2-badge').innerHTML = '&#10003;';
+  document.getElementById('step3-card').classList.remove('section-hidden');
+
+  document.getElementById('sel-kpi-id').textContent = _selectedKPI.id;
+  document.getElementById('sel-kpi-name').textContent = _selectedKPI.name;
+  document.getElementById('sel-kpi-target').textContent = (_selectedKPI.direction || '') + (_selectedKPI.target || '') + ' ' + (_selectedKPI.unit || '');
+  document.getElementById('kpi-unit-label').textContent = _selectedKPI.unit || '';
+
+  var mn = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var now = new Date();
+  var curLabel = mn[now.getMonth()] + ' ' + (now.getFullYear() + 543);
+  var curIdx = _selectedKPI.months ? _selectedKPI.months.indexOf(curLabel) : -1;
+  var curVal = (curIdx >= 0 && _selectedKPI.values) ? _selectedKPI.values[curIdx] : '';
+
+  if (curVal && curVal !== '' && curVal !== 'NA') {
+    document.getElementById('cur-val-wrap').style.display = 'block';
+    document.getElementById('cur-val-text').textContent = curVal + ' ' + (_selectedKPI.unit || '');
+    document.getElementById('kpi-value').value = curVal;
+  } else {
+    document.getElementById('cur-val-wrap').style.display = 'none';
+    document.getElementById('kpi-value').value = '';
+  }
+
+  document.getElementById('val-error').style.display = 'none';
+  document.getElementById('kpi-value').focus();
+  setTimeout(function() {
+    document.getElementById('step3-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 200);
+}
+
+/* ── STEP 3 ──────────────────────────────────────────────────── */
+function saveKPI() {
+  var val = document.getElementById('kpi-value').value.trim();
+  if (val === '') {
+    document.getElementById('val-error').style.display = 'block';
+    document.getElementById('kpi-value').focus();
+    return;
+  }
+  document.getElementById('val-error').style.display = 'none';
+  var btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.textContent = 'กำลังบันทึก...';
+  var numVal = parseFloat(val);
+  dbg('Saving: ' + _selectedKPI.id + ' = ' + numVal);
+
+  callAPI('saveKPI', {
+      kpiId: _selectedKPI.id,
+      month: _curMonth,
+      value: numVal,
+      lineUserId: L.userId,
+      lineName: L.name
+    },
+    function(data) {
+      btn.disabled = false;
+      btn.innerHTML = '&#128190; บันทึก KPI';
+      if (data && data.ok) {
+        dbg('Save OK', 'ok');
+        document.getElementById('success-detail').textContent =
+          _selectedKPI.id + ' — ' + _selectedKPI.name + '\n' + numVal + ' ' + (_selectedKPI.unit || '') + '\n' + _curMonth;
+        document.getElementById('main-app').style.display = 'none';
+        document.getElementById('success-screen').style.display = 'flex';
+      } else {
+        var errMsg = (data && data.msg) ? data.msg : 'Unknown error';
+        dbg('Save failed: ' + errMsg, 'error');
+        showToast('บันทึกไม่สำเร็จ: ' + errMsg, 'error');
+      }
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.innerHTML = '&#128190; บันทึก KPI';
+      showToast('เกิดข้อผิดพลาด', 'error');
+    }
+  );
+}
+
+/* ── RESET ──────────────────────────────────────────────────── */
+function resetToStep2() {
+  _selectedKPI = null;
+  document.getElementById('step3-card').classList.add('section-hidden');
+  document.getElementById('step2-badge').className = 'step-badge';
+  document.getElementById('step2-badge').textContent = '2';
+  document.querySelectorAll('.kpi-item').forEach(function(el) { el.classList.remove('selected'); });
+}
+function resetAll() {
+  _selectedKPI = null; _kpis = [];
+  document.getElementById('dept-sel').value = '';
+  document.getElementById('step1-badge').className = 'step-badge';
+  document.getElementById('step1-badge').textContent = '1';
+  document.getElementById('step2-badge').className = 'step-badge';
+  document.getElementById('step2-badge').textContent = '2';
+  document.getElementById('step2-card').classList.add('section-hidden');
+  document.getElementById('step3-card').classList.add('section-hidden');
+  document.getElementById('kpi-list').innerHTML = '';
+  document.getElementById('success-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+function closeLiff() {
+  try { liff.closeWindow(); } catch(e) { window.close(); }
+}
+
+/* ── TOAST ──────────────────────────────────────────────────── */
+function showToast(msg, type) {
+  var t = document.getElementById('toast-liff');
+  t.textContent = msg;
+  t.className = 'toast-liff show' + (type ? ' ' + type : '');
+  setTimeout(function() { t.className = 'toast-liff'; }, 3000);
+}
+
+/* ── START ──────────────────────────────────────────────────── */
+window.onload = function() {
+  dbg('window.onload fired', 'ok');
+  initLiff();
+};
+</script>
+</body>
+</html>
