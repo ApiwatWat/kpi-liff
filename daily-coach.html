@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎯 KPI วันนี้</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap">
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Prompt', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(180deg, #FFF7F0 0%, #FBE5CD 100%);
+    color: #3B2817;
+    min-height: 100vh;
+    padding: 16px;
+    font-size: 14px;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: #9A3412;
+  }
+  .loading .spinner {
+    font-size: 40px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .header {
+    text-align: center;
+    padding: 12px 0 20px;
+  }
+  .title {
+    font-size: 24px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #9A3412, #C2410C);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #6B4A2B;
+  }
+
+  .user-card {
+    background: white;
+    border: 1px solid #F4D9BC;
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(194,65,12,0.06);
+  }
+  .user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #C2410C, #D97706);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .user-info .name { font-weight: 600; font-size: 15px; color: #3B2817; }
+  .user-info .dept { font-size: 12px; color: #9A3412; }
+
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: white;
+    border: 1px solid #F4D9BC;
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+  }
+  .stat-num { font-size: 22px; font-weight: 700; }
+  .stat-num.done { color: #639922; }
+  .stat-num.pending { color: #C2410C; }
+  .stat-num.total { color: #3B2817; }
+  .stat-label { font-size: 11px; color: #6B4A2B; margin-top: 2px; }
+
+  .task-card {
+    background: white;
+    border: 1px solid #F4D9BC;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    transition: opacity 0.3s;
+  }
+  .task-card.done { opacity: 0.5; border-color: #C0DD97; background: #EAF3DE; }
+  .task-card.active { border: 2px solid #C2410C; box-shadow: 0 4px 12px rgba(194,65,12,0.12); }
+  .task-card.snoozed { opacity: 0.7; background: #FBE5CD; }
+
+  .task-badges {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 8px;
+  }
+  .badge.green { background: #EAF3DE; color: #3B6D11; }
+  .badge.amber { background: #FAEEDA; color: #854F0B; }
+  .badge.red { background: #FCEBEB; color: #A32D2D; }
+  .badge.id { background: rgba(194,65,12,0.08); color: #9A3412; }
+  .badge.ease { background: rgba(99,153,34,0.12); color: #3B6D11; }
+
+  .task-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #3B2817;
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+  .task-meta {
+    font-size: 11px;
+    color: #6B4A2B;
+    margin-bottom: 10px;
+  }
+
+  .ai-prefill {
+    background: rgba(194,65,12,0.06);
+    border: 1px dashed #EDB680;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 8px 0;
+    font-size: 12px;
+    color: #9A3412;
+  }
+  .ai-prefill strong { color: #C2410C; font-size: 16px; }
+
+  .input-group {
+    margin: 10px 0;
+  }
+  .input-group label {
+    font-size: 11px;
+    color: #6B4A2B;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .input-group input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #EDB680;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #FFF7F0;
+    color: #3B2817;
+  }
+  .input-group input:focus {
+    outline: none;
+    border-color: #C2410C;
+    box-shadow: 0 0 0 3px rgba(194,65,12,0.12);
+  }
+
+  .task-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary {
+    background: linear-gradient(135deg, #C2410C, #D97706);
+    color: white;
+    box-shadow: 0 2px 8px rgba(194,65,12,0.3);
+  }
+  .btn.secondary {
+    background: white;
+    color: #9A3412;
+    border: 1px solid #EDB680;
+  }
+  .btn.snooze {
+    background: #FFEDD9;
+    color: #6B4A2B;
+    border: 1px solid #F4D9BC;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6B4A2B;
+  }
+  .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+  .empty-state .msg { font-size: 14px; font-weight: 500; color: #3B2817; }
+  .empty-state .sub { font-size: 12px; margin-top: 6px; }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #3B2817;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .toast.show { opacity: 1; }
+
+  .register-notice {
+    background: #FFEDD9;
+    border: 1px solid #EDB680;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    color: #9A3412;
+    margin-top: 20px;
+  }
+  .register-notice h3 { font-size: 16px; margin-bottom: 8px; }
+  .register-notice p { font-size: 12px; line-height: 1.6; }
+  .register-notice code {
+    background: rgba(194,65,12,0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #3B2817;
+  }
+</style>
+</head>
+<body>
+
+<div id="root">
+  <div class="loading">
+    <div class="spinner">🍑</div>
+    <div style="margin-top: 12px;">กำลังโหลด...</div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  var LIFF_ID = '2009680870-loqsVGDv';
+  var API_URL = 'https://script.google.com/macros/s/AKfycbw_svUdey6l6A0uNVFAYEnF6pyPA_hWdVifQwX4zGY2BnW50SbtKoQ4UscNdOvDRTs/exec';
+
+  var state = {
+    profile: null,
+    user: null,
+    tasks: [],
+    counts: { total: 0, pending: 0, done: 0, snoozed: 0 }
+  };
+
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2500);
+  }
+
+  function apiCall(action, params) {
+    var query = 'action=' + encodeURIComponent(action);
+    for (var k in params) {
+      if (params[k] !== undefined && params[k] !== null) {
+        query += '&' + k + '=' + encodeURIComponent(params[k]);
+      }
+    }
+    return fetch(API_URL + '?' + query)
+      .then(function(r) { return r.json(); });
+  }
+
+  function init() {
+    liff.init({ liffId: LIFF_ID })
+      .then(function() {
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        return liff.getProfile();
+      })
+      .then(function(profile) {
+        if (!profile) return;
+        state.profile = profile;
+        return apiCall('register_line', {
+          line_id: profile.userId,
+          display_name: profile.displayName
+        });
+      })
+      .then(function(result) {
+        if (!result) return;
+        if (result.status === 'pending_match') {
+          renderPendingRegistration(result);
+          return;
+        }
+        return loadTasks();
+      })
+      .catch(function(err) {
+        console.error(err);
+        document.getElementById('root').innerHTML =
+          '<div class="loading">❌ Error: ' + err.toString() + '</div>';
+      });
+  }
+
+  function loadTasks() {
+    return apiCall('get_tasks', { line_id: state.profile.userId })
+      .then(function(result) {
+        if (!result.ok) {
+          if (result.need_registration) {
+            renderPendingRegistration({
+              line_id_preview: state.profile.userId.substring(0, 8) + '...'
+            });
+            return;
+          }
+          throw new Error(result.error);
+        }
+        state.user = result.user;
+        state.tasks = result.tasks;
+        state.counts = result.counts;
+        render();
+      });
+  }
+
+  function render() {
+    var html = '';
+    html += renderHeader();
+    html += renderUserCard();
+    html += renderStats();
+    html += renderTasks();
+    document.getElementById('root').innerHTML = html;
+    bindEvents();
+  }
+
+  function renderHeader() {
+    var today = new Date();
+    var dateStr = today.toLocaleDateString('th-TH', {
+      weekday: 'long', day: 'numeric', month: 'long'
+    });
+    return '<div class="header">' +
+           '<div class="title">🎯 KPI วันนี้</div>' +
+           '<div class="subtitle">' + dateStr + '</div>' +
+           '</div>';
+  }
+
+  function renderUserCard() {
+    var initial = (state.user.display_name || state.user.username || '?').charAt(0).toUpperCase();
+    return '<div class="user-card">' +
+           '<div class="user-avatar">' + initial + '</div>' +
+           '<div class="user-info">' +
+           '<div class="name">' + (state.user.display_name || state.user.username) + '</div>' +
+           '<div class="dept">ฝ่าย ' + state.user.dept + '</div>' +
+           '</div>' +
+           '</div>';
+  }
+
+  function renderStats() {
+    return '<div class="stats-bar">' +
+           '<div class="stat-box">' +
+           '<div class="stat-num total">' + state.counts.total + '</div>' +
+           '<div class="stat-label">ทั้งหมด</div>' +
+           '</div>' +
+           '<div class="stat-box">' +
+           '<div class="stat-num pending">' + state.counts.pending + '</div>' +
+           '<div class="stat-label">รอทำ</div>' +
+           '</div>' +
+           '<div class="stat-box">' +
+           '<div class="stat-num done">' + state.counts.done + '</div>' +
+           '<div class="stat-label">เสร็จ</div>' +
+           '</div>' +
+           '</div>';
+  }
+
+  function renderTasks() {
+    if (state.tasks.length === 0) {
+      return '<div class="empty-state">' +
+             '<div class="emoji">🌴</div>' +
+             '<div class="msg">วันนี้ไม่มี KPI ที่ต้องกรอก</div>' +
+             '<div class="sub">พักผ่อนให้สบายใจครับ</div>' +
+             '</div>';
+    }
+    var html = '';
+    for (var i = 0; i < state.tasks.length; i++) {
+      html += renderTaskCard(state.tasks[i], i);
+    }
+    return html;
+  }
+
+  function renderTaskCard(task, index) {
+    var cardClass = 'task-card';
+    if (task.status === 'done') cardClass += ' done';
+    else if (task.status === 'snoozed') cardClass += ' snoozed';
+    else if (index === 0) cardClass += ' active';
+
+    var aiPathLabel = task.ai_path === 'green' ? '🟢 AI พร้อม' :
+                      task.ai_path === 'amber' ? '🟡 ผสม' : '🔴 กรอกเอง';
+    var aiPathClass = task.ai_path || 'amber';
+
+    var html = '<div class="' + cardClass + '" data-kpi="' + task.kpi_id + '">';
+    html += '<div class="task-badges">';
+    html += '<span class="badge ' + aiPathClass + '">' + aiPathLabel + '</span>';
+    html += '<span class="badge id">' + task.kpi_id + '</span>';
+    html += '<span class="badge ease">ง่าย ' + task.ease + '/5</span>';
+    if (task.status === 'done') html += '<span class="badge green">✓ เสร็จแล้ว</span>';
+    if (task.status === 'snoozed') html += '<span class="badge amber">⏰ เลื่อน</span>';
+    html += '</div>';
+
+    html += '<div class="task-name">' + escapeHtml(task.kpi_name) + '</div>';
+    html += '<div class="task-meta">' + task.timing_group + '</div>';
+
+    if (task.status !== 'done') {
+      if (task.ai_pre_filled) {
+        html += '<div class="ai-prefill">🤖 AI คำนวณให้: <strong>' + task.ai_pre_filled + '</strong></div>';
+      }
+      html += '<div class="input-group">';
+      html += '<label>ค่าที่จะบันทึก</label>';
+      html += '<input type="text" id="value-' + task.kpi_id + '" placeholder="กรอกค่า เช่น 48.2%" value="' + (task.target_value || '') + '">';
+      html += '</div>';
+      html += '<div class="task-actions">';
+      html += '<button class="btn primary" data-action="confirm" data-kpi="' + task.kpi_id + '">✓ ยืนยัน</button>';
+      html += '<button class="btn snooze" data-action="snooze" data-kpi="' + task.kpi_id + '">⏰</button>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function renderPendingRegistration(info) {
+    var html = '<div class="header">';
+    html += '<div class="title">🔗 ลงทะเบียน</div>';
+    html += '<div class="subtitle">เชื่อมต่อ LINE กับบัญชี KPI</div>';
+    html += '</div>';
+    html += '<div class="register-notice">';
+    html += '<h3>👋 ยินดีต้อนรับครับ</h3>';
+    html += '<p>ระบบยังไม่มีการผูก LINE ของคุณกับบัญชีผู้ใช้<br>';
+    html += 'กรุณาแจ้ง admin (นพ.อภิวัธน์) เพื่อเชื่อมต่อ</p>';
+    html += '<p style="margin-top:10px;">LINE ID ของคุณ:<br>';
+    html += '<code>' + (info.line_id_preview || 'N/A') + '</code></p>';
+    html += '<p style="margin-top:16px; font-size:11px;">หลังจาก link เสร็จ ให้ refresh หน้านี้</p>';
+    html += '</div>';
+    document.getElementById('root').innerHTML = html;
+  }
+
+  function bindEvents() {
+    var buttons = document.querySelectorAll('.btn[data-action]');
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener('click', handleButton);
+    }
+  }
+
+  function handleButton(e) {
+    var btn = e.currentTarget;
+    var action = btn.getAttribute('data-action');
+    var kpiId = btn.getAttribute('data-kpi');
+
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    if (action === 'confirm') {
+      var input = document.getElementById('value-' + kpiId);
+      var value = input ? input.value.trim() : '';
+      if (!value) {
+        showToast('⚠️ กรุณากรอกค่าก่อน');
+        btn.disabled = false;
+        btn.textContent = '✓ ยืนยัน';
+        return;
+      }
+      apiCall('confirm_task', {
+        line_id: state.profile.userId,
+        kpi_id: kpiId,
+        value: value
+      }).then(function(r) {
+        if (r.ok) {
+          showToast('✅ บันทึกแล้ว: ' + kpiId);
+          setTimeout(loadTasks, 800);
+        } else {
+          showToast('❌ ' + (r.error || 'error'));
+          btn.disabled = false;
+          btn.textContent = '✓ ยืนยัน';
+        }
+      });
+    } else if (action === 'snooze') {
+      apiCall('snooze_task', {
+        line_id: state.profile.userId,
+        kpi_id: kpiId
+      }).then(function(r) {
+        if (r.ok) {
+          showToast('⏰ เลื่อนไปพรุ่งนี้แล้ว');
+          setTimeout(loadTasks, 800);
+        } else {
+          showToast('❌ ' + (r.error || 'error'));
+          btn.disabled = false;
+          btn.textContent = '⏰';
+        }
+      });
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  init();
+</script>
+
+</body>
+</html>
