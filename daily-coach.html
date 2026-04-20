@@ -159,7 +159,7 @@
   }
   .input-group input {
     width: 100%;
-    padding: 8px 10px;
+    padding: 10px 12px;
     border: 1px solid #EDB680;
     border-radius: 8px;
     font-size: 14px;
@@ -171,6 +171,10 @@
     outline: none;
     border-color: #C2410C;
     box-shadow: 0 0 0 3px rgba(194,65,12,0.12);
+  }
+  .input-group input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .task-actions {
@@ -231,20 +235,40 @@
     z-index: 1000;
     opacity: 0;
     transition: opacity 0.3s;
+    max-width: 90%;
+    text-align: center;
   }
   .toast.show { opacity: 1; }
 
   .register-notice {
-    background: #FFEDD9;
-    border: 1px solid #EDB680;
-    border-radius: 12px;
+    background: white;
+    border: 1px solid #F4D9BC;
+    border-radius: 14px;
     padding: 20px;
-    text-align: center;
-    color: #9A3412;
-    margin-top: 20px;
+    color: #3B2817;
+    margin-top: 8px;
+    box-shadow: 0 2px 8px rgba(194,65,12,0.06);
   }
-  .register-notice h3 { font-size: 16px; margin-bottom: 8px; }
-  .register-notice p { font-size: 12px; line-height: 1.6; }
+  .register-notice h3 {
+    font-size: 17px;
+    margin-bottom: 10px;
+    color: #9A3412;
+    text-align: center;
+  }
+  .register-notice .intro {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #6B4A2B;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .register-notice .help {
+    margin-top: 14px;
+    font-size: 11px;
+    color: #6B4A2B;
+    text-align: center;
+    line-height: 1.5;
+  }
   .register-notice code {
     background: rgba(194,65,12,0.1);
     padding: 2px 6px;
@@ -450,20 +474,118 @@
     return html;
   }
 
+  /**
+   * Render registration form — NEW in v8.1 Sprint 2
+   * User กรอก email → submitRegistration → match ใน Users sheet → link LINE ID
+   */
   function renderPendingRegistration(info) {
+    var displayName = (state.profile && state.profile.displayName) || '';
+    var initial = (displayName || '?').charAt(0).toUpperCase();
+
     var html = '<div class="header">';
     html += '<div class="title">🔗 ลงทะเบียน</div>';
     html += '<div class="subtitle">เชื่อมต่อ LINE กับบัญชี KPI</div>';
     html += '</div>';
+
+    // LINE profile card (show display name from LIFF)
+    html += '<div class="user-card">';
+    html += '<div class="user-avatar">' + initial + '</div>';
+    html += '<div class="user-info">';
+    html += '<div class="name">' + escapeHtml(displayName) + '</div>';
+    html += '<div class="dept">LINE User</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // Register form
     html += '<div class="register-notice">';
     html += '<h3>👋 ยินดีต้อนรับครับ</h3>';
-    html += '<p>ระบบยังไม่มีการผูก LINE ของคุณกับบัญชีผู้ใช้<br>';
-    html += 'กรุณาแจ้ง admin (นพ.อภิวัธน์) เพื่อเชื่อมต่อ</p>';
-    html += '<p style="margin-top:10px;">LINE ID ของคุณ:<br>';
-    html += '<code>' + (info.line_id_preview || 'N/A') + '</code></p>';
-    html += '<p style="margin-top:16px; font-size:11px;">หลังจาก link เสร็จ ให้ refresh หน้านี้</p>';
+    html += '<div class="intro">กรุณากรอก email ที่ admin ลงทะเบียนไว้ในระบบ<br>เพื่อเชื่อม LINE กับบัญชี KPI ของคุณ</div>';
+
+    html += '<div class="input-group">';
+    html += '<label>Email ของคุณ</label>';
+    html += '<input type="email" id="register-email" placeholder="your-email@hospital.mil.th" autocomplete="email" inputmode="email">';
     html += '</div>';
+
+    html += '<button class="btn primary" id="btn-register" style="width: 100%; margin-top: 6px;">🔗 ลงทะเบียน</button>';
+
+    html += '<div class="help">หากไม่ทราบ email กรุณาติดต่อ admin<br>';
+    html += '<span style="opacity: 0.7;">LINE ID: <code>' + (state.profile ? state.profile.userId.substring(0, 8) + '...' : 'N/A') + '</code></span>';
+    html += '</div>';
+    html += '</div>';
+
     document.getElementById('root').innerHTML = html;
+
+    // Bind register button
+    var btn = document.getElementById('btn-register');
+    var input = document.getElementById('register-email');
+    if (btn) btn.addEventListener('click', submitRegistration);
+    if (input) {
+      input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') submitRegistration();
+      });
+      // Auto-focus on load (mobile keyboard may not open but desktop will)
+      setTimeout(function() { input.focus(); }, 300);
+    }
+  }
+
+  /**
+   * Submit registration — NEW in v8.1 Sprint 2
+   * Called when user clicks "ลงทะเบียน" button
+   */
+  function submitRegistration() {
+    var emailInput = document.getElementById('register-email');
+    var btn = document.getElementById('btn-register');
+    if (!emailInput || !btn) return;
+
+    var email = emailInput.value.trim().toLowerCase();
+
+    if (!email) {
+      showToast('⚠️ กรุณากรอก email');
+      emailInput.focus();
+      return;
+    }
+    if (email.indexOf('@') < 0 || email.indexOf('.') < 0) {
+      showToast('⚠️ รูปแบบ email ไม่ถูกต้อง');
+      emailInput.focus();
+      return;
+    }
+
+    // Disable UI during request
+    btn.disabled = true;
+    btn.textContent = 'กำลังลงทะเบียน...';
+    emailInput.disabled = true;
+
+    apiCall('register_line_by_email', {
+      line_id: state.profile.userId,
+      display_name: state.profile.displayName,
+      email: email
+    }).then(function(r) {
+      if (r.ok) {
+        var greetName = r.user_name || email;
+        showToast('✅ ลงทะเบียนสำเร็จ ยินดีต้อนรับ ' + greetName);
+        // Reload tasks after 1.5s to show KPI list
+        setTimeout(function() {
+          loadTasks().catch(function(err) {
+            console.error('loadTasks after register failed:', err);
+            showToast('⚠️ โหลดงานไม่สำเร็จ ลอง refresh');
+          });
+        }, 1500);
+      } else {
+        var msg = r.message || r.error || 'เกิดข้อผิดพลาด';
+        showToast('❌ ' + msg);
+        // Re-enable UI for retry
+        btn.disabled = false;
+        btn.textContent = '🔗 ลงทะเบียน';
+        emailInput.disabled = false;
+        emailInput.focus();
+      }
+    }).catch(function(err) {
+      console.error('submitRegistration error:', err);
+      showToast('❌ เกิดข้อผิดพลาด ลองอีกครั้ง');
+      btn.disabled = false;
+      btn.textContent = '🔗 ลงทะเบียน';
+      emailInput.disabled = false;
+    });
   }
 
   function bindEvents() {
