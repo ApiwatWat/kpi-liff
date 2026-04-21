@@ -74,6 +74,17 @@
   }
   .user-info .name { font-weight: 600; font-size: 15px; color: #3B2817; }
   .user-info .dept { font-size: 12px; color: #9A3412; }
+  .tier-pill {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 8px;
+    margin-left: 6px;
+    background: rgba(194,65,12,0.1);
+    color: #9A3412;
+    vertical-align: middle;
+  }
 
   .stats-bar {
     display: grid;
@@ -94,6 +105,38 @@
   .stat-num.total { color: #3B2817; }
   .stat-label { font-size: 11px; color: #6B4A2B; margin-top: 2px; }
 
+  /* Section divider */
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B4A2B;
+    padding: 12px 4px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-title .count {
+    font-size: 11px;
+    background: rgba(194,65,12,0.1);
+    color: #9A3412;
+    padding: 1px 8px;
+    border-radius: 8px;
+  }
+
+  /* Fallback notice (owns=0) */
+  .fallback-notice {
+    background: #FFFBEB;
+    border: 1px solid #FCD34D;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: #854F0B;
+    line-height: 1.5;
+  }
+  .fallback-notice .emoji { font-size: 18px; margin-right: 6px; }
+  .fallback-notice strong { color: #C2410C; }
+
   .task-card {
     background: white;
     border: 1px solid #F4D9BC;
@@ -105,6 +148,11 @@
   .task-card.done { opacity: 0.5; border-color: #C0DD97; background: #EAF3DE; }
   .task-card.active { border: 2px solid #C2410C; box-shadow: 0 4px 12px rgba(194,65,12,0.12); }
   .task-card.snoozed { opacity: 0.7; background: #FBE5CD; }
+  .task-card.locked {
+    background: #F5F0E8;
+    border-color: #D4C5B0;
+    opacity: 0.85;
+  }
 
   .task-badges {
     display: flex;
@@ -123,6 +171,7 @@
   .badge.red { background: #FCEBEB; color: #A32D2D; }
   .badge.id { background: rgba(194,65,12,0.08); color: #9A3412; }
   .badge.ease { background: rgba(99,153,34,0.12); color: #3B6D11; }
+  .badge.lock { background: #E5E0D5; color: #6B4A2B; }
 
   .task-name {
     font-size: 14px;
@@ -135,6 +184,35 @@
     font-size: 11px;
     color: #6B4A2B;
     margin-bottom: 10px;
+  }
+
+  /* Lock info box (shared KPI completed by other) */
+  .lock-info {
+    background: rgba(107,74,43,0.06);
+    border-left: 3px solid #D4C5B0;
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #6B4A2B;
+  }
+  .lock-info .lock-label {
+    font-size: 10px;
+    color: #9A3412;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+    font-weight: 600;
+  }
+  .lock-info .lock-value {
+    font-weight: 600;
+    color: #3B2817;
+    font-size: 14px;
+  }
+  .lock-info .lock-by {
+    font-size: 11px;
+    color: #6B4A2B;
+    margin-top: 4px;
   }
 
   .ai-prefill {
@@ -297,8 +375,10 @@
   var state = {
     profile: null,
     user: null,
-    tasks: [],
-    counts: { total: 0, pending: 0, done: 0, snoozed: 0 }
+    tasks: [],           // editable
+    locked: [],          // read-only (shared done / fallback)
+    fallback_mode: false,
+    counts: { total: 0, pending: 0, done: 0, snoozed: 0, locked: 0 }
   };
 
   function showToast(msg) {
@@ -352,7 +432,8 @@
   }
 
   function loadTasks() {
-    return apiCall('get_tasks', { line_id: state.profile.userId })
+    // v8.2: switched to get_tasks_v4 (owner-based + Show+Lock)
+    return apiCall('get_tasks_v4', { line_id: state.profile.userId })
       .then(function(result) {
         if (!result.ok) {
           if (result.need_registration) {
@@ -364,8 +445,10 @@
           throw new Error(result.error);
         }
         state.user = result.user;
-        state.tasks = result.tasks;
-        state.counts = result.counts;
+        state.tasks = result.tasks || [];
+        state.locked = result.locked || [];
+        state.fallback_mode = !!result.fallback_mode;
+        state.counts = result.counts || { total: 0, pending: 0, done: 0, snoozed: 0, locked: 0 };
         render();
       });
   }
@@ -374,8 +457,12 @@
     var html = '';
     html += renderHeader();
     html += renderUserCard();
+    if (state.fallback_mode) {
+      html += renderFallbackNotice();
+    }
     html += renderStats();
-    html += renderTasks();
+    html += renderTasksSection();
+    html += renderLockedSection();
     document.getElementById('root').innerHTML = html;
     bindEvents();
   }
@@ -392,13 +479,32 @@
   }
 
   function renderUserCard() {
-    var initial = (state.user.display_name || state.user.username || '?').charAt(0).toUpperCase();
+    var name = state.user.display_name || state.user.user_name || state.user.username || '?';
+    var initial = String(name).charAt(0).toUpperCase();
+    var dept = state.user.dept || '';
+    var tier = state.user.tier_name || '';
+    var owned = state.user.owned_count;
+
+    var tierBadge = '';
+    if (tier && tier !== 'none') {
+      tierBadge = '<span class="tier-pill">' + escapeHtml(tier) + ' · ' + owned + ' KPI</span>';
+    }
+
     return '<div class="user-card">' +
-           '<div class="user-avatar">' + initial + '</div>' +
+           '<div class="user-avatar">' + escapeHtml(initial) + '</div>' +
            '<div class="user-info">' +
-           '<div class="name">' + (state.user.display_name || state.user.username) + '</div>' +
-           '<div class="dept">ฝ่าย ' + state.user.dept + '</div>' +
+           '<div class="name">' + escapeHtml(name) + tierBadge + '</div>' +
+           '<div class="dept">ฝ่าย ' + escapeHtml(dept) + '</div>' +
            '</div>' +
+           '</div>';
+  }
+
+  function renderFallbackNotice() {
+    return '<div class="fallback-notice">' +
+           '<span class="emoji">ℹ️</span>' +
+           '<strong>โหมดดูอย่างเดียว</strong> — ระบบยังไม่ได้กำหนด KPI ให้คุณโดยตรง ' +
+           'คุณเห็น KPI ของฝ่ายเพื่อติดตามสถานะ แต่ยังกรอกค่าไม่ได้ ' +
+           'กรุณาติดต่อ admin เพื่อกำหนด KPI ที่ต้องรับผิดชอบ' +
            '</div>';
   }
 
@@ -419,7 +525,9 @@
            '</div>';
   }
 
-  function renderTasks() {
+  function renderTasksSection() {
+    if (state.fallback_mode) return ''; // No editable tasks in fallback
+
     if (state.tasks.length === 0) {
       return '<div class="empty-state">' +
              '<div class="emoji">🌴</div>' +
@@ -427,16 +535,27 @@
              '<div class="sub">พักผ่อนให้สบายใจครับ</div>' +
              '</div>';
     }
-    var html = '';
+    var html = '<div class="section-title">📝 งานของฉัน <span class="count">' + state.tasks.length + '</span></div>';
     for (var i = 0; i < state.tasks.length; i++) {
-      html += renderTaskCard(state.tasks[i], i);
+      html += renderTaskCard(state.tasks[i], i, false);
     }
     return html;
   }
 
-  function renderTaskCard(task, index) {
+  function renderLockedSection() {
+    if (state.locked.length === 0) return '';
+    var sectionLabel = state.fallback_mode ? '👁️ KPI ของฝ่าย (ดูอย่างเดียว)' : '🔒 กรอกโดยผู้ร่วมรับผิดชอบ';
+    var html = '<div class="section-title">' + sectionLabel + ' <span class="count">' + state.locked.length + '</span></div>';
+    for (var i = 0; i < state.locked.length; i++) {
+      html += renderTaskCard(state.locked[i], i, true);
+    }
+    return html;
+  }
+
+  function renderTaskCard(task, index, isLocked) {
     var cardClass = 'task-card';
-    if (task.status === 'done') cardClass += ' done';
+    if (isLocked) cardClass += ' locked';
+    else if (task.status === 'done') cardClass += ' done';
     else if (task.status === 'snoozed') cardClass += ' snoozed';
     else if (index === 0) cardClass += ' active';
 
@@ -444,30 +563,58 @@
                       task.ai_path === 'amber' ? '🟡 ผสม' : '🔴 กรอกเอง';
     var aiPathClass = task.ai_path || 'amber';
 
-    var html = '<div class="' + cardClass + '" data-kpi="' + task.kpi_id + '">';
+    var html = '<div class="' + cardClass + '" data-kpi="' + escapeHtml(task.kpi_id) + '">';
+
+    // Badges
     html += '<div class="task-badges">';
     html += '<span class="badge ' + aiPathClass + '">' + aiPathLabel + '</span>';
-    html += '<span class="badge id">' + task.kpi_id + '</span>';
+    html += '<span class="badge id">' + escapeHtml(task.kpi_id) + '</span>';
     html += '<span class="badge ease">ง่าย ' + task.ease + '/5</span>';
-    if (task.status === 'done') html += '<span class="badge green">✓ เสร็จแล้ว</span>';
-    if (task.status === 'snoozed') html += '<span class="badge amber">⏰ เลื่อน</span>';
+    if (!isLocked && task.status === 'done') html += '<span class="badge green">✓ เสร็จแล้ว</span>';
+    if (!isLocked && task.status === 'snoozed') html += '<span class="badge amber">⏰ เลื่อน</span>';
+    if (isLocked && task.lock_reason === 'completed_by_other') html += '<span class="badge lock">🔒 ผู้อื่นกรอกแล้ว</span>';
+    if (isLocked && task.lock_reason === 'fallback_no_ownership') html += '<span class="badge lock">👁️ ดูอย่างเดียว</span>';
     html += '</div>';
 
     html += '<div class="task-name">' + escapeHtml(task.kpi_name) + '</div>';
-    html += '<div class="task-meta">' + task.timing_group + '</div>';
+    html += '<div class="task-meta">' + escapeHtml(task.timing_group || '') + '</div>';
 
+    // Read-only view (Show+Lock / fallback)
+    if (isLocked) {
+      if (task.lock_reason === 'completed_by_other' && task.completed_value !== '') {
+        html += '<div class="lock-info">';
+        html += '<div class="lock-label">ค่าที่กรอกแล้ว</div>';
+        html += '<div class="lock-value">' + escapeHtml(task.completed_value) + '</div>';
+        if (task.completed_by) {
+          html += '<div class="lock-by">โดย ' + escapeHtml(task.completed_by) + '</div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>'; // close task-card
+      return html;
+    }
+
+    // Editable view
     if (task.status !== 'done') {
       if (task.ai_pre_filled) {
-        html += '<div class="ai-prefill">🤖 AI คำนวณให้: <strong>' + task.ai_pre_filled + '</strong></div>';
+        html += '<div class="ai-prefill">🤖 AI คำนวณให้: <strong>' + escapeHtml(task.ai_pre_filled) + '</strong></div>';
       }
       html += '<div class="input-group">';
       html += '<label>ค่าที่จะบันทึก</label>';
-      html += '<input type="text" id="value-' + task.kpi_id + '" placeholder="กรอกค่า เช่น 48.2%" value="' + (task.target_value || '') + '">';
+      html += '<input type="text" id="value-' + escapeHtml(task.kpi_id) + '" placeholder="กรอกค่า เช่น 48.2%" value="' + escapeHtml(task.target_value || '') + '">';
       html += '</div>';
       html += '<div class="task-actions">';
-      html += '<button class="btn primary" data-action="confirm" data-kpi="' + task.kpi_id + '">✓ ยืนยัน</button>';
-      html += '<button class="btn snooze" data-action="snooze" data-kpi="' + task.kpi_id + '">⏰</button>';
+      html += '<button class="btn primary" data-action="confirm" data-kpi="' + escapeHtml(task.kpi_id) + '">✓ ยืนยัน</button>';
+      html += '<button class="btn snooze" data-action="snooze" data-kpi="' + escapeHtml(task.kpi_id) + '">⏰</button>';
       html += '</div>';
+    } else {
+      // Done by me — show value
+      if (task.target_value || task.completed_value) {
+        html += '<div class="lock-info">';
+        html += '<div class="lock-label">ค่าที่กรอก</div>';
+        html += '<div class="lock-value">' + escapeHtml(task.completed_value || task.target_value) + '</div>';
+        html += '</div>';
+      }
     }
 
     html += '</div>';
@@ -475,8 +622,7 @@
   }
 
   /**
-   * Render registration form — NEW in v8.1 Sprint 2
-   * User กรอก email → submitRegistration → match ใน Users sheet → link LINE ID
+   * Render registration form — kept from v8.1 Sprint 2 (unchanged)
    */
   function renderPendingRegistration(info) {
     var displayName = (state.profile && state.profile.displayName) || '';
@@ -487,7 +633,6 @@
     html += '<div class="subtitle">เชื่อมต่อ LINE กับบัญชี KPI</div>';
     html += '</div>';
 
-    // LINE profile card (show display name from LIFF)
     html += '<div class="user-card">';
     html += '<div class="user-avatar">' + initial + '</div>';
     html += '<div class="user-info">';
@@ -496,7 +641,6 @@
     html += '</div>';
     html += '</div>';
 
-    // Register form
     html += '<div class="register-notice">';
     html += '<h3>👋 ยินดีต้อนรับครับ</h3>';
     html += '<div class="intro">กรุณากรอก email ที่ admin ลงทะเบียนไว้ในระบบ<br>เพื่อเชื่อม LINE กับบัญชี KPI ของคุณ</div>';
@@ -515,7 +659,6 @@
 
     document.getElementById('root').innerHTML = html;
 
-    // Bind register button
     var btn = document.getElementById('btn-register');
     var input = document.getElementById('register-email');
     if (btn) btn.addEventListener('click', submitRegistration);
@@ -523,15 +666,10 @@
       input.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') submitRegistration();
       });
-      // Auto-focus on load (mobile keyboard may not open but desktop will)
       setTimeout(function() { input.focus(); }, 300);
     }
   }
 
-  /**
-   * Submit registration — NEW in v8.1 Sprint 2
-   * Called when user clicks "ลงทะเบียน" button
-   */
   function submitRegistration() {
     var emailInput = document.getElementById('register-email');
     var btn = document.getElementById('btn-register');
@@ -550,7 +688,6 @@
       return;
     }
 
-    // Disable UI during request
     btn.disabled = true;
     btn.textContent = 'กำลังลงทะเบียน...';
     emailInput.disabled = true;
@@ -563,7 +700,6 @@
       if (r.ok) {
         var greetName = r.user_name || email;
         showToast('✅ ลงทะเบียนสำเร็จ ยินดีต้อนรับ ' + greetName);
-        // Reload tasks after 1.5s to show KPI list
         setTimeout(function() {
           loadTasks().catch(function(err) {
             console.error('loadTasks after register failed:', err);
@@ -573,7 +709,6 @@
       } else {
         var msg = r.message || r.error || 'เกิดข้อผิดพลาด';
         showToast('❌ ' + msg);
-        // Re-enable UI for retry
         btn.disabled = false;
         btn.textContent = '🔗 ลงทะเบียน';
         emailInput.disabled = false;
@@ -601,6 +736,7 @@
     var kpiId = btn.getAttribute('data-kpi');
 
     btn.disabled = true;
+    var originalText = btn.textContent;
     btn.textContent = '...';
 
     if (action === 'confirm') {
@@ -609,25 +745,42 @@
       if (!value) {
         showToast('⚠️ กรุณากรอกค่าก่อน');
         btn.disabled = false;
-        btn.textContent = '✓ ยืนยัน';
+        btn.textContent = originalText;
         return;
       }
-      apiCall('confirm_task', {
+      // v8.2: switched to confirm_task_v4
+      apiCall('confirm_task_v4', {
         line_id: state.profile.userId,
         kpi_id: kpiId,
         value: value
       }).then(function(r) {
         if (r.ok) {
-          showToast('✅ บันทึกแล้ว: ' + kpiId);
+          var msg = '✅ บันทึกแล้ว: ' + kpiId;
+          if (r.shared_cleared > 0) {
+            msg += ' (เคลียร์ให้ผู้ร่วมรับผิดชอบ ' + r.shared_cleared + ' คน)';
+          }
+          showToast(msg);
           setTimeout(loadTasks, 800);
         } else {
-          showToast('❌ ' + (r.error || 'error'));
+          var errMsg = r.error || 'error';
+          if (r.reason === 'already_completed' && r.completed_by) {
+            errMsg = 'KPI นี้ถูกกรอกแล้วโดย ' + r.completed_by;
+          }
+          showToast('❌ ' + errMsg);
           btn.disabled = false;
-          btn.textContent = '✓ ยืนยัน';
+          btn.textContent = originalText;
+          // Reload to sync state (maybe shared-done)
+          setTimeout(loadTasks, 1500);
         }
+      }).catch(function(err) {
+        console.error('confirm error:', err);
+        showToast('❌ เกิดข้อผิดพลาด');
+        btn.disabled = false;
+        btn.textContent = originalText;
       });
     } else if (action === 'snooze') {
-      apiCall('snooze_task', {
+      // v8.2: switched to snooze_task_v4 (fixed bug, per-user only)
+      apiCall('snooze_task_v4', {
         line_id: state.profile.userId,
         kpi_id: kpiId
       }).then(function(r) {
@@ -637,8 +790,13 @@
         } else {
           showToast('❌ ' + (r.error || 'error'));
           btn.disabled = false;
-          btn.textContent = '⏰';
+          btn.textContent = originalText;
         }
+      }).catch(function(err) {
+        console.error('snooze error:', err);
+        showToast('❌ เกิดข้อผิดพลาด');
+        btn.disabled = false;
+        btn.textContent = originalText;
       });
     }
   }
