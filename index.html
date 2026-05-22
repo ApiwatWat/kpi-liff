@@ -668,6 +668,14 @@ function showToast(msg, type) {
 window.onload = function() {
   dbg('window.onload fired', 'ok');
   initLiff();
+  /* Sprint 4 #6 (22 พ.ค.69) — register Service Worker for offline + faster repeat visits */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').then(function(reg) {
+      dbg('SW registered: scope=' + reg.scope, 'ok');
+    }).catch(function(err) {
+      dbg('SW register failed: ' + err.message, 'err');
+    });
+  }
 };
 </script>
 </body>
