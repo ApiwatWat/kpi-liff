@@ -1,0 +1,198 @@
+<!-- ===== DEMO MOCK (injected) — replaces google.script.run with fake data, no backend, no login ===== -->
+<style>
+#demo-ribbon{position:fixed;top:0;left:0;right:0;z-index:99999;background:repeating-linear-gradient(45deg,#0ea5e9,#0ea5e9 14px,#0284c7 14px,#0284c7 28px);color:#fff;text-align:center;font-size:12px;font-weight:600;letter-spacing:.02em;padding:4px 10px;font-family:'Prompt',sans-serif}
+body.has-demo-ribbon{padding-top:25px}
+.topbar{top:25px !important}
+</style>
+<div id="demo-ribbon">🔵 หน้าสาธิต (DEMO) — ข้อมูลทั้งหมดเป็นตัวอย่างสมมุติ ไม่ใช่ข้อมูลจริงของโรงพยาบาล · เปิดดูได้เลยไม่ต้องล็อกอิน</div>
+<script>
+(function(){
+  var MN=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var now=new Date(), MONTHS=[];
+  for(var i=23;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1);MONTHS.push(MN[d.getMonth()]+' '+(d.getFullYear()+543));}
+  var CUR=MONTHS[23], PREV=MONTHS[22];
+
+  // deterministic wobble (no random → stable demo)
+  function gen(base,slope,amp,opts){
+    opts=opts||{};var dec=opts.dec||0,freq=opts.freq||1,out=[];
+    for(var i=0;i<24;i++){
+      var fill = freq===1 ? true : ((23-i)%freq===0);
+      if(!fill){out.push('');continue;}
+      var v=base+slope*i+Math.sin(i*1.3+base)*amp;
+      var f=Math.pow(10,dec);v=Math.round(v*f)/f;
+      if(opts.min!=null)v=Math.max(opts.min,v);if(opts.max!=null)v=Math.min(opts.max,v);
+      out.push(v);
+    }
+    if(opts.curPending)out[23]='';
+    if(opts.naMonths)opts.naMonths.forEach(function(idx){out[idx]='NA';});
+    return out;
+  }
+  function K(o){o.months=MONTHS.slice();o.monthGoals=o.months.map(function(){return (o.direction==='↑'?'≥':'≤')+o.target;});o.ownerName=o.ownerName||o.owner;return o;}
+
+  var KPIS=[
+    K({id:'PCT-2', dept:'PCT', name:'อัตราการกลับมารักษาซ้ำใน 48 ชม. (Revisit)', unit:'%', target:'1.0', direction:'↓', frequency:1, owner:'somchai@hospital.demo', ownerName:'นพ.สมชาย (เดโม่)', startMonth:'', formula:'(ผู้ป่วยกลับมาซ้ำ ≤48 ชม.) ÷ (ผู้ป่วย ER ทั้งหมด) × 100', values:gen(0.45,0,0.12,{dec:2,min:0})}),
+    K({id:'PCT-10',dept:'PCT', name:'ผู้ป่วยเบาหวานคุมระดับน้ำตาลได้ (HbA1c < 7%)', unit:'%', target:'40', direction:'↑', frequency:1, owner:'somchai@hospital.demo', ownerName:'นพ.สมชาย (เดโม่)', startMonth:'', formula:'(DM ที่ HbA1c<7%) ÷ (DM active ทั้งหมด) × 100', values:gen(44,0.22,1.2,{dec:1,curPending:true})}),
+    K({id:'PCT-11',dept:'PCT', name:'ผู้ป่วยความดันโลหิตสูงคุมความดันได้ (<140/90)', unit:'%', target:'50', direction:'↑', frequency:1, owner:'somsri@hospital.demo', ownerName:'พว.สมศรี (เดโม่)', startMonth:'', formula:'(HT ที่ BP<140/90) ÷ (HT active) × 100', values:gen(52,-0.42,1.0,{dec:1})}),
+    K({id:'PCT-12',dept:'PCT', name:'STEMI เปิดเส้นเลือด/ส่งต่อ ≤ 30 นาที', unit:'%', target:'80', direction:'↑', frequency:1, owner:'somchai@hospital.demo', ownerName:'นพ.สมชาย (เดโม่)', startMonth:'', formula:'(STEMI door-to-needle/refer ≤30 นาที) ÷ (STEMI ทั้งหมด) × 100', values:gen(85,0,18,{dec:0,min:0,max:100,freq:3})}),
+    K({id:'PCT-19',dept:'PCT', name:'ระยะวันนอนเฉลี่ยผู้ป่วยใน (Avg LOS)', unit:'วัน', target:'4.5', direction:'↓', frequency:1, owner:'somsri@hospital.demo', ownerName:'พว.สมศรี (เดโม่)', startMonth:'', formula:'รวมวันนอน ÷ จำนวนผู้ป่วยจำหน่าย', values:gen(2.3,0,0.25,{dec:1,min:1})}),
+    K({id:'PCT-20',dept:'PCT', name:'อัตราการครองเตียง (Bed Occupancy)', unit:'%', target:'85', direction:'↑', frequency:1, owner:'somsri@hospital.demo', ownerName:'พว.สมศรี (เดโม่)', startMonth:'', formula:'(วันนอนจริง ÷ เตียง×วัน) × 100', values:gen(62,0.3,4,{dec:1})}),
+    K({id:'PCT-30',dept:'PCT', name:'ภาวะน้ำตาลในเลือดต่ำรุนแรงใน OPD', unit:'ราย', target:'0', direction:'↓', frequency:1, owner:'somchai@hospital.demo', ownerName:'นพ.สมชาย (เดโม่)', startMonth:'', formula:'จำนวนเหตุการณ์ hypoglycemia รุนแรง', values:(function(){var a=gen(0,0,0,{dec:0});a[16]=1;return a;})()}),
+
+    K({id:'IC-1', dept:'IC', name:'อัตราการติดเชื้อทางเดินปัสสาวะจากสายสวน (CAUTI)', unit:'‰', target:'2.0', direction:'↓', frequency:1, owner:'wilai@hospital.demo', ownerName:'พว.วิไล (เดโม่)', startMonth:'', formula:'(CAUTI) ÷ (1,000 วันสายสวน)', values:gen(0.95,-0.012,0.25,{dec:1,min:0})}),
+    K({id:'IC-4', dept:'IC', name:'ความร่วมมือการล้างมือ (Hand Hygiene Compliance)', unit:'%', target:'85', direction:'↑', frequency:1, owner:'wilai@hospital.demo', ownerName:'พว.วิไล (เดโม่)', startMonth:'', formula:'(โอกาสที่ล้างมือถูกต้อง) ÷ (โอกาสทั้งหมด) × 100', values:gen(80,0.4,1.2,{dec:0,max:100})}),
+    K({id:'IC-7', dept:'IC', name:'อัตราการติดเชื้อในโรงพยาบาลรวม (HAI)', unit:'%', target:'1.5', direction:'↓', frequency:3, owner:'wilai@hospital.demo', ownerName:'พว.วิไล (เดโม่)', startMonth:'', formula:'(ผู้ติดเชื้อใน รพ.) ÷ (ผู้ป่วยใน) × 100', values:gen(1.1,0,0.3,{dec:1,min:0,freq:3})}),
+
+    K({id:'IM-9', dept:'IM', name:'เครื่องคอมพิวเตอร์มีโปรแกรมป้องกันไวรัสทำงาน', unit:'%', target:'95', direction:'↑', frequency:1, owner:'admin@hospital.demo', ownerName:'จนท.ไอที (เดโม่)', startMonth:'', formula:'(PC ที่ AV ทำงาน) ÷ (PC ทั้งหมด) × 100', values:gen(77,0.85,1.5,{dec:0,max:100,curPending:true})}),
+    K({id:'IM-13',dept:'IM', name:'ระบบสารสนเทศพร้อมใช้งาน (System Uptime)', unit:'%', target:'99', direction:'↑', frequency:1, owner:'admin@hospital.demo', ownerName:'จนท.ไอที (เดโม่)', startMonth:'', formula:'(เวลาที่ระบบใช้งานได้) ÷ (เวลาทั้งหมด) × 100', values:gen(99.8,0,0.12,{dec:1,max:100})}),
+
+    K({id:'RM-1', dept:'RM', name:'จำนวนรายงานอุบัติการณ์ความเสี่ยง (Incident Report)', unit:'ราย', target:'30', direction:'↑', frequency:1, owner:'pranee@hospital.demo', ownerName:'พว.ปราณี (เดโม่)', startMonth:'', formula:'จำนวนรายงานอุบัติการณ์ที่ส่งเข้าระบบ', values:gen(31,0.5,4,{dec:0,min:0})}),
+    K({id:'RM-3', dept:'RM', name:'อุบัติการณ์ความคลาดเคลื่อนทางยา (Medication Error)', unit:'ราย', target:'5', direction:'↓', frequency:1, owner:'pranee@hospital.demo', ownerName:'พว.ปราณี (เดโม่)', startMonth:'', formula:'จำนวน med error ที่รายงาน', values:gen(4,0,1.6,{dec:0,min:0})}),
+
+    K({id:'ER-2', dept:'PCT', name:'เวลารอพบแพทย์ ER ผู้ป่วยฉุกเฉิน (≤ 10 นาที)', unit:'%', target:'90', direction:'↑', frequency:1, owner:'somchai@hospital.demo', ownerName:'นพ.สมชาย (เดโม่)', startMonth:'', formula:'(ผู้ป่วยฉุกเฉินพบแพทย์ ≤10 นาที) ÷ (ทั้งหมด) × 100', values:gen(91,0.2,1.5,{dec:0,max:100})}),
+    K({id:'LAB-2',dept:'IM', name:'เวลารอผลแล็บด่วน Troponin (TAT ≤ 60 นาที)', unit:'%', target:'75', direction:'↑', frequency:1, owner:'admin@hospital.demo', ownerName:'จนท.แล็บ (เดโม่)', startMonth:'', formula:'(Trop-I ที่ออกผล ≤60 นาที) ÷ (ทั้งหมด) × 100', values:gen(74,0.1,4,{dec:0,max:100})}),
+
+    K({id:'ENV-3',dept:'ENV', name:'การจัดการขยะติดเชื้อถูกต้องตามมาตรฐาน', unit:'%', target:'95', direction:'↑', frequency:1, owner:'manop@hospital.demo', ownerName:'จนท.ENV (เดโม่)', startMonth:'', formula:'(จุดที่แยกขยะถูกต้อง) ÷ (จุดที่สุ่มตรวจ) × 100', values:gen(96,0.1,1.2,{dec:0,max:100})}),
+    K({id:'HRD-2',dept:'HRD', name:'บุคลากรผ่านการอบรมช่วยฟื้นคืนชีพ (CPR/BLS)', unit:'%', target:'90', direction:'↑', frequency:6, owner:'kanya@hospital.demo', ownerName:'จนท.HRD (เดโม่)', startMonth:'', formula:'(บุคลากรผ่าน BLS) ÷ (บุคลากรทั้งหมด) × 100', values:gen(85,0.7,2,{dec:0,max:100,freq:6})}),
+    K({id:'HPH-1',dept:'HPH', name:'หญิงตั้งครรภ์ฝากครรภ์ก่อนอายุครรภ์ 12 สัปดาห์', unit:'%', target:'75', direction:'↑', frequency:1, owner:'suda@hospital.demo', ownerName:'พว.สุดา (เดโม่)', startMonth:'', formula:'(ANC ก่อน 12 สัปดาห์) ÷ (ฝากครรภ์รายใหม่) × 100', values:gen(72,0.25,2.5,{dec:0,max:100})}),
+    K({id:'FIN-1',dept:'การเงิน', name:'อัตราส่วนทุนหมุนเวียน (Current Ratio)', unit:'เท่า', target:'1.5', direction:'↑', frequency:3, owner:'admin@hospital.demo', ownerName:'จนท.การเงิน (เดโม่)', startMonth:'', formula:'สินทรัพย์หมุนเวียน ÷ หนี้สินหมุนเวียน', values:gen(1.8,0,0.2,{dec:2,min:0,freq:3})}),
+  ];
+
+  var DEPTS=['PCT','IC','IM','RM','ENV','HRD','HPH','การเงิน'];
+  function kpisForDept(d){return KPIS.filter(function(k){return k.dept===d;});}
+
+  function evalSt(target,dir,val){
+    if(val===null||val===''||val===undefined||val==='NA')return'na';
+    var num=parseFloat(val);if(isNaN(num))return'na';
+    var t=parseFloat((target||'').toString().replace(/[^0-9.]/g,''));if(isNaN(t))return'na';
+    if(dir==='↑'||dir==='up')return num>=t?'hit':'miss';
+    if(dir==='↓'||dir==='down')return num<=t?'hit':'miss';
+    return'na';
+  }
+  function bucket(kpis,idx){
+    var b={total:0,hit:0,miss:0,pending:0,na:0};
+    kpis.forEach(function(k){
+      b.total++;var v=k.values[idx];
+      if(v==='NA')b.na++;
+      else if(v===''||v===null||v===undefined)b.pending++;
+      else{var s=evalSt(k.target,k.direction,v);if(s==='hit')b.hit++;else if(s==='miss')b.miss++;else b.na++;}
+    });
+    return b;
+  }
+  function dashboardStats(){
+    var deptStats={};
+    DEPTS.forEach(function(d){var ks=kpisForDept(d);deptStats[d]={prev:bucket(ks,22),cur:bucket(ks,23)};});
+    var msLeft=(function(){var end=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59);return end-now;})();
+    return {prevLabel:PREV,curLabel:CUR,prev:bucket(KPIS,22),cur:bucket(KPIS,23),msLeft:msLeft,depts:DEPTS,deptStats:deptStats};
+  }
+  function yoyStats(dept){
+    // % บรรลุรายเดือน 12 เดือน ปีนี้ vs ปีก่อน
+    var ks=dept&&dept!=='ALL'?kpisForDept(dept):KPIS;
+    function hitPct(idx){var b=bucket(ks,idx);var filled=b.hit+b.miss;return filled>0?Math.round(b.hit/filled*100):null;}
+    var months=MONTHS.slice(12),thisY=[],lastY=[];
+    for(var i=12;i<24;i++)thisY.push(hitPct(i));
+    for(var j=0;j<12;j++)lastY.push(hitPct(j));
+    return {months:months,thisYear:(now.getFullYear()+543),lastYear:(now.getFullYear()+542),thisYearData:thisY,lastYearData:lastY};
+  }
+  function heatmapStats(){
+    var months=MONTHS.slice(12);
+    var depts=DEPTS.map(function(d){var ks=kpisForDept(d);var data=[];for(var i=12;i<24;i++){var b=bucket(ks,i);var filled=b.hit+b.miss;data.push(filled>0?Math.round(b.hit/filled*100):null);}return {name:d,n:ks.length,data:data};});
+    return {months:months,depts:depts};
+  }
+  function fakeUsers(){
+    return [
+      {userId:'USR-001',name:'นพ.สมชาย ใจดี (เดโม่)',email:'somchai@hospital.demo',dept:'PCT',position:'อายุรแพทย์',role:'USER',status:'Active',kpis:'PCT-10,PCT-12,PCT-30'},
+      {userId:'USR-002',name:'พว.สมศรี รักงาน (เดโม่)',email:'somsri@hospital.demo',dept:'PCT',position:'พยาบาลวิชาชีพ',role:'USER',status:'Active',kpis:'PCT-11,PCT-19,PCT-20'},
+      {userId:'USR-003',name:'พว.วิไล สะอาด (เดโม่)',email:'wilai@hospital.demo',dept:'IC',position:'พยาบาล IC',role:'USER',status:'Active',kpis:'IC-1,IC-4,IC-7'},
+      {userId:'USR-004',name:'จนท.ไอที (เดโม่)',email:'admin@hospital.demo',dept:'IM',position:'นักวิชาการคอมพิวเตอร์',role:'ADMIN',status:'Active',kpis:'ALL'},
+      {userId:'USR-005',name:'พว.ปราณี ระวัง (เดโม่)',email:'pranee@hospital.demo',dept:'RM',position:'หัวหน้าบริหารความเสี่ยง',role:'USER',status:'Active',kpis:'RM-1,RM-3'},
+      {userId:'USR-006',name:'จนท.สิ่งแวดล้อม (เดโม่)',email:'manop@hospital.demo',dept:'ENV',position:'นักวิชาการสาธารณสุข',role:'USER',status:'Active',kpis:'ENV-3'},
+    ];
+  }
+  function auditLog(){
+    var acts=[['WRITE_OK','PCT-10','บันทึกค่า','48.2','49.0'],['GENERATE_PDCA','PCT-11','สร้างร่าง PDCA','',''],['SMART_SUGGEST','','แนะนำ KPI ที่ควรดู','',''],['WRITE_OK','IC-4','บันทึกค่า','87','88'],['ANOMALY_ALERT','PCT-11','แจ้งเตือนค่าดิ่งผิดปกติ','','44'],['LINE_PUSH','','ส่งสรุปประจำสัปดาห์','',''],['WRITE_OK','IM-9','บันทึกค่า','90','92'],['ADD_KPI','HPH-1','เพิ่มตัวชี้วัดใหม่','',''],['EXPORT_EXCEL','','ส่งออกรายงาน Excel','','']];
+    var entries=acts.map(function(a,i){var d=new Date(now-(i*3600000+1200000));return {time:d.toLocaleString('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}),action:a[0],email:(a[1]?'somchai@hospital.demo':'system@hospital.demo'),kpiId:a[1]||'—',detail:a[2],oldVal:a[3],newVal:a[4]};});
+    return {ok:true,showing:entries.length,total:entries.length,entries:entries};
+  }
+  function smartSuggestions(){
+    return {ok:true,suggestions:[{kpiId:'PCT-11',name:'ความดันโลหิตคุมได้',reason:'ค่าดิ่งลงต่อเนื่อง 5 เดือน หลุดเป้า',score:95},{kpiId:'IM-9',name:'AV ครอบคลุม',reason:'ใกล้เป้า เหลือ 2 เครื่อง',score:70},{kpiId:'PCT-10',name:'เบาหวานคุมได้',reason:'เดือนนี้ยังไม่กรอก',score:60}]};
+  }
+  function aiAnswer(question,email,key){
+    var ok=KPIS.filter(function(k){return evalSt(k.target,k.direction,getLatest(k))==='hit';}).length;
+    var ans;
+    if(key==='dm_overview'||/เบาหวาน|dm|hba1c/i.test(question)){
+      ans='📊 เบาหวาน (PCT-10): เดือนล่าสุดคุม HbA1c<7% ได้ '+getLatest(find('PCT-10'))+'% — บรรลุเป้า ≥40% และมีแนวโน้มดีขึ้นต่อเนื่องตลอดปี\n\nข้อเสนอ: คงมาตรการเตือนนัดผ่าน LINE + ปรับยาเชิงรุกในกลุ่มที่ยังคุมไม่ได้';
+    }else if(/ความดัน|bp|ht/i.test(question)){
+      ans='⚠️ ความดันโลหิต (PCT-11): ล่าสุด '+getLatest(find('PCT-11'))+'% หลุดเป้า ≥50% และแนวโน้ม "ลดลงต่อเนื่อง" ตั้งแต่ต้นปี — เป็นจุดที่ควรเฝ้าระวังที่สุด\n\nรากของปัญหาที่ควรตรวจ: ความสม่ำเสมอการกินยา + การติดตามความดันที่บ้าน\nข้อเสนอ: เริ่มโครงการ home BP ในกลุ่มที่คุมไม่ได้';
+    }else if(/ภาพรวม|executive|สรุป/i.test(question)){
+      ans='📈 ภาพรวมคุณภาพเดือนนี้: บรรลุเป้า '+ok+'/'+KPIS.length+' ตัวชี้วัด ('+Math.round(ok/KPIS.length*100)+'%)\n\nจุดแข็ง: การล้างมือ (IC-4) และเวลารอพบแพทย์ ER ดีขึ้นต่อเนื่อง\nจุดที่ต้องเฝ้า: การคุมความดันโลหิต (PCT-11) ที่แนวโน้มแย่ลง — แนะนำเป็นวาระประชุม PCT';
+    }else{
+      ans='จากข้อมูลตัวชี้วัดล่าสุด บรรลุเป้า '+ok+'/'+KPIS.length+' ตัว ('+Math.round(ok/KPIS.length*100)+'%)\nตัวที่ควรให้ความสำคัญที่สุดคือ PCT-11 (ความดันโลหิต) ที่แนวโน้มลดลงต่อเนื่อง\n\n(นี่คือคำตอบตัวอย่างในโหมดสาธิต — ระบบจริงเรียก Google Gemini วิเคราะห์จากข้อมูลจริง)';
+    }
+    return {ok:true,answer:ans,meta:{model:'gemini-2.5-flash (demo)',cached:false}};
+  }
+  function getLatest(k){if(!k||!k.values)return'NA';for(var i=k.values.length-1;i>=0;i--){var v=k.values[i];if(v!==''&&v!=='NA'&&v!=null)return v;}return'NA';}
+  function find(id){for(var i=0;i<KPIS.length;i++)if(KPIS[i].id===id)return KPIS[i];return null;}
+
+  // ---- the fake backend dispatch table ----
+  var FAKE={
+    bootstrapPayload:function(arg){return {ok:true,user:{role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,userId:'USR-004',kpis:['ALL'],haFillActive:false},depts:DEPTS,primaryDept:'PCT',kpis:kpisForDept('PCT')};},
+    checkPermission:function(){return {role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,kpis:['ALL'],haFillActive:false};},
+    getDashboardStats:dashboardStats,
+    getMyDashboardStats:dashboardStats,
+    getKPIsByDept:function(dept){return kpisForDept(dept);},
+    getKPIsByUser:function(){return KPIS.slice();},
+    getYoYStats:function(dept){return yoyStats(dept);},
+    getHeatmapStats:heatmapStats,
+    getUsers:fakeUsers,
+    getRecentAuditLog:auditLog,
+    getSmartSuggestions:smartSuggestions,
+    askAI:aiAnswer,
+    getAvailableMonths:function(){return MONTHS.slice();},
+    getDepartments:function(){return DEPTS.slice();},
+    getCellHistory:function(){return [];},
+    getActionPlans:function(){return {ok:true,plans:[]};},
+    getRevenueData:function(){return {ok:true,months:MONTHS.slice(12),revenue:[2.1,2.3,2.0,2.4,2.2,2.5,2.3,2.6,2.4,2.5,2.3,2.7].map(function(x){return x*1e6;})};},
+    getSlideOutlineText:function(){return {ok:true,text:'(ตัวอย่างโหมดสาธิต)'};},
+    getHeatmapStatsByDept:heatmapStats,
+    // write ops — accept and echo ok so the UI behaves
+    saveKPIValue:function(){return {ok:true};},
+    saveKPIMeta:function(){return {ok:true};},
+    saveGoalOverride:function(){return {ok:true};},
+    saveComment:function(){return {ok:true};},
+    saveActionPlan:function(){return {ok:true};},
+    addKPI:function(){return {ok:true,newId:'NEW-01'};},
+    deleteKPI:function(){return {ok:true};},
+    addUser:function(){return {ok:true,newId:'USR-NEW'};},
+    editUser:function(){return {ok:true};},
+    deleteUser:function(){return {ok:true};},
+    getNextKpiId:function(){return 'DEMO-99';},
+    forceClearCacheAPI:function(){return true;},
+    warmCache:function(){return true;}
+  };
+
+  function makeRunner(){
+    var succ=null,fail=null;
+    var api={withSuccessHandler:function(cb){succ=cb;return api;},withFailureHandler:function(cb){fail=cb;return api;}};
+    Object.keys(FAKE).forEach(function(name){
+      api[name]=function(){
+        var args=arguments;
+        setTimeout(function(){try{var r=FAKE[name].apply(null,args);if(succ)succ(r);}catch(e){if(fail)fail(e);else console.error(e);}},90);
+        return api;
+      };
+    });
+    // any unknown method → no-op success(null)
+    return new Proxy(api,{get:function(t,p){if(p in t)return t[p];if(typeof p==='string')return function(){var args=arguments;setTimeout(function(){if(succ)succ(null);},60);return api;};return t[p];}});
+  }
+  window.google={script:{get run(){return makeRunner();},host:{close:function(){},setHeight:function(){}}}};
+
+  // auto-login on load (no real login needed)
+  window.addEventListener('load',function(){
+    document.body.classList.add('has-demo-ribbon');
+    try{
+      var inp=document.getElementById('email-inp');
+      if(inp)inp.value='admin@hospital.demo';
+      if(typeof doLogin==='function')doLogin();
+    }catch(e){console.error('demo auto-login',e);}
+  });
+})();
+</script>
