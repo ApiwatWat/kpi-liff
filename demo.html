@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>KPI Monitor — DEMO (ข้อมูลตัวอย่าง)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== Morning Peach palette (ตรงกับแอปจริง MobileApp.html) ===== */
+:root{
+  --bg-1:#FFF7F0; --bg-2:#FFEDD9; --bg-3:#FBE5CD; --bg-4:#F4D9BC;
+  --ok-bg:#639922; --ok-tx:#3F6514;
+  --er-bg:#A32D2D; --er-tx:#7A1F1F;
+  --wn-bg:#E8A317; --wn-tx:#92400E;
+  --card-bg:#FFFFFF; --ink:#3B2817; --muted:#8A6F57;
+  --accent:#C2410C; --accent2:#EDB680; --line:#F0DCC6;
+  --shadow:0 6px 22px rgba(120,72,30,.10);
+}
+[data-theme="dark"]{
+  --bg-1:#0F1620; --bg-2:#16202C; --bg-3:#1B2735; --bg-4:#22303f;
+  --ok-bg:#10b981; --ok-tx:#6ee7b7; --er-bg:#ef4444; --er-tx:#fca5a5;
+  --wn-bg:#f59e0b; --wn-tx:#fbbf24;
+  --card-bg:#16202C; --ink:#E8EEF4; --muted:#8FA3B5;
+  --accent:#fb923c; --accent2:#7c4a23; --line:#26323f;
+  --shadow:0 6px 22px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'IBM Plex Sans Thai','Leelawadee UI',Tahoma,sans-serif;
+  background:linear-gradient(160deg,var(--bg-1),var(--bg-2) 60%,var(--bg-3));
+  color:var(--ink); min-height:100vh; line-height:1.6; transition:background .3s;
+}
+.disp{font-family:'Chakra Petch','Leelawadee UI',Tahoma,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 60px}
+
+/* DEMO ribbon */
+.demobar{background:repeating-linear-gradient(45deg,#C2410C,#C2410C 14px,#A8350A 14px,#A8350A 28px);
+  color:#fff;text-align:center;font-size:12.5px;font-weight:600;letter-spacing:.04em;padding:5px 10px;position:sticky;top:0;z-index:50}
+
+/* header */
+header{padding:20px 0 8px}
+.htop{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,var(--accent),#E8841A);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Chakra Petch';font-weight:700;font-size:20px;box-shadow:var(--shadow)}
+.htop h1{font-size:21px;font-weight:700}
+.htop .sub{font-size:12.5px;color:var(--muted)}
+.spacer{flex:1}
+.tbtn{background:var(--card-bg);border:1px solid var(--line);border-radius:11px;padding:8px 13px;
+  font-size:13px;color:var(--ink);cursor:pointer;font-family:inherit;box-shadow:var(--shadow);display:flex;align-items:center;gap:6px}
+.tbtn:active{transform:scale(.96)}
+
+/* summary cards */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+.scard{background:var(--card-bg);border-radius:16px;padding:15px 16px;box-shadow:var(--shadow);border:1px solid var(--line);position:relative;overflow:hidden}
+.scard::after{content:"";position:absolute;right:-18px;top:-18px;width:56px;height:56px;border-radius:50%;opacity:.14}
+.scard.tot::after{background:var(--accent)} .scard.ok::after{background:var(--ok-bg)}
+.scard.er::after{background:var(--er-bg)} .scard.wn::after{background:var(--wn-bg)}
+.scard .n{font-family:'Chakra Petch';font-size:30px;font-weight:700;line-height:1}
+.scard.ok .n{color:var(--ok-bg)} .scard.er .n{color:var(--er-bg)} .scard.wn .n{color:var(--wn-bg)} .scard.tot .n{color:var(--accent)}
+.scard .l{font-size:12.5px;color:var(--muted);margin-top:3px}
+
+/* AI insight panel */
+.ai{background:linear-gradient(135deg,var(--accent),#E8841A);border-radius:18px;padding:2px;margin:6px 0 18px;box-shadow:var(--shadow)}
+.ai-in{background:var(--card-bg);border-radius:16px;padding:16px 18px}
+.ai-h{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;color:var(--accent)}
+.ai-h .dot{width:9px;height:9px;border-radius:50%;background:var(--ok-bg);box-shadow:0 0 0 0 rgba(99,153,34,.6);animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(99,153,34,.5)}70%{box-shadow:0 0 0 8px rgba(99,153,34,0)}100%{box-shadow:0 0 0 0 rgba(99,153,34,0)}}
+.ai-body{margin-top:9px;font-size:14.5px;min-height:80px;white-space:pre-wrap}
+.ai-body .cursor{display:inline-block;width:8px;background:var(--accent);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.ai-foot{margin-top:10px;font-size:11.5px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chipbtn{background:var(--bg-2);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer;color:var(--ink);font-family:inherit}
+.chipbtn:active{transform:scale(.95)}
+
+/* filter tabs */
+.filters{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.ftab{white-space:nowrap;background:var(--card-bg);border:1px solid var(--line);border-radius:999px;padding:7px 15px;
+  font-size:13px;cursor:pointer;color:var(--muted);font-family:inherit;font-weight:500}
+.ftab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* KPI grid */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.kpi{background:var(--card-bg);border-radius:15px;padding:14px 15px;box-shadow:var(--shadow);border:1px solid var(--line);cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(120,72,30,.16)}
+.kpi:active{transform:scale(.99)}
+.kpi .code{font-family:'Chakra Petch';font-size:11px;color:var(--muted);letter-spacing:.03em}
+.kpi .name{font-weight:600;font-size:14.5px;margin:2px 0 9px;min-height:42px}
+.kpi .row{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+.kpi .val{font-family:'Chakra Petch';font-size:25px;font-weight:700;line-height:1}
+.kpi .unit{font-size:12px;color:var(--muted);font-weight:500}
+.kpi .tgt{font-size:11.5px;color:var(--muted)}
+.chip{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{background:color-mix(in srgb,var(--ok-bg) 16%,transparent);color:var(--ok-tx)}
+.chip.er{background:color-mix(in srgb,var(--er-bg) 16%,transparent);color:var(--er-tx)}
+.chip.wn{background:color-mix(in srgb,var(--wn-bg) 20%,transparent);color:var(--wn-tx)}
+.chip.pd{background:var(--bg-3);color:var(--muted)}
+.spark{margin-top:11px;height:34px;width:100%}
+.trend{font-size:11px;font-weight:600;margin-left:6px}
+.trend.up{color:var(--ok-bg)} .trend.down{color:var(--er-bg)}
+
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(40,22,8,.55);backdrop-filter:blur(3px);display:none;align-items:flex-end;justify-content:center;z-index:100}
+.ov.show{display:flex}
+.modal{background:var(--bg-1);border-radius:22px 22px 0 0;width:100%;max-width:620px;max-height:92vh;overflow-y:auto;padding:8px 20px 28px;animation:slideup .25s}
+@media(min-width:640px){.ov{align-items:center}.modal{border-radius:22px}}
+@keyframes slideup{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
+.mhandle{width:42px;height:5px;background:var(--line);border-radius:3px;margin:8px auto 14px}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mhead .code{font-family:'Chakra Petch';font-size:12px;color:var(--accent);font-weight:700}
+.mhead h2{font-size:18px;font-weight:700;margin-top:2px}
+.x{background:var(--card-bg);border:1px solid var(--line);width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;color:var(--muted);flex:none}
+.mstat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+.mstat .b{background:var(--card-bg);border:1px solid var(--line);border-radius:13px;padding:11px;text-align:center}
+.mstat .b .n{font-family:'Chakra Petch';font-size:21px;font-weight:700}
+.mstat .b .l{font-size:11px;color:var(--muted)}
+.chart{background:var(--card-bg);border:1px solid var(--line);border-radius:15px;padding:16px 12px 10px;margin:6px 0 16px}
+.chart h3{font-size:13px;color:var(--muted);margin:0 4px 6px;font-weight:600}
+.pdca{background:var(--card-bg);border:1px solid var(--line);border-radius:15px;padding:4px 4px 10px;overflow:hidden}
+.pdca .q{padding:13px 15px;border-bottom:1px solid var(--line)}
+.pdca .q:last-child{border-bottom:none}
+.pdca .q .t{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:7px}
+.pdca .q .d{font-size:13.5px;color:var(--ink);margin-top:3px}
+.pdca .P .t{color:#2563eb} .pdca .D .t{color:var(--accent)} .pdca .C .t{color:var(--wn-tx)} .pdca .A .t{color:var(--ok-bg)}
+footer{text-align:center;font-size:11.5px;color:var(--muted);margin-top:34px;padding-top:18px;border-top:1px solid var(--line)}
+@media(max-width:560px){.summary{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.htop h1{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="demobar">🟠 หน้าสาธิต (DEMO) — ข้อมูลทั้งหมดเป็นตัวอย่างสมมุติของ "โรงพยาบาลเดโม่" ไม่ใช่ข้อมูลผู้ป่วยหรือโรงพยาบาลจริง</div>
+<div class="wrap">
+
+<header>
+  <div class="htop">
+    <div class="logo">KPI</div>
+    <div>
+      <h1 class="disp">KPI Monitor <span style="font-size:13px;color:var(--muted);font-weight:500">· รพ.เดโม่</span></h1>
+      <div class="sub">ระบบติดตามตัวชี้วัดคุณภาพโรงพยาบาล · ปีงบประมาณ 2569</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="tbtn" onclick="toggleTheme()"><span id="th-ic">🌙</span><span id="th-tx">Dark</span></button>
+  </div>
+</header>
+
+<div class="summary" id="summary"></div>
+
+<div class="ai">
+  <div class="ai-in">
+    <div class="ai-h"><span class="dot"></span> AI Insight — ผู้ช่วยวิเคราะห์อัตโนมัติ</div>
+    <div class="ai-body" id="ai-body"></div>
+    <div class="ai-foot">
+      <span>ลองสั่ง AI:</span>
+      <button class="chipbtn" onclick="runAI('overview')">ภาพรวมเดือนนี้</button>
+      <button class="chipbtn" onclick="runAI('risk')">ตัวที่ต้องรีบดู</button>
+      <button class="chipbtn" onclick="runAI('win')">ตัวที่ดีขึ้น</button>
+    </div>
+  </div>
+</div>
+
+<div class="filters" id="filters"></div>
+<div class="grid" id="grid"></div>
+
+<footer>
+  KPI Monitor — หน้าสาธิต (DEMO) · จัดทำเพื่อการนำเสนอ ไม่ใช่ระบบใช้งานจริง<br>
+  ข้อมูลสมมุติทั้งหมด · ระบบจริงรันบน Google Sheets + Apps Script + LINE + Gemini AI
+</footer>
+</div>
+
+<!-- modal -->
+<div class="ov" id="ov" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+/* ===================== fake hospital KPI data ===================== */
+/* values = 12 เดือนล่าสุด (ต.ค.68 → ก.ย.69), null = ยังไม่ถึงรอบ/ค้างกรอก */
+var MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
+function S(arr){return arr;} // helper readability
+
+var KPIS = [
+  {code:'PCT-10',dept:'PCT',name:'เบาหวานคุมระดับน้ำตาลได้ (A1C < 7%)',unit:'%',target:40,dir:'up',
+   v:S([44,45,46,46,47,47,48,48,49,null,null,null]),
+   pdca:{P:'ตั้งเป้า A1C<7% ≥40% ของผู้ป่วย DM active',D:'คลินิก NCD เตือนนัด + ปรับยาเชิงรุก + ให้ความรู้',C:'แนวโน้มดีขึ้นต่อเนื่อง 44%→49% บรรลุเป้าทุกเดือน',A:'ขยายกลุ่มเตือนนัดอัตโนมัติผ่าน LINE ไปยังกลุ่มเสี่ยง'}},
+  {code:'PCT-11',dept:'PCT',name:'ความดันโลหิตคุมได้ (< 140/90)',unit:'%',target:50,dir:'up',
+   v:S([52,51,50,49,48,47,46,45,44,null,null,null]),
+   pdca:{P:'คุมความดัน <140/90 ≥50% ของผู้ป่วย HT active',D:'วัดความดันซ้ำที่บ้าน + ปรับยา',C:'⚠️ แนวโน้มลดลงต่อเนื่อง 52%→44% หลุดเป้าตั้งแต่ ก.พ. — น่ากังวล',A:'ทบทวนความสม่ำเสมอการกินยา + เพิ่มการติดตาม home BP'}},
+  {code:'PCT-12',dept:'PCT',name:'STEMI เปิดเส้นเลือด/ส่งต่อ ≤ 30 นาที',unit:'%',target:80,dir:'up',
+   v:S([100,null,null,100,null,null,null,67,null,null,null,null]),
+   pdca:{P:'STEMI door-to-needle/refer ≤30 นาที ≥80%',D:'Standing order ER + เตรียมยา loading ล่วงหน้า',C:'เคสน้อย (1-2/ปี) — เดือน พ.ค.มี 1 เคส 33 นาที (เกิน 3 นาที)',A:'ทบทวน workflow ER ลด airway-prep delay'}},
+  {code:'PCT-30',dept:'PCT',name:'ภาวะน้ำตาลต่ำรุนแรงใน OPD',unit:'ราย',target:0,dir:'down',
+   v:S([0,0,0,0,1,0,0,0,0,null,null,null]),
+   pdca:{P:'ลดภาวะ hypoglycemia รุนแรง = 0 ราย',D:'ปรับขนาดยาในผู้สูงอายุ/ไตเสื่อม',C:'ก.พ. พบ 1 ราย (sentinel) — ผู้ป่วยสูงอายุ sulfonylurea',A:'ทบทวนการสั่ง SU ในกลุ่ม eGFR<30'}},
+  {code:'IC-1',dept:'IC',name:'อัตราติดเชื้อทางเดินปัสสาวะจากสายสวน (CAUTI)',unit:'‰',target:2.0,dir:'down',
+   v:S([1.2,1.0,1.4,0.9,1.1,0.8,0.7,0.9,0.6,null,null,null]),
+   pdca:{P:'CAUTI < 2.0 ต่อ 1,000 วันสายสวน',D:'Bundle care + ทบทวนความจำเป็นสายสวนทุกวัน',C:'ต่ำกว่าเป้าทุกเดือน แนวโน้มดีขึ้น',A:'คงมาตรการ + audit การถอดสายเร็ว'}},
+  {code:'IC-4',dept:'IC',name:'ความร่วมมือการล้างมือ (Hand Hygiene)',unit:'%',target:85,dir:'up',
+   v:S([80,82,83,84,85,86,87,88,88,null,null,null]),
+   pdca:{P:'Hand hygiene compliance ≥85%',D:'สังเกตการณ์ + feedback รายหอผู้ป่วย',C:'ผ่านเป้าตั้งแต่ ก.พ. แนวโน้มดีขึ้นต่อเนื่อง',A:'ประกาศผลรายหอ + แชมเปี้ยนกระตุ้น'}},
+  {code:'IM-9',dept:'IM',name:'เครื่องคอมพิวเตอร์มีโปรแกรมป้องกันไวรัส',unit:'%',target:95,dir:'up',
+   v:S([77,80,85,88,90,92,92,92,92,null,null,null]),
+   pdca:{P:'PC มี AV ทำงาน ≥95% ของเครื่องทั้งหมด',D:'USB probe รายเครื่อง + เปิด Defender realtime',C:'92% (24/26) ใกล้เป้า เหลือ 2 เครื่องรอเดิน USB',A:'เดิน USB เครื่องที่เหลือให้ครบสิ้นเดือน'}},
+  {code:'IM-13',dept:'IM',name:'ระบบสารสนเทศพร้อมใช้ (Uptime)',unit:'%',target:99,dir:'up',
+   v:S([99.8,99.9,99.7,100,99.9,99.8,100,99.9,100,null,null,null]),
+   pdca:{P:'ระบบ HIS/Dashboard uptime ≥99%',D:'เฝ้าระวังอัตโนมัติทุก 5 นาที + แจ้งเตือน',C:'ผ่านเป้าทุกเดือน เกือบ 100%',A:'คงระบบ monitoring + สำรองไฟ'}},
+  {code:'RM-1',dept:'RM',name:'รายงานอุบัติการณ์ความเสี่ยง',unit:'ราย',target:30,dir:'up',
+   v:S([28,32,35,31,38,40,36,42,39,null,null,null]),
+   pdca:{P:'ส่งเสริมวัฒนธรรมรายงาน ≥30 ราย/เดือน',D:'ระบบรายงานไม่ลงโทษ + feedback',C:'รายงานเพิ่มขึ้น = วัฒนธรรมความปลอดภัยดีขึ้น',A:'วิเคราะห์ near-miss เชิงระบบ'}},
+  {code:'RM-3',dept:'RM',name:'อุบัติการณ์ความคลาดเคลื่อนทางยา (Med Error)',unit:'ราย',target:5,dir:'down',
+   v:S([4,3,6,5,4,3,2,4,3,null,null,null]),
+   pdca:{P:'ลด med error รุนแรง ≤5 ราย/เดือน',D:'double-check high-alert drug + barcode',C:'คุมได้ในเป้าส่วนใหญ่',A:'ขยาย barcode ครอบคลุมหอผู้ป่วยที่เหลือ'}},
+  {code:'ER-2',dept:'ER',name:'เวลารอพบแพทย์ ER ผู้ป่วยฉุกเฉิน (≤ 10 นาที)',unit:'%',target:90,dir:'up',
+   v:S([91,92,90,89,91,93,94,95,94,null,null,null]),
+   pdca:{P:'Door-to-doctor ฉุกเฉิน ≤10 นาที ≥90%',D:'Triage ESI + fast track',C:'ผ่านเป้าต่อเนื่อง',A:'คงมาตรฐาน + ซ้อม mass casualty'}},
+  {code:'IPD-1',dept:'IPD',name:'ระยะวันนอนเฉลี่ย (Avg LOS)',unit:'วัน',target:4.5,dir:'down',
+   v:S([2.3,2.4,2.2,2.5,2.1,2.3,2.2,2.4,2.2,null,null,null]),
+   pdca:{P:'Avg LOS ≤4.5 วัน',D:'discharge planning ตั้งแต่แรกรับ',C:'ต่ำกว่าเป้ามาก (~2.3 วัน) เหมาะกับ รพ.ขนาดเล็ก',A:'คงการวางแผนจำหน่ายเชิงรุก'}},
+  {code:'IPD-4',dept:'IPD',name:'อัตรากลับมานอนซ้ำใน 28 วัน',unit:'%',target:5,dir:'down',
+   v:S([3.0,2.8,3.2,3.5,3.1,2.9,3.3,3.0,2.7,null,null,null]),
+   pdca:{P:'Re-admit ≤28 วัน < 5%',D:'ติดตามหลังจำหน่าย + นัดใกล้',C:'ต่ำกว่าเป้าทุกเดือน',A:'โทรติดตามกลุ่มโรคเรื้อรัง 48 ชม.'}},
+  {code:'LAB-2',dept:'LAB',name:'เวลารอผลแล็บด่วน Troponin (TAT ≤ 60 นาที)',unit:'%',target:75,dir:'up',
+   v:S([71,73,70,82,80,78,71,74,76,null,null,null]),
+   pdca:{P:'Trop-I TAT ≤60 นาที ≥75%',D:'จัดลำดับ stat + แจ้งผลทันที',C:'ผ่าน-หลุดสลับ ใกล้เป้า',A:'ทบทวนจุดคอขวดช่วงเวรดึก'}},
+  {code:'ENV-3',dept:'ENV',name:'การจัดการขยะติดเชื้อถูกต้อง',unit:'%',target:95,dir:'up',
+   v:S([96,97,95,98,97,96,98,97,98,null,null,null]),
+   pdca:{P:'แยกขยะติดเชื้อถูกต้อง ≥95%',D:'audit จุดทิ้ง + อบรม',C:'ผ่านเป้าทุกเดือน',A:'คงมาตรฐาน + สุ่มตรวจ'}},
+  {code:'PCT-54',dept:'PCT',name:'อัตรา X-ray ถ่ายซ้ำ (Reject rate)',unit:'%',target:3.0,dir:'down',
+   v:S([2.8,3.1,2.6,2.9,2.4,2.7,2.5,2.62,2.5,null,null,null]),
+   pdca:{P:'X-ray reject rate <3.0%',D:'ทบทวนเทคนิคถ่าย + บำรุงเครื่อง',C:'ต่ำกว่าเป้าส่วนใหญ่',A:'อบรมเทคนิคจัดท่า'}},
+  {code:'HRD-2',dept:'HRD',name:'บุคลากรผ่านการอบรม CPR ประจำปี',unit:'%',target:90,dir:'up',
+   v:S([null,null,72,null,null,85,null,null,93,null,null,null]),
+   pdca:{P:'บุคลากรผ่าน BLS/CPR ≥90% (ราย 4 เดือน)',D:'จัดอบรม + ฝึกหุ่น',C:'รอบล่าสุด 93% ผ่านเป้า',A:'จัดรอบชดเชยผู้ที่ยังไม่ผ่าน'}},
+  {code:'HPH-1',dept:'HPH',name:'หญิงตั้งครรภ์ฝากครรภ์ก่อน 12 สัปดาห์',unit:'%',target:75,dir:'up',
+   v:S([70,72,68,74,76,73,77,75,78,null,null,null]),
+   pdca:{P:'ANC ก่อน 12 สัปดาห์ ≥75%',D:'รณรงค์ในชุมชน + อสม.',C:'ผ่าน-หลุดสลับ แนวโน้มดีขึ้น',A:'ประสาน อสม.ค้นหาเชิงรุก'}},
+];
+
+/* ===================== render ===================== */
+var activeFilter='ALL';
+var DEPTS=['ALL'].concat(Array.from(new Set(KPIS.map(function(k){return k.dept;}))));
+var DEPT_LABEL={ALL:'ทั้งหมด',PCT:'PCT องค์กรแพทย์',IC:'IC ป้องกันติดเชื้อ',IM:'IM สารสนเทศ',RM:'RM บริหารเสี่ยง',ER:'ER ฉุกเฉิน',IPD:'IPD ผู้ป่วยใน',LAB:'LAB',ENV:'ENV สิ่งแวดล้อม',HRD:'HRD บุคลากร',HPH:'HPH ส่งเสริมสุขภาพ'};
+
+function latest(k){for(var i=k.v.length-1;i>=0;i--){if(k.v[i]!==null)return {val:k.v[i],idx:i};}return {val:null,idx:-1};}
+function statusOf(k){
+  var L=latest(k); if(L.val===null)return 'pd';
+  var pass = k.dir==='up' ? L.val>=k.target : L.val<=k.target;
+  return pass?'ok':'er';
+}
+function trendOf(k){
+  var vals=k.v.filter(function(x){return x!==null;});
+  if(vals.length<2)return 0;
+  var a=vals[vals.length-2],b=vals[vals.length-1];
+  return b===a?0:(b>a?1:-1);
+}
+function fmt(n){return (Math.round(n*100)/100).toString();}
+
+function sparkline(k,w,h){
+  var vals=k.v.map(function(x,i){return {x:x,i:i};}).filter(function(o){return o.x!==null;});
+  if(!vals.length)return '';
+  var xs=vals.map(function(o){return o.x;});
+  var mn=Math.min.apply(null,xs.concat([k.target])),mx=Math.max.apply(null,xs.concat([k.target]));
+  var rng=(mx-mn)||1, pad=4;
+  function px(i){return pad+(i/(k.v.length-1))*(w-2*pad);}
+  function py(v){return h-pad-((v-mn)/rng)*(h-2*pad);}
+  var d='';
+  vals.forEach(function(o,j){d+=(j?'L':'M')+px(o.i).toFixed(1)+' '+py(o.x).toFixed(1)+' ';});
+  var st=statusOf(k);
+  var col=st==='ok'?'var(--ok-bg)':st==='er'?'var(--er-bg)':'var(--muted)';
+  var ty=py(k.target).toFixed(1);
+  var last=vals[vals.length-1];
+  return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">'+
+    '<line x1="0" y1="'+ty+'" x2="'+w+'" y2="'+ty+'" stroke="var(--accent2)" stroke-width="1" stroke-dasharray="3 3"/>'+
+    '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'+
+    '<circle cx="'+px(last.i).toFixed(1)+'" cy="'+py(last.x).toFixed(1)+'" r="3.2" fill="'+col+'"/></svg>';
+}
+
+function renderSummary(){
+  var ok=0,er=0,pd=0;
+  KPIS.forEach(function(k){var s=statusOf(k);if(s==='ok')ok++;else if(s==='er')er++;else pd++;});
+  document.getElementById('summary').innerHTML=
+    card('tot',KPIS.length,'ตัวชี้วัดทั้งหมด')+card('ok',ok,'ผ่านเป้า')+card('er',er,'ต้องติดตาม')+card('wn',pd,'ยังไม่ถึงรอบ');
+}
+function card(c,n,l){return '<div class="scard '+c+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>';}
+
+function renderFilters(){
+  document.getElementById('filters').innerHTML=DEPTS.map(function(d){
+    return '<div class="ftab'+(d===activeFilter?' on':'')+'" onclick="setFilter(\''+d+'\')">'+(DEPT_LABEL[d]||d)+'</div>';
+  }).join('');
+}
+function setFilter(d){activeFilter=d;renderFilters();renderGrid();}
+
+function renderGrid(){
+  var list=KPIS.filter(function(k){return activeFilter==='ALL'||k.dept===activeFilter;});
+  document.getElementById('grid').innerHTML=list.map(function(k){
+    var L=latest(k),s=statusOf(k),tr=trendOf(k);
+    var chipL=s==='ok'?'ผ่าน':s==='er'?'ตามดู':'ค้างกรอก';
+    var valS=L.val===null?'—':fmt(L.val);
+    var trIco=tr===1?'<span class="trend '+(k.dir==='up'?'up':'down')+'">▲</span>':tr===-1?'<span class="trend '+(k.dir==='up'?'down':'up')+'">▼</span>':'';
+    return '<div class="kpi" onclick="openModal(\''+k.code+'\')">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center"><span class="code">'+k.code+'</span><span class="chip '+s+'">'+chipL+'</span></div>'+
+      '<div class="name">'+k.name+'</div>'+
+      '<div class="row"><div><span class="val">'+valS+'</span> <span class="unit">'+k.unit+'</span>'+trIco+
+      '<div class="tgt">เป้า '+(k.dir==='up'?'≥':'≤')+' '+k.target+' '+k.unit+'</div></div></div>'+
+      sparkline(k,150,34)+'</div>';
+  }).join('');
+}
+
+/* ===================== modal ===================== */
+function openModal(code){
+  var k=KPIS.find(function(x){return x.code===code;});
+  var L=latest(k),s=statusOf(k);
+  var vals=k.v.filter(function(x){return x!==null;});
+  var best=k.dir==='up'?Math.max.apply(null,vals):Math.min.apply(null,vals);
+  var chipL=s==='ok'?'ผ่านเป้า':s==='er'?'ต้องติดตาม':'ยังไม่ถึงรอบ';
+  document.getElementById('modal').innerHTML=
+    '<div class="mhandle"></div>'+
+    '<div class="mhead"><div><div class="code">'+k.code+' · '+(DEPT_LABEL[k.dept]||k.dept)+'</div>'+
+      '<h2>'+k.name+'</h2></div><button class="x" onclick="closeModal()">×</button></div>'+
+    '<div class="mstat">'+
+      '<div class="b"><div class="n" style="color:'+(s==='ok'?'var(--ok-bg)':s==='er'?'var(--er-bg)':'var(--muted)')+'">'+(L.val===null?'—':fmt(L.val))+'</div><div class="l">ล่าสุด ('+k.unit+')</div></div>'+
+      '<div class="b"><div class="n">'+(k.dir==='up'?'≥':'≤')+k.target+'</div><div class="l">เป้าหมาย</div></div>'+
+      '<div class="b"><div class="n" style="color:var(--ok-bg)">'+fmt(best)+'</div><div class="l">ดีสุดในปี</div></div></div>'+
+    '<div class="chart"><h3>แนวโน้ม 12 เดือน (ปีงบ 2569) · <span style="color:'+(s==='ok'?'var(--ok-bg)':'var(--er-bg)')+'">'+chipL+'</span></h3>'+bigChart(k)+'</div>'+
+    '<div class="pdca">'+
+      pq('P','Plan (วางแผน)',k.pdca.P)+pq('D','Do (ทำ)',k.pdca.D)+
+      pq('C','Check (ตรวจสอบ)',k.pdca.C)+pq('A','Act (ปรับปรุง)',k.pdca.A)+
+    '</div>'+
+    '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">📝 ข้อความ PDCA นี้เป็นตัวอย่างที่ AI ช่วยร่าง — ในระบบจริงสร้างจากข้อมูลจริงอัตโนมัติ</div>';
+  document.getElementById('ov').classList.add('show');
+}
+function pq(c,t,d){return '<div class="q '+c+'"><div class="t">'+c+' · '+t+'</div><div class="d">'+d+'</div></div>';}
+function closeModal(){document.getElementById('ov').classList.remove('show');}
+
+function bigChart(k){
+  var w=560,h=180,padL=34,padR=14,padT=14,padB=24;
+  var allv=k.v.filter(function(x){return x!==null;}).concat([k.target]);
+  var mn=Math.min.apply(null,allv),mx=Math.max.apply(null,allv);
+  var rng=(mx-mn)||1; mn-=rng*0.12;mx+=rng*0.12;rng=mx-mn;
+  function px(i){return padL+(i/(k.v.length-1))*(w-padL-padR);}
+  function py(v){return padT+(1-(v-mn)/rng)*(h-padT-padB);}
+  var pts=k.v.map(function(x,i){return x===null?null:{x:px(i),y:py(x),v:x,i:i};});
+  var d='',started=false;
+  pts.forEach(function(p){if(p){d+=(started?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)+' ';started=true;}});
+  var st=statusOf(k);var col=st==='ok'?'#639922':st==='er'?'#A32D2D':'#8A6F57';
+  var ty=py(k.target).toFixed(1);
+  var svg='<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:auto">';
+  // target line
+  svg+='<line x1="'+padL+'" y1="'+ty+'" x2="'+(w-padR)+'" y2="'+ty+'" stroke="#C2410C" stroke-width="1.3" stroke-dasharray="5 4"/>';
+  svg+='<text x="'+(w-padR)+'" y="'+(ty-4)+'" text-anchor="end" font-size="10" fill="#C2410C">เป้า '+k.target+'</text>';
+  // area
+  if(started){
+    var area=d+'L'+px(lastIdx(pts)).toFixed(1)+' '+(h-padB)+' L'+px(firstIdx(pts)).toFixed(1)+' '+(h-padB)+' Z';
+    svg+='<path d="'+area+'" fill="'+col+'" opacity="0.08"/>';
+  }
+  svg+='<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+  // points + month labels
+  pts.forEach(function(p,i){
+    if(p){svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.4" fill="#fff" stroke="'+col+'" stroke-width="2"/>';}
+    if(i%2===0){svg+='<text x="'+px(i).toFixed(1)+'" y="'+(h-7)+'" text-anchor="middle" font-size="9.5" fill="#8A6F57">'+MONTHS[i]+'</text>';}
+  });
+  svg+='</svg>';
+  return svg;
+}
+function firstIdx(pts){for(var i=0;i<pts.length;i++)if(pts[i])return i;return 0;}
+function lastIdx(pts){for(var i=pts.length-1;i>=0;i--)if(pts[i])return i;return 0;}
+
+/* ===================== AI typewriter ===================== */
+var aiTimer=null;
+function typeOut(text){
+  clearTimeout(aiTimer);
+  var el=document.getElementById('ai-body');el.innerHTML='';
+  var i=0;
+  function step(){
+    if(i<=text.length){
+      el.innerHTML=text.slice(0,i).replace(/\n/g,'<br>')+'<span class="cursor">&nbsp;</span>';
+      i+=2; aiTimer=setTimeout(step,14);
+    }else{el.innerHTML=text.replace(/\n/g,'<br>');}
+  }
+  step();
+}
+function runAI(mode){
+  var ok=KPIS.filter(function(k){return statusOf(k)==='ok';}).length;
+  var er=KPIS.filter(function(k){return statusOf(k)==='er';});
+  var txt='';
+  if(mode==='overview'){
+    txt='📊 ภาพรวมเดือนล่าสุด: บรรลุเป้า '+ok+'/'+KPIS.length+' ตัวชี้วัด ('+Math.round(ok/KPIS.length*100)+'%)\n'+
+        'จุดแข็ง: การล้างมือ (IC-4) และเวลารอพบแพทย์ ER (ER-2) ดีขึ้นต่อเนื่อง\n'+
+        'จุดที่ต้องเฝ้า: '+er.length+' ตัวหลุดเป้า โดยเฉพาะ '+er[0].code+' ('+er[0].name.split(' ')[0]+'...) ที่แนวโน้มแย่ลง\n'+
+        '💡 คำแนะนำ: โฟกัสการคุมความดันโลหิตเป็นวาระประชุม PCT เดือนนี้';
+  }else if(mode==='risk'){
+    var worst=er[0];
+    txt='🚨 ตัวชี้วัดที่ต้องรีบดูที่สุด: '+worst.code+' — '+worst.name+'\n'+
+        'ค่าล่าสุด '+fmt(latest(worst).val)+worst.unit+' (เป้า '+(worst.dir==='up'?'≥':'≤')+worst.target+worst.unit+') และแนวโน้ม "ลดลงต่อเนื่อง" ตั้งแต่ต้นปี\n'+
+        'รากของปัญหาที่ควรตรวจ: ความสม่ำเสมอการกินยา + การติดตามที่บ้าน\n'+
+        '💡 เสนอ: เริ่มโครงการติดตามความดันที่บ้าน (home BP) ในกลุ่มที่คุมไม่ได้';
+  }else{
+    var win=KPIS.filter(function(k){return statusOf(k)==='ok'&&trendOf(k)===1&&k.dir==='up';});
+    txt='✅ ตัวชี้วัดที่ดีขึ้นชัดเจน:\n';
+    win.slice(0,3).forEach(function(k){txt+='• '+k.code+' '+k.name.split('(')[0].trim()+' — ขึ้นเป็น '+fmt(latest(k).val)+k.unit+'\n';});
+    txt+='💡 ความสำเร็จเหล่านี้ควรนำเข้าเวที lesson-learned เพื่อขยายผลไปหน่วยอื่น';
+  }
+  typeOut(txt);
+}
+
+/* ===================== theme ===================== */
+function toggleTheme(){
+  var d=document.body.getAttribute('data-theme')==='dark';
+  document.body.setAttribute('data-theme',d?'':'dark');
+  document.getElementById('th-ic').textContent=d?'🌙':'☀️';
+  document.getElementById('th-tx').textContent=d?'Dark':'Light';
+}
+
+/* ===================== init ===================== */
+renderSummary();renderFilters();renderGrid();
+setTimeout(function(){runAI('overview');},500);
+</script>
+</body>
+</html>
