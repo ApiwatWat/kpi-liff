@@ -4324,5 +4324,106 @@ function renderExecInsights(pctKpis, imKpis) {
       </div>
     </div>
   </div>
+<!-- ===== DEMO: AI Report sample previews (injected) — clicking a report card shows a mock output ===== -->
+<style>
+#rp-ov{position:fixed;inset:0;z-index:100000;background:rgba(8,15,28,.8);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:26px 12px;font-family:'Sarabun','Prompt',sans-serif}
+#rp-ov.show{display:flex}
+.rp-shell{width:100%;max-width:880px;background:#0f1b2e;border:1px solid rgba(125,211,252,.18);border-radius:16px;box-shadow:0 20px 70px rgba(0,0,0,.55);overflow:hidden;margin:auto}
+.rp-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#13243c;border-bottom:1px solid rgba(125,211,252,.14)}
+.rp-bar .t{color:#e6f3ff;font-weight:700;font-size:15px;display:flex;gap:9px;align-items:center}
+.rp-bar .t .dm{font-size:11px;font-weight:700;background:#0ea5e9;color:#fff;padding:2px 9px;border-radius:999px}
+.rp-bar .x{cursor:pointer;color:#9fb6cc;font-size:21px;background:none;border:none;line-height:1}
+.rp-body{max-height:80vh;overflow:auto;padding:22px;background:#0b1626}
+.rp-paper{background:#fff;color:#1a2230;max-width:720px;margin:0 auto;padding:42px 50px;border-radius:4px;box-shadow:0 8px 30px rgba(0,0,0,.4);font-size:14px;line-height:1.62}
+.rp-paper h1{font-size:20px;text-align:center;margin:0 0 2px;color:#0f2942}
+.rp-paper .sub{text-align:center;color:#5b6b7a;font-size:13px;margin-bottom:16px}
+.rp-paper h2{font-size:15.5px;color:#0e7c86;border-bottom:2px solid #cfe8ea;padding-bottom:4px;margin:18px 0 8px}
+.rp-paper table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
+.rp-paper th,.rp-paper td{border:1px solid #d7e0e8;padding:6px 8px;text-align:left;vertical-align:top}
+.rp-paper th{background:#eef6f7;color:#0f2942}
+.rp-hit{color:#1c8a4e;font-weight:700}.rp-miss{color:#c0392b;font-weight:700}
+.rp-paper .ai{background:#f0f9fa;border-left:4px solid #13a3b0;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0;font-size:13.5px}
+.rp-sign{margin-top:26px;text-align:right;color:#5b6b7a;font-size:13px}
+.rp-xls{background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:760px;margin:0 auto}
+.rp-xls .xtop{background:#107c41;color:#fff;font-weight:700;padding:9px 14px;font-size:13px;display:flex;align-items:center;gap:8px}
+.rp-xls table{width:100%;border-collapse:collapse;font-size:11.5px;color:#1a2230}
+.rp-xls th,.rp-xls td{border:1px solid #d0d7de;padding:4px 7px;white-space:nowrap}
+.rp-xls thead.col th{background:#f3f3f3;color:#57606a;text-align:center;font-weight:600}
+.rp-xls .hdr td{background:#e8f3ee;font-weight:700;text-align:center}
+.rp-xls .lbl{background:#fafafa;font-weight:600}
+.rp-xls .g{background:#d6f0e0;color:#157a43;text-align:center}
+.rp-xls .r{background:#fbe0de;color:#c0392b;text-align:center}
+.rp-slide{aspect-ratio:16/9;background:linear-gradient(135deg,#0f2942,#16395c 55%,#0e7c86);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.5);color:#fff;padding:38px 44px;display:flex;flex-direction:column;justify-content:center;max-width:760px;margin:0 auto}
+.rp-slide .kick{color:#8fd6dd;letter-spacing:.1em;font-size:13px;font-weight:600;text-transform:uppercase}
+.rp-slide h1{font-size:29px;margin:6px 0 16px}
+.rp-slide .stats{display:flex;gap:13px;flex-wrap:wrap}
+.rp-slide .stat{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:13px 17px;min-width:115px}
+.rp-slide .stat b{font-size:28px;color:#3fe0ea;display:block;line-height:1.1}
+.rp-slide .stat span{font-size:12.5px;color:#cfe3ea}
+.rp-slide ul{margin:14px 0 0;padding-left:20px;color:#eafafa;font-size:14px}
+.rp-note{text-align:center;color:#7d97a8;font-size:12px;margin-top:16px}
+.rp-note .dl{display:inline-block;margin-top:6px;background:#0ea5e9;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:700;font-size:13px;cursor:default;opacity:.85}
+</style>
+<div id="rp-ov" onclick="if(event.target===this)rpClose()">
+  <div class="rp-shell">
+    <div class="rp-bar"><div class="t"><span id="rp-icon">📄</span><span id="rp-title">ตัวอย่างรายงาน</span><span class="dm">ตัวอย่าง DEMO</span></div>
+      <button class="x" onclick="rpClose()" aria-label="close">✕</button></div>
+    <div class="rp-body" id="rp-body"></div>
+  </div>
+</div>
+<script>
+(function(){
+  var M='มิ.ย. 2569';
+  function show(icon,title,html){document.getElementById('rp-icon').textContent=icon;document.getElementById('rp-title').textContent=title;var b=document.getElementById('rp-body');b.innerHTML=html;document.getElementById('rp-ov').classList.add('show');b.scrollTop=0;}
+  window.rpClose=function(){document.getElementById('rp-ov').classList.remove('show');};
+  var DL='<div class="rp-note">— นี่คือ "ตัวอย่าง" หน้าตาไฟล์ในโหมดสาธิต · ระบบจริงสร้างไฟล์ดาวน์โหลดได้ —<br><button class="rp-dl">⬇ ดาวน์โหลด (ตัวอย่าง)</button></div>';
+  var K=[['PCT-10','ผู้ป่วยเบาหวานคุม HbA1c &lt; 7%','%','≥ 40','49.0',1],
+         ['PCT-11','ผู้ป่วยความดันโลหิตคุมได้ &lt;140/90','%','≥ 50','44.0',0],
+         ['PCT-12','STEMI เปิดเส้นเลือด/ส่งต่อ ≤30 นาที','%','≥ 80','85',1],
+         ['IC-4','ความร่วมมือการล้างมือ','%','≥ 85','88',1],
+         ['IM-9','คอมพิวเตอร์มีโปรแกรมป้องกันไวรัส','%','≥ 95','92',0],
+         ['RM-1','จำนวนรายงานอุบัติการณ์ความเสี่ยง','ราย','≥ 30','33',1]];
+  function st(h){return h?'<span class="rp-hit">✔ บรรลุ</span>':'<span class="rp-miss">✘ ไม่บรรลุ</span>';}
+  function wordPreview(){
+    var rows=K.map(function(k){return '<tr><td>'+k[0]+'</td><td>'+k[1]+'</td><td style="text-align:center">'+k[3]+'</td><td style="text-align:center">'+k[4]+' '+k[2]+'</td><td style="text-align:center">'+st(k[5])+'</td></tr>';}).join('');
+    return '<div class="rp-paper"><h1>รายงานสรุปตัวชี้วัดคุณภาพโรงพยาบาล</h1><div class="sub">โรงพยาบาลตัวอย่าง (เดโม่) · ประจำเดือน '+M+'</div>'
+      +'<h2>๑. บทสรุปผู้บริหาร</h2><p>เดือน '+M+' โรงพยาบาลติดตามตัวชี้วัดคุณภาพรวม <b>20 ตัวชี้วัด</b> ใน 8 ฝ่าย กรอกข้อมูลครบ 100% บรรลุเป้าหมาย <b>16 ตัวชี้วัด (80%)</b> ไม่บรรลุ 4 ตัวชี้วัด ที่ต้องเฝ้าระวังคือการคุมความดันโลหิต (PCT-11) ซึ่งมีแนวโน้มลดลงต่อเนื่อง</p>'
+      +'<h2>๒. ตารางสรุปตัวชี้วัดสำคัญ</h2><table><thead><tr><th>รหัส</th><th>ตัวชี้วัด</th><th>เป้าหมาย</th><th>ผลเดือนนี้</th><th>สถานะ</th></tr></thead><tbody>'+rows+'</tbody></table>'
+      +'<h2>๓. บทวิเคราะห์โดย AI (Gemini)</h2><div class="ai">🤖 จุดแข็งของเดือนนี้คือการล้างมือ (IC-4 = 88%) และการเปิดเส้นเลือด STEMI (85%) ที่ทำได้ดีต่อเนื่อง สำหรับ <b>PCT-11 (ความดันโลหิต 44%)</b> ที่หลุดเป้า แนะนำให้เริ่มโครงการวัดความดันที่บ้าน (Home BP) ในกลุ่มที่คุมไม่ได้ และทบทวนความสม่ำเสมอของการรับประทานยา · ส่วน IM-9 (AV 92%) เหลือเพียง 2 เครื่องที่ยังไม่ติดตั้ง ควรเร่งดำเนินการให้ครบ</div>'
+      +'<div class="rp-sign">ผู้จัดทำ: ระบบ KPI Monitor (อัตโนมัติ)<br>วันที่พิมพ์รายงาน: '+M+'</div></div>'+DL;
+  }
+  function excelPreview(){
+    var mn=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.'];
+    var cols='<thead class="col"><tr><th></th><th>A</th><th>B</th><th>C</th>'+mn.map(function(m,i){return '<th>'+String.fromCharCode(68+i)+'</th>';}).join('')+'</tr></thead>';
+    var hdr='<tr class="hdr"><td>1</td><td>รหัส</td><td>ตัวชี้วัด</td><td>เป้า</td>'+mn.map(function(m){return '<td>'+m+'</td>';}).join('')+'</tr>';
+    var body=K.map(function(k,ri){
+      var base=parseFloat(k[4]); var cells='';
+      for(var i=0;i<6;i++){var v=Math.round((base+(i-5)*0.6)*10)/10; var ok=k[5]; cells+='<td class="'+(ok?'g':(i<5?'g':'r'))+'">'+v+'</td>';}
+      return '<tr><td class="lbl" style="text-align:center">'+(ri+2)+'</td><td>'+k[0]+'</td><td style="max-width:230px;overflow:hidden;text-overflow:ellipsis">'+k[1]+'</td><td style="text-align:center">'+k[3]+'</td>'+cells+'</tr>';
+    }).join('');
+    return '<div class="rp-xls"><div class="xtop">📊 KPI_Report_'+M.replace(' ','_')+'.xlsx — แผ่นงาน: สรุปทุกฝ่าย</div><table>'+cols+'<tbody>'+hdr+body+'</tbody></table></div>'+DL;
+  }
+  function pdcaPreview(id){
+    return '<div class="rp-paper"><h1>การวิเคราะห์ PDCA ตัวชี้วัด</h1><div class="sub">PCT-11 · ผู้ป่วยความดันโลหิตสูงคุมความดันได้ · '+M+'</div>'
+      +'<div class="ai">สถานะ: <span class="rp-miss">ไม่บรรลุเป้า</span> — ผลล่าสุด 44% (เป้า ≥50%) แนวโน้มลดลงต่อเนื่อง 5 เดือน</div>'
+      +'<h2>P — Plan (วางแผน)</h2><p>ตั้งเป้าเพิ่มสัดส่วนผู้ป่วยความดันที่คุมได้ &lt;140/90 ให้ถึง 50% ภายในไตรมาสหน้า โดยเน้นกลุ่มที่คุมไม่ได้ 3 เดือนติด</p>'
+      +'<h2>D — Do (ลงมือทำ)</h2><p>เริ่มโครงการวัดความดันที่บ้าน (Home BP) แจกเครื่องวัด 30 ราย · ทบทวนยาในคลินิก NCD · เตือนนัดผ่าน LINE อัตโนมัติ</p>'
+      +'<h2>C — Check (ตรวจสอบ)</h2><p>ติดตามผลรายเดือนผ่าน KPI Monitor · เปรียบเทียบกลุ่ม Home BP กับกลุ่มปกติ · พบว่ากลุ่มที่วัดที่บ้านมีอัตราคุมได้สูงกว่า 12%</p>'
+      +'<h2>A — Act (ปรับปรุง)</h2><p>ขยายโครงการ Home BP ให้ครอบคลุมทุกกลุ่มเสี่ยง · กำหนดเป็นแนวทางปฏิบัติประจำของคลินิก NCD</p>'
+      +'<div class="ai">🤖 วิเคราะห์โดย Gemini จากข้อมูลจริงในระบบ — ระบบจริงสร้าง PDCA แบบนี้ให้ทุกตัวชี้วัดอัตโนมัติ</div></div>'+DL;
+  }
+  function slidePreview(){
+    return '<div class="rp-slide"><div class="kick">KPI Monitor · รายงานผู้บริหาร</div><h1>สรุปผลตัวชี้วัดคุณภาพ ประจำเดือน '+M+'</h1>'
+      +'<div class="stats"><div class="stat"><b>20</b><span>ตัวชี้วัดที่ติดตาม</span></div><div class="stat"><b>80%</b><span>บรรลุเป้าหมาย</span></div><div class="stat"><b>100%</b><span>กรอกข้อมูลครบ</span></div><div class="stat"><b>8</b><span>ฝ่ายที่เข้าร่วม</span></div></div>'
+      +'<ul><li>จุดแข็ง: ล้างมือ (88%) · STEMI ส่งต่อ ≤30 นาที (85%)</li><li>ต้องเฝ้าระวัง: ความดันโลหิต (PCT-11) แนวโน้มลดลง</li></ul></div>'
+      +'<div class="rp-note">— สไลด์นี้เป็นตัวอย่างหน้าตา · ระบบจริงสร้างเป็น Google Slides ทั้งชุดให้อัตโนมัติ —<br><button class="rp-dl">⬇ เปิดใน Google Slides (ตัวอย่าง)</button></div>';
+  }
+  // override the demo report actions to show a polished preview instead of a no-op toast
+  window.airepClickWord=function(){show('📄','Word Report — ฉบับสมบูรณ์',wordPreview());};
+  window.airepSubmitExcel=function(){try{closeModal('modal-airep-excel');}catch(e){}show('📊','Excel Report — สรุปทุกฝ่าย',excelPreview());};
+  window.airepSubmitSlideDeck=function(){try{closeModal('modal-airep-slide');}catch(e){}show('📽️','Slide Deck — รายงานผู้บริหาร',slidePreview());};
+  window.airepGeneratePDCA=function(id){show('🔄','PDCA — วิเคราะห์โดย AI',pdcaPreview(id));};
+})();
+</script>
 </body>
 </html>
