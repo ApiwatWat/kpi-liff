@@ -16,14 +16,14 @@ body.has-demo-ribbon{padding-top:25px}
   function gen(base,slope,amp,opts){
     opts=opts||{};var dec=opts.dec||0,freq=opts.freq||1,out=[];
     for(var i=0;i<24;i++){
-      var fill = freq===1 ? true : ((23-i)%freq===0);
+      var fill = true; /* demo: every month filled so "% กรอกแล้ว" shows 100% */
       if(!fill){out.push('');continue;}
       var v=base+slope*i+Math.sin(i*1.3+base)*amp;
       var f=Math.pow(10,dec);v=Math.round(v*f)/f;
       if(opts.min!=null)v=Math.max(opts.min,v);if(opts.max!=null)v=Math.min(opts.max,v);
       out.push(v);
     }
-    if(opts.curPending)out[23]='';
+    /* demo: curPending disabled — current month also filled (100% progress) */
     if(opts.naMonths)opts.naMonths.forEach(function(idx){out[idx]='NA';});
     return out;
   }
