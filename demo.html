@@ -4358,6 +4358,10 @@ function renderExecInsights(pctKpis, imKpis) {
 .kdef-btn{background:rgba(14,165,233,.16);border:1px solid rgba(14,165,233,.45);color:#7dd3fc;border-radius:50%;width:19px;height:19px;font-size:12px;line-height:1;cursor:pointer;padding:0;vertical-align:middle;margin-left:3px}
 .kdef-btn:hover{background:rgba(14,165,233,.32)}
 .rp-paper table th{white-space:nowrap}
+/* AssistiveTouch floating ball didn't receive taps on iPad (no pointer events
+   reached it — likely an iOS overlay). Hidden for the demo; the sidebar provides
+   department navigation. Remove this rule to re-enable. */
+#at-ball,#at-menu{display:none !important}
 </style>
 <div id="rp-ov" onclick="if(event.target===this)rpClose()">
   <div class="rp-shell">
