@@ -3095,6 +3095,7 @@ function atInit() {
   var dragState = { active: false, moved: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0, id: null };
   function pDown(e) {
     if (dragState.active) return;
+    try { if (window.AT_DEBUG && typeof showToast === 'function') showToast('🧭 down · type=' + e.pointerType, 'info'); } catch (_) {}
     dragState.active = true; dragState.moved = false; dragState.id = e.pointerId;
     var rect = ball.getBoundingClientRect();
     dragState.startX = e.clientX; dragState.startY = e.clientY;
@@ -3122,6 +3123,7 @@ function atInit() {
       try { localStorage.setItem('at_ball_pos', JSON.stringify({ left: rect.left, top: rect.top })); } catch (e2) {}
     } else {
       atToggleMenu();   /* tap → open/close */
+      try { if (window.AT_DEBUG && typeof showToast === 'function') { var mu = document.getElementById('at-menu'); showToast('🧭 tap → menu items=' + mu.querySelectorAll('.at-item').length + ' show=' + mu.classList.contains('show'), 'success'); } } catch (_) {}
     }
   }
   ball.addEventListener('pointerdown', pDown);
@@ -4327,7 +4329,10 @@ function renderExecInsights(pctKpis, imKpis) {
 .rp-paper h2{font-size:15.5px;color:#0e7c86;border-bottom:2px solid #cfe8ea;padding-bottom:4px;margin:18px 0 8px}
 .rp-paper table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
 .rp-paper th,.rp-paper td{border:1px solid #d7e0e8;padding:6px 8px;text-align:left;vertical-align:top}
-.rp-paper th{background:#eef6f7;color:#0f2942}
+.rp-paper td{color:#1a2230 !important}
+.rp-paper,.rp-paper p,.rp-paper h1,.rp-paper h2,.rp-paper .sub,.rp-paper .ai{color:#1a2230}
+.rp-paper h1{color:#0f2942 !important}.rp-paper h2{color:#0e7c86 !important}.rp-paper .sub{color:#5b6b7a !important}
+.rp-paper th{background:#eef6f7;color:#0f2942 !important}
 .rp-hit{color:#1c8a4e;font-weight:700}.rp-miss{color:#c0392b;font-weight:700}
 .rp-paper .ai{background:#f0f9fa;border-left:4px solid #13a3b0;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0;font-size:13.5px}
 .rp-sign{margin-top:26px;text-align:right;color:#5b6b7a;font-size:13px}
@@ -4363,6 +4368,7 @@ function renderExecInsights(pctKpis, imKpis) {
 </div>
 <script>
 (function(){
+  window.AT_DEBUG = (''+location.hash).indexOf('atdebug') >= 0;  /* AssistiveTouch diagnostic via demo.html#atdebug */
   var M='มิ.ย. 2569';
   function show(icon,title,html){document.getElementById('rp-icon').textContent=icon;document.getElementById('rp-title').textContent=title;var b=document.getElementById('rp-body');b.innerHTML=html;document.getElementById('rp-ov').classList.add('show');b.scrollTop=0;}
   window.rpClose=function(){document.getElementById('rp-ov').classList.remove('show');};
