@@ -3092,23 +3092,20 @@ function atInit() {
   /* Drag logic — touch + mouse, threshold 6px to distinguish tap from drag */
   var dragState = { active: false, moved: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0 };
   function pointerDown(e) {
-    /* iPad fix: a touch tap also fires synthesized mouse events ~300ms later,
-       which made atToggleMenu run twice (open-then-close). Ignore mouse events
-       that closely follow a touch so the tap is handled once. */
-    if (e.type === 'touchstart') pointerDown._lt = Date.now();
-    else if (pointerDown._lt && Date.now() - pointerDown._lt < 700) return;
     var t = e.touches ? e.touches[0] : e;
     var rect = ball.getBoundingClientRect();
     dragState.active = true; dragState.moved = false;
     dragState.startX = t.clientX; dragState.startY = t.clientY;
     dragState.offsetX = t.clientX - rect.left; dragState.offsetY = t.clientY - rect.top;
-    if (e.cancelable) e.preventDefault();
+    /* IMPORTANT: do NOT preventDefault on touchstart — on iPad that suppresses
+       the 'click' event we use to open the menu. Scroll during a real drag is
+       prevented in pointerMove instead. */
   }
   function pointerMove(e) {
     if (!dragState.active) return;
     var t = e.touches ? e.touches[0] : e;
     var dx = t.clientX - dragState.startX, dy = t.clientY - dragState.startY;
-    if (!dragState.moved && Math.sqrt(dx*dx + dy*dy) > 6) {
+    if (!dragState.moved && Math.sqrt(dx*dx + dy*dy) > 10) {   /* 10px: tolerate iPad tap jitter */
       dragState.moved = true;
       ball.className = 'dragging';
       atCloseMenu();
@@ -3119,7 +3116,7 @@ function atInit() {
       ball.style.left = newLeft + 'px';
       ball.style.top = newTop + 'px';
       ball.style.right = 'auto'; ball.style.bottom = 'auto';
-      if (e.cancelable) e.preventDefault();
+      if (e.cancelable) e.preventDefault();   /* only prevent scroll while dragging */
     }
   }
   function pointerUp(e) {
@@ -3129,16 +3126,21 @@ function atInit() {
     if (dragState.moved) {
       var rect = ball.getBoundingClientRect();
       try { localStorage.setItem('at_ball_pos', JSON.stringify({ left: rect.left, top: rect.top })); } catch (e2) {}
-    } else {
-      atToggleMenu();
     }
+    /* tap-to-open is handled by the 'click' listener below (fires reliably on iPad) */
   }
   ball.addEventListener('mousedown', pointerDown);
-  ball.addEventListener('touchstart', pointerDown, { passive: false });
+  ball.addEventListener('touchstart', pointerDown, { passive: true });
   document.addEventListener('mousemove', pointerMove);
   document.addEventListener('touchmove', pointerMove, { passive: false });
   document.addEventListener('mouseup', pointerUp);
   document.addEventListener('touchend', pointerUp);
+  /* Open/close on a real tap or click — most reliable across iPad / desktop.
+     A drag sets dragState.moved, which suppresses the click that may follow. */
+  ball.addEventListener('click', function() {
+    if (dragState.moved) { dragState.moved = false; return; }
+    atToggleMenu();
+  });
 
   /* Outside click closes menu */
   document.addEventListener('click', function(e) {
