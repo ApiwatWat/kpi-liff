@@ -2416,7 +2416,7 @@ var safeName = (kpi.name || '').split('"').join('&quot;').split('<').join('&lt;'
     }
 
     tbHTML += '<tr data-kid="' + kpi.id + '" data-mode="' + mode + '" onclick="selectKPIRow(this,event)" id="row-' + mode + '-' + kpi.id + '">';
-    tbHTML += '<td class="kpi-id">' + kpi.id + '</td>';
+    tbHTML += '<td class="kpi-id">' + kpi.id + ' <button class="kdef-btn" data-kid="' + kpi.id + '" onclick="event.stopPropagation();kpiDefClick(this)" title="ดูนิยามตัวชี้วัด">&#9432;</button></td>';
     tbHTML += '<td class="kpi-name-wrap">' + escHtml(kpi.name) + '<div class="kpi-responsible">Owner: ' + escHtml(ownerDisplay) + ownerBadge + dtBadge + (function() {
   var fl = {1:'ทุกเดือน', 3:'ทุก 3 เดือน', 6:'ทุก 6 เดือน', 12:'ทุกปี'};
   var fc = {1:'#0ea5e9', 3:'#8b5cf6', 6:'#f59e0b', 12:'#10b981'};
@@ -4350,6 +4350,9 @@ function renderExecInsights(pctKpis, imKpis) {
 .rp-slide ul{margin:14px 0 0;padding-left:20px;color:#eafafa;font-size:14px}
 .rp-note{text-align:center;color:#7d97a8;font-size:12px;margin-top:16px}
 .rp-note .dl{display:inline-block;margin-top:6px;background:#0ea5e9;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:700;font-size:13px;cursor:default;opacity:.85}
+.kdef-btn{background:rgba(14,165,233,.16);border:1px solid rgba(14,165,233,.45);color:#7dd3fc;border-radius:50%;width:19px;height:19px;font-size:12px;line-height:1;cursor:pointer;padding:0;vertical-align:middle;margin-left:3px}
+.kdef-btn:hover{background:rgba(14,165,233,.32)}
+.rp-paper table th{white-space:nowrap}
 </style>
 <div id="rp-ov" onclick="if(event.target===this)rpClose()">
   <div class="rp-shell">
@@ -4410,6 +4413,23 @@ function renderExecInsights(pctKpis, imKpis) {
   window.airepSubmitExcel=function(){try{closeModal('modal-airep-excel');}catch(e){}show('📊','Excel Report — สรุปทุกฝ่าย',excelPreview());};
   window.airepSubmitSlideDeck=function(){try{closeModal('modal-airep-slide');}catch(e){}show('📽️','Slide Deck — รายงานผู้บริหาร',slidePreview());};
   window.airepGeneratePDCA=function(id){show('🔄','PDCA — วิเคราะห์โดย AI',pdcaPreview(id));};
+  // ⓘ KPI definition popup (button injected into each KPI row)
+  function esc(s){return (typeof escHtml==='function')?escHtml(s==null?'':s):(''+(s==null?'':s));}
+  function defHtml(k){
+    var fl={1:'ทุกเดือน',3:'ทุก 3 เดือน',6:'ทุก 6 เดือน',12:'ทุกปี'};
+    function r(l,v){return '<tr><th>'+l+'</th><td>'+esc(v)+'</td></tr>';}
+    return '<div class="rp-paper" style="max-width:620px"><h1>นิยามตัวชี้วัด (KPI)</h1><div class="sub">'+esc(k.id)+(k.dept?' · ฝ่าย '+esc(k.dept):'')+'</div>'
+      +'<table>'+r('ชื่อตัวชี้วัด',k.name)+r('หน่วยวัด',k.unit)+r('เป้าหมาย',(k.direction||'')+' '+(k.target||'')+' '+(k.unit||''))+r('ความถี่การเก็บ',fl[k.frequency]||('ทุก '+(k.frequency||1)+' เดือน'))+r('ผู้รับผิดชอบ',k.ownerName||k.owner)+'</table>'
+      +'<h2>สูตรการคำนวณ</h2><div class="ai" style="font-family:Sarabun,sans-serif">'+esc(k.formula||'(ไม่ระบุสูตร)')+'</div>'
+      +'<div class="rp-note" style="text-align:left;color:#5b6b7a">ℹ️ นิยามนี้ดึงจากทะเบียนตัวชี้วัด (KPI_Master) — ระบบจริงให้ผู้ใช้กดดูได้ทุกตัว</div></div>';
+  }
+  window.kpiDefClick=function(btn){
+    var id=btn.getAttribute('data-kid');
+    var list=(window._deptKPIs||[]).concat(window._userKPIs||[]);
+    var k=null;for(var i=0;i<list.length;i++){if(list[i].id===id){k=list[i];break;}}
+    if(!k)return;
+    show('ⓘ','นิยามตัวชี้วัด '+id, defHtml(k));
+  };
 })();
 </script>
 </body>
