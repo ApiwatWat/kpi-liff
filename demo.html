@@ -3089,62 +3089,49 @@ function atInit() {
     }
   } catch (e) {}
 
-  /* Drag logic — touch + mouse, threshold 6px to distinguish tap from drag */
-  var dragState = { active: false, moved: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0 };
-  function pointerDown(e) {
-    var t = e.touches ? e.touches[0] : e;
+  /* Drag + tap via POINTER EVENTS — the correct, reliable model on iPad with
+     touch-action:none. setPointerCapture keeps move/up on the ball even if the
+     finger drifts; a release with no movement is a tap → toggle the menu. */
+  var dragState = { active: false, moved: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0, id: null };
+  function pDown(e) {
+    if (dragState.active) return;
+    dragState.active = true; dragState.moved = false; dragState.id = e.pointerId;
     var rect = ball.getBoundingClientRect();
-    dragState.active = true; dragState.moved = false;
-    dragState.startX = t.clientX; dragState.startY = t.clientY;
-    dragState.offsetX = t.clientX - rect.left; dragState.offsetY = t.clientY - rect.top;
-    /* IMPORTANT: do NOT preventDefault on touchstart — on iPad that suppresses
-       the 'click' event we use to open the menu. Scroll during a real drag is
-       prevented in pointerMove instead. */
+    dragState.startX = e.clientX; dragState.startY = e.clientY;
+    dragState.offsetX = e.clientX - rect.left; dragState.offsetY = e.clientY - rect.top;
+    try { ball.setPointerCapture(e.pointerId); } catch (err) {}
   }
-  function pointerMove(e) {
-    if (!dragState.active) return;
-    var t = e.touches ? e.touches[0] : e;
-    var dx = t.clientX - dragState.startX, dy = t.clientY - dragState.startY;
-    if (!dragState.moved && Math.sqrt(dx*dx + dy*dy) > 10) {   /* 10px: tolerate iPad tap jitter */
-      dragState.moved = true;
-      ball.className = 'dragging';
-      atCloseMenu();
+  function pMove(e) {
+    if (!dragState.active || e.pointerId !== dragState.id) return;
+    var dx = e.clientX - dragState.startX, dy = e.clientY - dragState.startY;
+    if (!dragState.moved && Math.sqrt(dx*dx + dy*dy) > 10) {   /* 10px: tolerate tap jitter */
+      dragState.moved = true; ball.className = 'dragging'; atCloseMenu();
     }
     if (dragState.moved) {
-      var newLeft = Math.max(8, Math.min(window.innerWidth - 76, t.clientX - dragState.offsetX));
-      var newTop = Math.max(8, Math.min(window.innerHeight - 76, t.clientY - dragState.offsetY));
-      ball.style.left = newLeft + 'px';
-      ball.style.top = newTop + 'px';
+      ball.style.left = Math.max(8, Math.min(window.innerWidth - 76, e.clientX - dragState.offsetX)) + 'px';
+      ball.style.top = Math.max(8, Math.min(window.innerHeight - 76, e.clientY - dragState.offsetY)) + 'px';
       ball.style.right = 'auto'; ball.style.bottom = 'auto';
-      if (e.cancelable) e.preventDefault();   /* only prevent scroll while dragging */
     }
   }
-  function pointerUp(e) {
-    if (!dragState.active) return;
-    dragState.active = false;
-    ball.className = '';
+  function pUp(e) {
+    if (!dragState.active || e.pointerId !== dragState.id) return;
+    dragState.active = false; ball.className = '';
+    try { ball.releasePointerCapture(e.pointerId); } catch (err) {}
     if (dragState.moved) {
       var rect = ball.getBoundingClientRect();
       try { localStorage.setItem('at_ball_pos', JSON.stringify({ left: rect.left, top: rect.top })); } catch (e2) {}
+    } else {
+      atToggleMenu();   /* tap → open/close */
     }
-    /* tap-to-open is handled by the 'click' listener below (fires reliably on iPad) */
   }
-  ball.addEventListener('mousedown', pointerDown);
-  ball.addEventListener('touchstart', pointerDown, { passive: true });
-  document.addEventListener('mousemove', pointerMove);
-  document.addEventListener('touchmove', pointerMove, { passive: false });
-  document.addEventListener('mouseup', pointerUp);
-  document.addEventListener('touchend', pointerUp);
-  /* Open/close on a real tap or click — most reliable across iPad / desktop.
-     A drag sets dragState.moved, which suppresses the click that may follow. */
-  ball.addEventListener('click', function() {
-    if (dragState.moved) { dragState.moved = false; return; }
-    atToggleMenu();
-  });
+  ball.addEventListener('pointerdown', pDown);
+  ball.addEventListener('pointermove', pMove);
+  ball.addEventListener('pointerup', pUp);
+  ball.addEventListener('pointercancel', pUp);
 
-  /* Outside click closes menu */
-  document.addEventListener('click', function(e) {
-    if (menu.classList.contains('show') && !menu.contains(e.target) && e.target !== ball) {
+  /* Tap outside the menu closes it */
+  document.addEventListener('pointerdown', function(e) {
+    if (menu.classList.contains('show') && !menu.contains(e.target) && e.target !== ball && !ball.contains(e.target)) {
       atCloseMenu();
     }
   });
