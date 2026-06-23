@@ -1078,7 +1078,7 @@ body.has-demo-ribbon{padding-top:25px}
     checkPermission:function(){return {role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,kpis:['ALL'],haFillActive:false};},
     getDashboardStats:dashboardStats,
     getMyDashboardStats:dashboardStats,
-    getKPIsByDept:function(dept){return kpisForDept(dept);},
+    getKPIsByDept:function(dept){return (!dept||dept==='ALL')?KPIS.slice():kpisForDept(dept);},
     getKPIsByUser:function(){return KPIS.slice();},
     getYoYStats:function(dept){return yoyStats(dept);},
     getHeatmapStats:heatmapStats,
