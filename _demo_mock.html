@@ -133,6 +133,81 @@ body.has-demo-ribbon{padding-top:25px}
   function getLatest(k){if(!k||!k.values)return'NA';for(var i=k.values.length-1;i>=0;i--){var v=k.values[i];if(v!==''&&v!=='NA'&&v!=null)return v;}return'NA';}
   function find(id){for(var i=0;i<KPIS.length;i++)if(KPIS[i].id===id)return KPIS[i];return null;}
 
+  // ---- AI PDCA generator (mock of generatePDCA) — mirrors PDCAGenerator.js new format (22 มิ.ย.69):
+  //      multi-layer FULL + 6-DNA SAR-short, KPI-aware from the demo data. No backend/AI call. ----
+  function _pdcaCtx(k){
+    var dirUp=(k.direction==='↑'||k.direction==='up');
+    var tNum=parseFloat(String(k.target||'').replace(/[^0-9.\-]/g,''));
+    var entries=[];
+    for(var i=0;i<k.values.length;i++){
+      var v=k.values[i];
+      if(v===''||v===null||v===undefined||v==='NA')continue;
+      var num=parseFloat(String(v).replace(/[^0-9.\-]/g,''));
+      if(!isNaN(num))entries.push({label:k.months[i],num:num});
+    }
+    function fyOf(lbl){var p=String(lbl).split(' ');var mi=MN.indexOf(p[0]);var yr=parseInt(p[1],10);if(mi<0||isNaN(yr))return null;return (mi>=9)?(yr+1):yr;}
+    function r1(x){return Math.round(x*10)/10;}
+    var byFY={};
+    entries.forEach(function(e){var fy=fyOf(e.label);if(fy!=null)(byFY[fy]=byFY[fy]||[]).push(e);});
+    var roll=Object.keys(byFY).map(Number).sort(function(a,b){return a-b;}).map(function(fy){
+      var arr=byFY[fy],s=0;arr.forEach(function(e){s+=e.num;});var avg=r1(s/arr.length);
+      return {fy:'FY'+(fy-2500),fyNum:fy,n:arr.length,avg:avg,pass:isNaN(tNum)?null:(dirUp?(avg>=tNum):(avg<=tNum))};
+    });
+    return {entries:entries,roll:roll,dirUp:dirUp,tNum:tNum};
+  }
+  function pdcaGen(kpiId,email){
+    var k=find(kpiId);
+    if(!k)return {ok:false,msg:'ไม่พบ KPI: '+kpiId};
+    var x=_pdcaCtx(k);
+    if(!x.entries.length)return {ok:false,msg:'ยังไม่มีข้อมูลกรอก KPI นี้ — กรอกอย่างน้อย 1 ค่าแล้วลองใหม่'};
+    var u=k.unit||'',dirUp=x.dirUp,tNum=x.tNum,roll=x.roll;
+    var last=x.entries[x.entries.length-1];
+    var lastFY=roll[roll.length-1],prevFY=roll.length>1?roll[roll.length-2]:null;
+    var dirSym=k.direction||(dirUp?'↑':'↓');
+    var pass=isNaN(tNum)?true:(dirUp?(last.num>=tNum):(last.num<=tNum));
+    var verdict=pass?'บรรลุเป้า':'ต่ำกว่าเป้า';
+    var ic=function(p){return p?'✅ ผ่าน':'❌ ต่ำกว่าเป้า';};
+    var trend='ทรงตัวข้ามปี',improving=null;
+    if(prevFY){var diff=Math.round((lastFY.avg-prevFY.avg)*10)/10;if(diff!==0){var up=diff>0;improving=dirUp?up:!up;trend=(up?'เพิ่มขึ้น':'ลดลง')+' ~'+Math.abs(diff)+u+' ('+prevFY.fy+'→'+lastFY.fy+')';}}
+    var isCount=(u==='ราย');
+    var fyTable=roll.map(function(r){return '| '+r.fy+' | '+r.avg+u+' | '+ic(r.pass)+' | n='+r.n+' |';}).join('\n');
+    var ctxLine='ค่าล่าสุด ('+last.label+') = '+last.num+u+' — '+verdict+' (เป้า '+dirSym+' '+k.target+u+') · ระดับปีงบประมาณ'+trend+(improving===false?' ⚠️ ทิศทางสวนเป้า ควรเฝ้าระวังลำดับต้น':(pass?' ทิศทางเป็นไปตามเป้า':''))+'.';
+    var full;
+    if(pass){
+      full='## '+k.id+' — '+k.name+'\n\n'+
+        '### บริบท / ปัญหาที่พบ\n'+ctxLine+' ผลโดยรวมอยู่ในเกณฑ์ดี ประเด็นหลักคือ "รักษาระดับ" ไม่ให้ตกในรอบถัดไป\n\n'+
+        '### KPI metrics (FY rollups)\n| FY | Value | Status | Note |\n|---|---|---|---|\n'+fyTable+'\n\nTarget: '+dirSym+' '+k.target+' '+u+'\n\n'+
+        '### Root-cause analysis (multi-layer)\n'+
+        '**Layer 1 — Surface**: '+k.name+' = '+last.num+u+' ผ่านเป้าต่อเนื่อง\n'+
+        '**Layer 2 — Process**: ระบบติดตาม/บันทึกข้อมูลสม่ำเสมอทำงานได้ — ความเสี่ยงคือพึ่งตัวบุคคล ยังไม่เป็นระบบเต็มตัว\n'+
+        '**Layer 3 — System**: ยังไม่มีกลไกเตือนเชิงระบบเมื่อค่าเข้าใกล้เป้า\n\n'+
+        '#### Layer 1 PDCA\n- **Plan (P)**: คงผล '+dirSym+' '+k.target+u+' ทุกเดือนของ '+lastFY.fy+'\n- **Do (D)**: ทบทวนปัจจัยความสำเร็จในที่ประชุมฝ่าย + ทำเป็น checklist มาตรฐาน\n- **Check (C)**: ติดตามค่ารายเดือน + ตั้งธงเตือนเมื่อเข้าใกล้เป้า ±5%\n- **Act (A)**: หากค่าหล่นแตะเป้าพอดีหรือต่ำกว่า → เปิด mini-RCA ในเดือนนั้นทันที\n\n'+
+        '#### Layer 3 PDCA\n- **Plan (P)**: แปลงวิธีที่ได้ผลเป็น SOP ลดการพึ่งบุคคล ภายใน '+lastFY.fy+'\n- **Do (D)**: เขียน SOP + ตั้งผู้รับผิดชอบสำรอง\n- **Check (C)**: audit การทำตาม SOP ทุกไตรมาส\n- **Act (A)**: หาก compliance SOP ต่ำกว่า 80% → อบรม/ทบทวนซ้ำ\n\n'+
+        '### Next iteration\nทำผลให้คงที่เชิงระบบ (SOP + ธงเตือน) เพื่อกันค่าตกเมื่อผู้รับผิดชอบหลักไม่อยู่\n';
+    }else{
+      full='## '+k.id+' — '+k.name+'\n\n'+
+        '### บริบท / ปัญหาที่พบ\n'+ctxLine+'\n\n'+
+        '### KPI metrics (FY rollups)\n| FY | Value | Status | Note |\n|---|---|---|---|\n'+fyTable+'\n\nTarget: '+dirSym+' '+k.target+' '+u+'\n\n'+
+        '### Root-cause analysis (multi-layer)\n'+
+        '**Layer 1 — Surface**: '+k.name+' = '+last.num+u+' ห่างเป้า '+k.target+u+' '+(improving===false?'และแนวโน้มแย่ลง':'และยังไม่ถึงเป้า')+'\n'+
+        '**Layer 2 — Process**: ขั้นตอนติดตาม/แก้ไขกลุ่มที่ยังไม่ถึงเป้ายังไม่ครอบคลุม (ทบทวนเคส + ติดตามต่อเนื่อง)\n'+
+        '**Layer 3 — System**: ขาดระบบเตือน/ดึงข้อมูลกลับเข้า HOSxP + กำลังคนจำกัด (รพ. 30 เตียง)\n\n'+
+        '#### Layer 1 PDCA\n- **Plan (P)**: ยก '+k.id+' ให้ถึง '+dirSym+' '+k.target+u+' ภายใน 2 ไตรมาส\n- **Do (D)**: คัดกลุ่มที่ยังไม่ถึงเป้า + วางแผนแก้รายกลุ่ม\n- **Check (C)**: ติดตามค่ารายเดือนเทียบเป้าในที่ประชุมฝ่าย\n- **Act (A)**: หากยังต่ำกว่าเป้า 2 เดือนติด → ยกเป็นวาระทีมนำ\n\n'+
+        '#### Layer 2 PDCA\n- **Plan (P)**: ปิดช่องว่าง workflow ภายใน 30 วัน (มอบผู้รับผิดชอบชัดเจน)\n- **Do (D)**: จัดทำแนวทางติดตาม + อบรมทีมที่เกี่ยวข้อง\n- **Check (C)**: สุ่มตรวจการทำตามแนวทางทุกเดือน\n- **Act (A)**: หาก compliance ต่ำกว่า 80% → ทบทวนกระบวนการซ้ำ\n\n'+
+        '#### Layer 3 PDCA\n- **Plan (P)**: เพิ่มระบบเตือน/บันทึกข้อมูลอัตโนมัติ ภายในปีงบ '+lastFY.fy+'\n- **Do (D)**: ตั้งรายงานเตือนรายเดือน + เชื่อมข้อมูลกลับ HOSxP\n- **Check (C)**: ทบทวนความครบถ้วนข้อมูลทุกไตรมาส\n- **Act (A)**: หากข้อมูลขาดเกิน 10% → ปรับวิธีจัดเก็บ\n\n'+
+        '### Next iteration\nโฟกัสกลุ่มที่ยังไม่ถึงเป้า + ปิดช่องว่างเชิงระบบ แล้วประเมินซ้ำใน 1 ไตรมาส\n';
+    }
+    var fyRange=roll.length>1?(roll[0].fy+'–'+lastFY.fy):lastFY.fy;
+    var ns=x.entries.map(function(e){return e.num;});
+    var valSpan=(Math.round(Math.min.apply(null,ns)*10)/10)+'–'+(Math.round(Math.max.apply(null,ns)*10)/10);
+    var interp=pass?'สะท้อนระบบงานที่เข้มแข็ง (ติดตามสม่ำเสมอ) แต่ต้องกันค่าตกเชิงระบบ':(improving===false?'ชี้ว่าแนวโน้มกำลังสวนเป้า ต้องหา root cause ของกลุ่มที่ยังไม่ถึงเป้า':'ชี้ว่ายังไม่ถึงเป้า ต้องเร่งกลุ่มที่ค้าง');
+    var ctxRP=isCount?' บริบท รพ.ค่าย 30 เตียง — ตัวชี้วัดเชิงเหตุการณ์ (low-volume high-impact) ทุกเคสต้องทบทวน.':' บริบท รพ.ค่าย 30 เตียง — กรอบ low-volume high-impact.';
+    var planNum=pass?('คงผล '+dirSym+' '+k.target+u):('ยกผลให้ถึง '+dirSym+' '+k.target+u+' ภายใน 2 ไตรมาส');
+    var actThresh=isCount?('หากเกิน '+k.target+' ราย/เดือน → RCA ทุกเคส'):('หาก'+(dirUp?'ต่ำกว่า':'สูงกว่า')+' '+k.target+u+' ติดต่อกัน 2 เดือน → เปิด RCA');
+    var sarShort='Definition: '+(k.formula||k.name)+'; ผลลัพธ์ '+valSpan+u+' (n='+x.entries.length+') ช่วง '+fyRange+' — '+verdict+' (เป้า '+dirSym+' '+k.target+u+')'+(trend!=='ทรงตัวข้ามปี'?' โดยระดับปี'+trend:'')+' '+interp+'.'+ctxRP+' **P:** '+planNum+' + ติดตามรายเดือน **D:** คัด/ทบทวนกลุ่มเป้าหมาย + มอบผู้รับผิดชอบชัดเจน **C:** track รายเดือนเทียบเป้า + RCA trigger **A:** '+actThresh;
+    return {ok:true,kpiId:kpiId,full:full,sarShort:sarShort,engine:'claude',generatedAt:new Date().toISOString(),fromCache:false};
+  }
+
   // ---- the fake backend dispatch table ----
   var FAKE={
     bootstrapPayload:function(arg){return {ok:true,user:{role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,userId:'USR-004',kpis:['ALL'],haFillActive:false},depts:DEPTS,primaryDept:'PCT',kpis:kpisForDept('PCT')};},
@@ -147,6 +222,7 @@ body.has-demo-ribbon{padding-top:25px}
     getRecentAuditLog:auditLog,
     getSmartSuggestions:smartSuggestions,
     askAI:aiAnswer,
+    generatePDCA:pdcaGen,
     getAvailableMonths:function(){return MONTHS.slice();},
     getDepartments:function(){return DEPTS.slice();},
     getCellHistory:function(){return [];},
