@@ -1185,14 +1185,27 @@ body.has-demo-ribbon{padding-top:25px}
     _demoOverlay(_demoHead('linear-gradient(135deg,#ea580c,#c2410c)','ตัวอย่างโหมดสาธิต · ของจริงสร้างเป็น Google Slides','🎬 Monthly Slide Deck — เลื่อนดู 4 สไลด์')+deck);
   }
 
+  function showWordPreview(){
+    if(typeof closeModal==='function')closeModal('modal-airep-word');
+    var body='<div style="padding:24px 30px;font-family:Sarabun,sans-serif;color:#1f2937;line-height:1.7">'
+      +'<div style="text-align:center;border-bottom:2px solid #1d4ed8;padding-bottom:12px;margin-bottom:16px"><div style="font-size:20px;font-weight:800;color:#1e3a8a">รายงานการประเมินตนเอง (SAR)</div><div style="font-size:13px;color:#64748b">PCT-10 · DM คุมได้ HbA1c &lt;7% · รพ.ค่ายเขตอุดมศักดิ์ มทบ.44 · FY2569</div></div>'
+      +'<h3 style="color:#1e3a8a;font-size:15px;margin:14px 0 4px">1. บริบทและความสำคัญ</h3><p style="margin:0">ตัวชี้วัด DM คุม HbA1c &lt;7% สะท้อนคุณภาพการดูแลผู้ป่วยเบาหวานต่อเนื่อง ลดภาวะแทรกซ้อนระยะยาว (ไต/ตา/เท้า/หัวใจ)</p>'
+      +'<h3 style="color:#1e3a8a;font-size:15px;margin:14px 0 4px">2. ผลการดำเนินงาน</h3><p style="margin:0">FY2569 YTD = <b>48.4%</b> (261/539 ราย) — ต่ำกว่าเป้า 50% เล็กน้อย แนวโน้มดีขึ้นจาก FY68</p>'
+      +'<h3 style="color:#1e3a8a;font-size:15px;margin:14px 0 4px">3. การวิเคราะห์ (PDCA)</h3><p style="margin:0"><b>Plan:</b> ยกผลให้ถึง 50% ใน 2 ไตรมาส · <b>Do:</b> คัดกลุ่มที่ยังไม่ถึงเป้า + ปรับแผนการรักษา · <b>Check:</b> ติดตามรายเดือนเทียบเป้า · <b>Act:</b> RCA หากต่ำกว่าเป้า 2 เดือนติด</p>'
+      +'</div>';
+    _demoOverlay(_demoHead('linear-gradient(135deg,#1d4ed8,#1e3a8a)','ตัวอย่างโหมดสาธิต · ของจริงดาวน์โหลดเป็น .docx','📄 Word Report — SAR (PCT-10)')+body);
+  }
+
   // auto-login on load (no real login needed)
   window.addEventListener('load',function(){
     document.body.classList.add('has-demo-ribbon');
+    var _st=document.createElement('style');_st.textContent='#at-ball,#at-menu{display:none!important}';document.head.appendChild(_st);  // ซ่อน AssistiveTouch (หมอ ok)
     try{
       var inp=document.getElementById('email-inp');
       if(inp)inp.value='admin@hospital.demo';
       if(typeof doLogin==='function')doLogin();
-      // demo: ปุ่ม Generate Excel / สร้างสไลด์ → โชว์ตัวอย่าง preview (ของจริงเป็นไฟล์ภายนอก)
+      // demo: การ์ด Word/Excel/Slide → โชว์ตัวอย่าง preview (ของจริงเป็นไฟล์ภายนอก) · PDCA = 2 ฝั่ง default ดีอยู่แล้ว
+      window.airepClickWord=showWordPreview;
       window.airepSubmitExcel=showExcelPreview;
       window.airepSubmitSlideDeck=function(){showSlidePreview();};
     }catch(e){console.error('demo auto-login',e);}
