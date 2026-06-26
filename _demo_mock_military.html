@@ -1,0 +1,41 @@
+<script>
+/* demo mock for MilitaryReadiness.html — fake getMilitaryReadiness (per-FY), no backend */
+(function(){
+  function mk(data){
+    var succ=null;
+    var api={withSuccessHandler:function(c){succ=c;return api;},withFailureHandler:function(){return api;},
+      getMilitaryReadiness:function(){setTimeout(function(){if(succ)succ(data);},140);return api;}};
+    return new Proxy(api,{get:function(t,p){if(p in t)return t[p];return function(){setTimeout(function(){if(succ)succ(null);},60);return api;};}});
+  }
+  function ill(label,advice,patients,top){return {label:label,advice:advice,patients:patients,top:top||[]};}
+  var perfy={
+    '2569':{cadre:{total:1158,normal:1060,risk:34,disease:64,complete:false,screened:240,checked_total:1158,
+        rf:{dm:59,htn:17,lipid:14,prediabetes:51,smoking:679,ascvd_high:0}},
+      conscript:{total:1451,visited:670,illness:{
+        respiratory:ill('ทางเดินหายใจ','วัคซีนไข้หวัดใหญ่ + ระบายอากาศโรงนอน + สุขอนามัย',329,[{code:'J00',name:'หวัด',n:226},{code:'J039',name:'ทอนซิลอักเสบ',n:50}]),
+        injury:ill('บาดเจ็บ/กล้ามเนื้อ-กระดูก','ป้องกันบาดเจ็บจากการฝึก + warm-up',142,[{code:'S934',name:'ข้อเท้าแพลง',n:14}]),
+        skin:ill('ผิวหนัง/ติดเชื้อ','สุขอนามัยส่วนบุคคล + ความสะอาดที่พัก',78,[{code:'L024',name:'ฝี/หนอง',n:20}]),
+        eye:ill('ตา (ตาแดง)','แยกผู้ป่วยตาแดง + ล้างมือ',50,[{code:'H103',name:'ตาแดง',n:29}]),
+        dental:ill('ฟัน/ช่องปาก','หน่วยทันตกรรมเคลื่อนที่',64,[{code:'K040',name:'Pulpitis',n:22}])}},
+      heat:{patients:10,stroke:0,by_type:[{label:'เกร็งแดด/หายใจเร็ว',n:10}]}},
+    '2568':{cadre:{total:1217,normal:835,risk:299,disease:83,complete:true,screened:1103,checked_total:1217,
+        rf:{dm:77,htn:84,lipid:165,prediabetes:348,smoking:694,ascvd_high:0}},
+      conscript:{total:1394,visited:704,illness:{
+        respiratory:ill('ทางเดินหายใจ','วัคซีนไข้หวัดใหญ่ + ระบายอากาศโรงนอน',414,[{code:'J00',name:'หวัด',n:260}]),
+        injury:ill('บาดเจ็บ/กล้ามเนื้อ-กระดูก','ป้องกันบาดเจ็บจากการฝึก',204,[{code:'S934',name:'ข้อเท้าแพลง',n:18}]),
+        skin:ill('ผิวหนัง/ติดเชื้อ','สุขอนามัยส่วนบุคคล',70,[]),
+        dental:ill('ฟัน/ช่องปาก','ตรวจฟันแรกเข้า',58,[])}},
+      heat:{patients:22,stroke:0,by_type:[{label:'เกร็งแดด/หายใจเร็ว',n:22}]}},
+    '2567':{cadre:{total:1192,normal:850,risk:268,disease:74,complete:true,screened:1100,checked_total:1192,
+        rf:{dm:70,htn:80,lipid:150,prediabetes:300,smoking:650,ascvd_high:0}},
+      conscript:{total:1527,visited:659,illness:{
+        respiratory:ill('ทางเดินหายใจ','วัคซีนไข้หวัดใหญ่',342,[{code:'J00',name:'หวัด',n:210}]),
+        injury:ill('บาดเจ็บ/กล้ามเนื้อ-กระดูก','ป้องกันบาดเจ็บจากการฝึก',192,[])}},
+      heat:{patients:21,stroke:0,by_type:[{label:'เกร็งแดด/หายใจเร็ว',n:21}]}}
+  };
+  var data={status:'ok',hospital:'รพ.ค่ายเขตอุดมศักดิ์ มทบ.44 (เดโม่)',fys:[2567,2568,2569],default_fy:2568,per_fy:perfy,
+    trend:{'2565':{normal:779,risk:162,disease:63},'2566':{normal:879,risk:222,disease:64},'2567':{normal:850,risk:268,disease:74},'2568':{normal:835,risk:299,disease:83}},
+    caveat:'โหมดสาธิต · พลทหาร = proxy (ทหารบก+ชาย+อายุ18-25+เพิ่งขึ้นทะเบียน)',generatedAt:'27 มิ.ย. (เดโม่)'};
+  window.google={script:{get run(){return mk(data);},host:{close:function(){},setHeight:function(){}}}};
+})();
+</script>

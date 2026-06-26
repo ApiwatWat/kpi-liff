@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>CEO Cockpit — KPI Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root{ --navy:#0f3d5c; --teal:#14708e; --ink:#1c2b36; --muted:#6b7c89; --line:#e3e9ee; --bg:#eef2f5; --card:#fff;
+  --green:#1f9d55; --amber:#cc8400; --red:#d64545; --shadow:0 1px 3px rgba(16,40,60,.10); }
+*{box-sizing:border-box;margin:0;padding:0} html,body{color-scheme:light}
+body{font-family:'Sarabun',Tahoma,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px;margin:0 auto;padding:0 20px 60px}
+header{background:linear-gradient(135deg,var(--navy),var(--teal));color:#fff;padding:15px 0;box-shadow:var(--shadow)}
+.hd{max-width:1280px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{font-size:21px;font-weight:800} .logo small{font-weight:500;opacity:.85;font-size:13px;display:block}
+.hd .spacer{flex:1} .hd .meta{text-align:right;font-size:13px;opacity:.92}
+.badge-admin{background:#ffd86b;color:#5b4300;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+.badge{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
+.accessbar{background:#fff;border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:8px;margin-top:16px;padding:9px 14px;font-size:12.5px;color:#5a4a1f;display:flex;gap:16px;flex-wrap:wrap}
+.accessbar b{color:var(--ink)}
+.fontctl{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:12.5px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 14px;width:fit-content}
+.fontctl input[type=range]{width:150px;accent-color:var(--teal);cursor:pointer}
+.fontctl #fzlab{font-weight:700;color:var(--navy);min-width:54px}
+.sec{margin-top:30px} .sec-h{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.sec-h h2{font-size:20px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:9px}
+.sec-h h2::before{content:"";width:6px;height:22px;background:var(--teal);border-radius:3px}
+.sec-h .tag{font-size:11.5px;color:var(--muted);font-weight:500;background:#fff;border:1px solid var(--line);padding:2px 8px;border-radius:20px}
+.sec-h .ln{flex:1;height:1px;background:var(--line)}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.act{background:var(--card);border-radius:12px;padding:17px 18px;box-shadow:var(--shadow);border-left:5px solid var(--red)}
+.act.amber{border-left-color:var(--amber)}
+.act .ico{font-size:23px} .act .ttl{font-weight:700;font-size:15.5px;margin:4px 0 3px}
+.act .big{font-size:34px;font-weight:800;color:var(--navy);line-height:1} .act .big span{font-size:15px;font-weight:600;color:var(--muted)}
+.act .sub{font-size:13px;color:var(--muted);margin:4px 0 12px}
+.act .btn{display:inline-block;background:var(--navy);color:#fff;font-size:13px;font-weight:600;padding:7px 14px;border-radius:7px;border:0;cursor:pointer}
+.money{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.stat{background:var(--card);border-radius:11px;padding:15px 16px;box-shadow:var(--shadow)}
+.stat.dim{opacity:.58}
+.stat .lab{font-size:12.5px;color:var(--muted)} .stat .val{font-size:24px;font-weight:800;margin-top:3px} .stat .val small{font-size:14px;font-weight:600}
+.pending-tag{font-size:11px;color:var(--amber);font-weight:700}
+.panel{background:var(--card);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.rsrc{margin:10px 0}
+.rsrc .top{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:3px}
+.rsrc .bar{height:13px;background:#eef1f5;border-radius:6px;overflow:hidden} .rsrc .bar i{display:block;height:100%}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:9px 12px;border-bottom:2px solid var(--line)}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-child td{border-bottom:0}
+.kn{font-weight:600} .vs{font-variant-numeric:tabular-nums}
+.mini{height:6px;border-radius:4px;background:#edf1f3;overflow:hidden;min-width:90px} .mini i{display:block;height:100%;border-radius:4px}
+.st{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12.5px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block} .dot.g{background:var(--green)} .dot.a{background:var(--amber)}
+.note2{color:var(--muted);font-size:12px}
+.mrow{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #f1f3f6} .mrow:last-child{border-bottom:0}
+.mn{font-weight:700;font-size:14px} .md{font-size:11px;color:var(--muted);margin-top:2px} .mi{font-size:12.5px;margin-top:4px;line-height:1.55;white-space:pre-line}
+.mv{white-space:nowrap;font-weight:800;font-size:15px;text-align:right} .mv.up{color:var(--green)} .mv.dn{color:var(--red)}
+.cav{margin-top:12px;font-size:12px;color:var(--amber);background:#fffbeb;border-radius:10px;padding:8px 10px}
+.sug{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.scard{background:var(--card);border-radius:12px;padding:15px 17px;box-shadow:var(--shadow);border-top:4px solid var(--teal)}
+.scard .std{font-size:11px;font-weight:700;color:var(--teal);background:#e6f1f5;display:inline-block;padding:2px 9px;border-radius:20px;margin-bottom:8px}
+.scard .nm{font-weight:700;font-size:15px;margin-bottom:5px} .scard .ev{font-size:13px;color:#33444f;margin-bottom:6px}
+.scard .owner{font-size:11.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-bottom:10px} .scard .owner b{color:var(--ink)}
+.scard .add{background:#fff;color:var(--teal);border:1.5px solid var(--teal);font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:7px;cursor:pointer}
+.pending{background:#fff8e6;border:1px dashed #e7cf86;border-radius:10px;padding:14px 16px;color:#8a6d1f;font-size:13.5px} .pending b{color:var(--ink)}
+.loading{text-align:center;color:var(--muted);padding:60px}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
+@media(max-width:980px){.actions,.sug{grid-template-columns:1fr}.money{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<script>
+/* demo mock for CEOCockpit.html — fake getCEOCockpit (ทุก section), no backend / no admin gate */
+(function(){
+  function mk(data){
+    var succ=null;
+    var api={withSuccessHandler:function(c){succ=c;return api;},withFailureHandler:function(){return api;},
+      getCEOCockpit:function(){setTimeout(function(){if(succ)succ(data);},140);return api;},
+      cockpitNudge:function(){setTimeout(function(){if(succ)succ({ok:true});},120);return api;}};
+    return new Proxy(api,{get:function(t,p){if(p in t)return t[p];return function(){setTimeout(function(){if(succ)succ(null);},60);return api;};}});
+  }
+  function mo(base){var a=[];for(var i=0;i<12;i++){a.push(Math.round((base+(i%5)*0.12+(i>7?0.2:0))*1e6));}return a;}
+  var revMonthly={'2565':mo(2.0),'2566':mo(2.1),'2567':mo(2.15),'2568':mo(2.2),'2569':mo(2.25)};
+  var cockpit={status:'ok',
+    actions:{dm_overdue:50,dm_total:539,nostatin:27,high_total:383,af_gap:20,af_total:78,af_cov:74},
+    money:{rev_total:26100000,rev_opd:18000000,rev_ipd:8100000,cmi:0.53,cmi_n:115,cmi_coded:61,
+      rev_monthly:revMonthly,
+      rev_fund:{'เบิกได้ (ราชการ)':20866062,'ชำระเอง (เงินสด)':2125667,'บัตรทอง (UC)':1795546,'อปท. (ท้องถิ่น)':1100706,'ประกันสังคม':54695,'พ.ร.บ. (อุบัติเหตุ)':20402},
+      cc:{red:248,total:2730,by_rule:{R24:245,'201':3},period:'2026-05-27 .. 2026-06-26'},
+      referleak:{by_fy:{FY67:48,FY68:44,FY69:19},fy69_split:{ER:11,OPD:8},fy69_fund:{'เบิกได้ (ราชการ)':9,'บัตรทอง (UC)':10},
+        refer_groups:[
+          {label:'ระบบหายใจ (ปอดบวม/COPD)',advice:'ลงทุน NIV/BiPAP/HFNC + O2 high-flow — ดึงเคสหายใจกลับ (ลงทุนต่ำ คุ้ม)',n:7},
+          {label:'จิตเวช',advice:'จิตแพทย์ consult/telepsych + เตียงสังเกตอาการ',n:2},
+          {label:'ระบบประสาท (ชัก/อัมพาต)',advice:'อายุรแพทย์ระบบประสาท consult',n:2},
+          {label:'ศัลยกรรม (ช่องท้อง/ถุงน้ำดี)',advice:'ศัลยแพทย์ part-time + ห้องผ่าตัดพื้นฐาน',n:2},
+          {label:'หัวใจขาดเลือด (IHD/MI)',advice:'STEMI fast-track + ส่งต่อเร็ว',n:1}],
+        burden:[
+          {label:'ไต/CKD',hn:170,risk:'mid',badge:'🟡'},{label:'ตา-จักษุ',hn:169,risk:'low',badge:'🟢'},
+          {label:'หลอดเลือดสมอง',hn:71,risk:'high',badge:'🔴'},{label:'ต่อมลูกหมาก/BPH',hn:58,risk:'mid',badge:'🟡'},
+          {label:'หัวใจขาดเลือด',hn:47,risk:'high',badge:'🔴'},{label:'กระดูกหักแขนขา',hn:23,risk:'low',badge:'🟢'},
+          {label:'ต้อกระจก',hn:17,risk:'low',badge:'🟢'},{label:'มะเร็ง',hn:13,risk:'high',badge:'🔴'}]},
+      generatedAt:'27 มิ.ย. (เดโม่)'},
+    generatedAt:'27 มิ.ย. (เดโม่)'};
+  var money={status:'ok',method:'regression + BH-FDR',window:'20 เดือน',n_months:20,n_kpis:188,revenue_source:'opitemrece.sum_price',total_revenue_last_month:2700000,
+    revenue_sources:{drug:16000000,lab:4000000,xray:2500000,other:3600000},
+    drivers:[{kpi_id:'PCT-10',kpi_name:'DM คุมได้ HbA1c<7%',dept:'NCD',sign:'+',impact_thb:120000,q_value:0.02,confidence:'ปานกลาง',interpretation:'',exec_interpretation:'ถ้าคุม DM ดีขึ้น → รายได้สัมพันธ์ +~120k/เดือน (สมมุติฐาน · เดโม่)'}],
+    caveat:'โหมดสาธิต — ตัวเลขจำลองเพื่อนำเสนอ',generatedAt:'27 มิ.ย. (เดโม่)'};
+  var drugEvents={status:'ok',formularySize:206,generatedAt:'27 มิ.ย. (เดโม่)',events:[
+    {date:'2026-06-27',type:'out',name:'Manidipine 20 mg. (KERDICA)',detail:'เคยจ่าย 388 ครั้ง/5 เดือน แล้วหยุด (น่าจะขาดสต็อก)'},
+    {date:'2026-06-27',type:'out',name:'NPH insulin 100 IU/ml (WINSULIN)',detail:'เคยจ่าย 18 ครั้ง/4 เดือน แล้วหยุด (น่าจะขาดสต็อก)'},
+    {date:'2026-06-27',type:'out',name:'Furosemide inj.(Lasix)',detail:'เคยจ่าย 12 ครั้ง/4 เดือน แล้วหยุด (น่าจะขาดสต็อก)'},
+    {date:'2026-06-20',type:'new',name:'Amlodipine 10 mg',detail:'เพิ่ม/เปิดใช้ในบัญชียา'}]};
+  var data={ok:true,hospital:'รพ.ค่ายเขตอุดมศักดิ์ มทบ.44 (เดโม่)',cockpit:cockpit,money:money,drugEvents:drugEvents,generatedAt:'27 มิ.ย. (เดโม่)'};
+  window.google={script:{get run(){return mk(data);},host:{close:function(){},setHeight:function(){}}}};
+})();
+</script>
+
+<header><div class="hd">
+  <div class="logo">KPI Monitor <small>CEO Cockpit · ที่ปรึกษาผู้บริหารในจอเดียว</small></div>
+  <div class="spacer"></div><span class="badge-admin">🔒 เฉพาะผู้บริหาร (Admin)</span>
+  <span class="badge">LIVE · HOSxP จริง</span>
+  <div class="meta"><b>รพ.ค่ายเขตอุดมศักดิ์ (มทบ.44)</b><br><span id="stamp">ปีงบ 2569</span></div>
+</div></header>
+<div class="wrap">
+  <div class="accessbar">
+    <span>🔒 <b>สิทธิ์:</b> เฉพาะผู้บริหาร (Admin)</span>
+    <span>🛡️ <b>PDPA:</b> ผอ.เห็นเฉพาะจำนวน — รายชื่อส่งหน่วยที่ดูแล + log</span>
+    <span>📊 <b>ข้อมูล:</b> Action + KPI = ค่าจริงจาก HOSxP · อัปเดตรายเดือน</span>
+  </div>
+  <div class="fontctl">🔤 ขนาดฟอนต์
+    <input type="range" min="1" max="4" value="2" step="1" id="fz" oninput="setFz(this.value)" title="ลากปรับขนาด">
+    <span id="fzlab">ปกติ</span></div>
+
+  <div id="body"><div class="loading">⏳ กำลังโหลด…</div></div>
+
+  <div class="foot">KPI Monitor · CEO Cockpit (LIVE) · Action + KPI = ค่าจริงจาก HOSxP (read-only) · การเงินจาก opitemrece · <span id="genstamp"></span></div>
+</div>
+<script>
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function fmtTHB(n){ if(n==null||isNaN(Number(n))) return '—'; return '฿'+Math.round(Number(n)).toLocaleString('th-TH'); }
+  function M(v){ return (Number(v||0)/1e6).toFixed(1); }
+  function section(title,tag,inner){ return '<section class="sec"><div class="sec-h"><h2>'+title+'</h2>'
+    +(tag?'<span class="tag">'+esc(tag)+'</span>':'')+'<span class="ln"></span></div>'+inner+'</section>'; }
+
+  function setFz(v){ var z=[0,0.9,1.0,1.15,1.32][v], lab=['','เล็ก','ปกติ','ใหญ่','ใหญ่มาก'][v];
+    document.body.style.zoom=z; document.getElementById('fzlab').textContent=lab;
+    try{localStorage.setItem('kpi_fz',v);}catch(e){} }
+  (function(){ try{var s=localStorage.getItem('kpi_fz'); if(s){document.getElementById('fz').value=s; setFz(s);}}catch(e){} })();
+
+  window._actData = []; window._ckEmail = '';
+  function _doNudge(area, detail, btn){
+    if(!window._ckEmail){ alert('⚠️ ไม่พบอีเมลผู้ใช้ — เปิดหน้านี้ผ่านเมนู KPI Monitor'); return; }
+    if(!(window.google&&google.script&&google.script.run)){ alert('เปิดหน้านี้ผ่าน KPI Monitor'); return; }
+    var orig = btn?btn.textContent:'';
+    if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังส่ง LINE...'; }
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(r&&r.ok){ if(btn){btn.textContent='✅ ส่ง LINE แล้ว';} }
+        else { if(btn){btn.disabled=false;btn.textContent=orig;} alert('⚠️ '+((r&&r.msg)||'ส่งไม่สำเร็จ')); }
+      })
+      .withFailureHandler(function(e){ if(btn){btn.disabled=false;btn.textContent=orig;} alert('⚠️ '+((e&&e.message)||e)); })
+      .cockpitNudge({email:window._ckEmail, area:area, detail:detail});
+  }
+  function nudge(i, btn){ var d=window._actData[i]||{}; _doNudge(d.area||'', d.detail||'', btn); }
+
+  var HA5 = [
+    {std:'มาตรฐานสำคัญจำเป็น · สรพ.', nm:'Sepsis bundle compliance', ev:'ยังไม่จับเวลา antibiotic ≤1 ชม. — surveyor เจาะแน่วันเยี่ยม', owner:'ER / หอผู้ป่วยใน', dept:'ER/IPD'},
+    {std:'Service Plan · NCD', nm:'คัดกรองภาวะแทรกซ้อน ตา/เท้า DM', ev:'ยังไม่ track coverage รายปี (ไต track แล้ว 94.1%)', owner:'คลินิก NCD', dept:'คลินิก NCD'},
+    {std:'Patient Safety · IM', nm:'Critical value notification time', ev:'ยังไม่มีตัวเลข lab วิกฤต → แพทย์รับทราบ (กี่นาที)', owner:'ห้อง Lab / IM', dept:'ห้อง Lab'}
+  ];
+  var KPIS = [
+    {nm:'คัดกรองไต DM (Cr/ไมโครอัลบูมิน)', v:94.1, t:60, low:false, note:'FY69'},
+    {nm:'DM คุมได้ HbA1c < 7%', v:48.42, t:50, low:false, note:'261/539'},
+    {nm:'HT คุมได้ BP < 140/90', v:81.52, t:50, low:false, note:'794/974'},
+    {nm:'ER revisit ≤ 48 ชม.', v:0.36, t:3, low:true, note:'PRISMA v4.2'}
+  ];
+
+  function actionSection(cd){
+    if(!cd||cd.status!=='ok') return section('⚡ 3 เรื่องที่ต้องสั่งการวันนี้','รอข้อมูล','<div class="pending">⏳ <b>รอข้อมูล</b> — รัน cockpit_data_sync.py บน cm2</div>');
+    var a=cd.actions;
+    var items=[
+      {ico:'🩸',ttl:'DM ค้างเจาะ HbA1c &gt; 6 เดือน',big:a.dm_overdue,sub:'จาก DM active '+a.dm_total+' คน',dept:'NCD clinic',sev:''},
+      {ico:'❤️',ttl:'ASCVD ≥20% ยังไม่ได้ statin',big:a.nostatin,sub:'จากกลุ่มเสี่ยงสูง '+a.high_total+' คน',dept:'NCD/อายุรกรรม',sev:''},
+      {ico:'🩺',ttl:'AF ยังไม่ได้ยาต้านการแข็งตัวของเลือด',big:a.af_gap,sub:'coverage '+a.af_cov+'% ('+(a.af_total-a.af_gap)+'/'+a.af_total+')',dept:'NCD/เภสัช',sev:'amber'}
+    ];
+    window._actData = items.map(function(it){
+      var area=String(it.ttl).replace(/&gt;/g,'>').replace(/&lt;/g,'<');
+      var sub=String(it.sub).replace(/&gt;/g,'>').replace(/&lt;/g,'<');
+      return { area:area, detail:it.big+' คน · '+sub+' · มอบหมาย → '+it.dept };
+    });
+    var h=items.map(function(it,i){ return '<div class="act '+it.sev+'"><div class="ico">'+it.ico+'</div>'
+      +'<div class="ttl">'+it.ttl+'</div><div class="big">'+it.big+' <span>คน</span></div>'
+      +'<div class="sub">'+esc(it.sub)+'</div>'
+      +'<button class="btn" onclick="nudge('+i+',this)">📤 มอบหมาย → '+esc(it.dept)+' ทาง LINE</button></div>'; }).join('');
+    return section('⚡ 3 เรื่องที่ต้องสั่งการวันนี้','ค่าจริง','<div class="actions">'+h+'</div>');
+  }
+
+  function moneySection(cd){
+    var mm = (cd&&cd.status==='ok') ? cd.money : null;
+    var cc=(mm&&mm.cc)?mm.cc:null;
+    var ccNm={R24:'ยาไม่มีวิธีใช้','201':'ไม่มี Pdx','116':'CID ผิด'};
+    var ccVal='—', ccSub='ไม่มีข้อมูล', ccReal=false;
+    if(cc && cc.total){ ccReal=true; ccVal=String(cc.red);
+      var br=cc.by_rule||{}, top='', tn=-1, rk; for(rk in br){ if(br[rk]>tn){tn=br[rk];top=rk;} }
+      ccSub='30 วัน · '+cc.red+'/'+cc.total+' OPD'+(top?(' · ส่วนใหญ่ '+(ccNm[top]||top)):''); }
+    var cards = mm ? [
+      ['รายได้ FY69 (สะสม)', M(mm.rev_total)+'<small> ลบ.</small>', 'OPD '+M(mm.rev_opd)+' / IPD '+M(mm.rev_ipd)+' ลบ.', true],
+      ['CMI (IPD)', (mm.cmi!=null?Number(mm.cmi).toFixed(2):'—'), mm.cmi_coded+'/'+mm.cmi_n+' admit มี DRG', true],
+      ['เวชระเบียนติด C (OPD)', ccVal, ccSub, ccReal],
+      ['เงินบำรุงคงเหลือ', '—', 'ไม่มีใน HOSxP (finance module)', false],
+      ['AR &gt;90 วัน', '—', 'ไม่มีใน HOSxP', false]
+    ] : [['รายได้ FY69','—','รอ cockpit_data_sync',false]];
+    var h=cards.map(function(c){ var dim=c[3]?'':' dim', tag=c[3]?'':' <span class="pending-tag">ไม่มีใน DB</span>';
+      return '<div class="stat'+dim+'"><div class="lab">'+c[0]+'</div><div class="val">'+c[1]+tag+'</div>'
+        +'<div class="lab" style="margin-top:3px;font-size:11.5px">'+c[2]+'</div></div>'; }).join('');
+    var chart = (mm && mm.rev_monthly && Object.keys(mm.rev_monthly).length)
+      ? '<div class="panel" style="margin-top:14px"><div style="font-weight:700;font-size:14.5px;margin-bottom:3px">📈 แนวโน้มรายได้รายเดือน (เทียบปีงบ 65-69)</div>'
+        + '<div class="note2" style="margin-bottom:8px">แกนนอน = เดือน ต.ค. → ก.ย. · เส้นเข้มสุด = ปีงบ 69 (ดูเดือนต่อเดือนข้ามปี)</div>'
+        + '<div style="position:relative;height:300px"><canvas id="rev-trend"></canvas></div></div>'
+      : '';
+    return section('💰 ภาพเงิน (FY69 สะสม)','ค่าจริงจาก HOSxP · บางตัวยังไม่มีใน DB','<div class="money">'+h+'</div>'+chart);
+  }
+
+  function renderRevTrend(hist){
+    var cv=document.getElementById('rev-trend'); if(!cv||!window.Chart||!hist) return;
+    var fys=Object.keys(hist).sort(); if(!fys.length) return;
+    var labels=['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
+    var cmap={'2565':'#94a3b8','2566':'#14b8a6','2567':'#f59e0b','2568':'#8b5cf6','2569':'#0f3d5c'};
+    var ds=fys.map(function(fy){
+      var arr=(hist[fy]||[]).map(function(v){return v==null?null:Number(v)/1e6;});
+      var latest=(fy===fys[fys.length-1]);
+      return {label:'ปีงบ '+String(fy).slice(2), data:arr, borderColor:cmap[fy]||'#999', backgroundColor:cmap[fy]||'#999',
+        borderWidth:latest?3:1.6, tension:0.3, pointRadius:latest?3:0, pointHoverRadius:4, spanGaps:true};
+    });
+    if(window._revChart) window._revChart.destroy();
+    window._revChart=new Chart(cv.getContext('2d'),{type:'line',data:{labels:labels,datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{position:'top',labels:{font:{family:'Sarabun',size:11},boxWidth:14,padding:8}},
+          tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+(c.parsed.y!=null?c.parsed.y.toFixed(2)+' ลบ.':'—');}}}},
+        scales:{x:{ticks:{font:{family:'Sarabun',size:11}},grid:{display:false}},
+          y:{ticks:{font:{family:'Sarabun',size:11}},title:{display:true,text:'ล้านบาท',font:{family:'Sarabun',size:11}}}}}});
+  }
+
+  function _revBars(obj, pal){
+    var keys=Object.keys(obj||{}); var tot=0,k; for(k=0;k<keys.length;k++) tot+=Number(obj[keys[k]])||0;
+    if(tot<=0) return '';
+    var arr=keys.map(function(n){return {n:n,v:Number(obj[n])||0};}).sort(function(a,b){return b.v-a.v;});
+    return arr.map(function(it,idx){ var pct=Math.round(it.v/tot*100);
+      return '<div class="rsrc"><div class="top"><span><b>'+esc(it.n)+'</b></span><span style="color:var(--muted)">'+fmtTHB(it.v)+' · '+pct+'%</span></div>'
+        +'<div class="bar"><i style="width:'+pct+'%;background:'+pal[idx%pal.length]+'"></i></div></div>'; }).join('');
+  }
+  function incomeSection(mny, cd){
+    var src = mny && mny.revenue_sources;
+    var fund = (cd && cd.status==='ok' && cd.money && cd.money.rev_fund) ? cd.money.rev_fund : null;
+    var catObj = src ? {'ค่ายา':Number(src.drug)||0,'ค่าแล็บ':Number(src.lab)||0,'ค่าเอกซเรย์':Number(src.xray)||0,'ตรวจรักษา/หัตถการ/อื่นๆ':Number(src.other)||0} : null;
+    var catBars = catObj ? _revBars(catObj, ['#0f3d5c','#2a9d8f','#cc8400','#14708e']) : '';
+    var fundBars = fund ? _revBars(fund, ['#0f3d5c','#2a9d8f','#cc8400','#14708e','#8b5cf6','#b45309','#64748b']) : '';
+    if(!catBars && !fundBars) return '';
+    var subh='font-weight:700;font-size:13px;color:#0f3d5c;margin:0 0 8px';
+    var inner='<div class="panel">';
+    if(catBars) inner+='<div style="'+subh+'">ตามหมวดค่าบริการ</div>'+catBars;
+    if(fundBars) inner+='<div style="'+subh+';margin-top:16px">ตามสิทธิการรักษา (กองทุน)</div>'+fundBars;
+    inner+='</div>';
+    return section('🏦 รายได้แยกแหล่ง · หมวด + สิทธิ','ค่าจริง FY69 · opitemrece', inner);
+  }
+
+  function driversSection(mny){
+    if(mny && mny.status==='ok' && mny.drivers && mny.drivers.length){
+      var rows=mny.drivers.map(function(d){ var pos=String(d.sign)!=='-' && Number(d.impact_thb)>=0;
+        var impact=(d.impact_thb!=null)?((pos?'+':'−')+fmtTHB(Math.abs(Number(d.impact_thb)))+'/เดือน'):'';
+        return '<div class="mrow"><div><div class="mn">'+esc(d.kpi_name)+'</div><div class="md">ฝ่าย '+esc(d.dept)+(d.confidence?' · ความเชื่อมั่น '+esc(d.confidence):'')+'</div>'
+          +((d.exec_interpretation||d.interpretation)?'<div class="mi">'+esc(d.exec_interpretation||d.interpretation)+'</div>':'')
+          +'</div><div class="mv '+(pos?'up':'dn')+'">'+esc(impact)+'</div></div>'; }).join('');
+      return section('🔗 Revenue ↔ KPI · KPI ตัวไหนทำเงิน','วิเคราะห์ทางสถิติ',
+        '<div class="panel">'+rows+(mny.caveat?'<div class="cav">⚠️ '+esc(mny.caveat)+'</div>':'')+'</div>');
+    }
+    return section('🔗 Revenue ↔ KPI · KPI ตัวไหนทำเงิน','⏳ รอข้อมูล',
+      '<div class="pending">⏳ <b>รอ engine วิเคราะห์</b> — KPI↔รายได้ (regression + FDR) จะแสดง KPI ที่ขับเคลื่อนรายได้ พร้อมตัวเลขเงิน/เดือน</div>');
+  }
+
+  function kpiTableSection(){
+    var rows=KPIS.map(function(k){ var ok=k.low?(k.v<=k.t):(k.v>=k.t);
+      var st=ok?'เขียว':'เหลือง', dot=ok?'g':'a', col=ok?'#1f9d55':'#cc8400';
+      var w=Math.min(100, k.low?(k.v?k.t/k.v*100:100):(k.t?k.v/k.t*100:100));
+      return '<tr><td class="kn">'+esc(k.nm)+'</td><td class="vs">'+k.v+'% / '+k.t+'%</td>'
+        +'<td><div class="mini"><i style="width:'+Math.round(w)+'%;background:'+col+'"></i></div></td>'
+        +'<td><span class="st"><span class="dot '+dot+'"></span>'+st+'</span></td><td class="note2">'+esc(k.note)+'</td></tr>'; }).join('');
+    return section('🚦 KPI คลินิก (ค่าจริง FY69)','canonical hosxp-cohort',
+      '<div class="panel"><table><thead><tr><th>ตัวชี้วัด</th><th>ปัจจุบัน / เป้า</th><th style="width:140px">ถึงเป้า</th><th>สถานะ</th><th>หมายเหตุ</th></tr></thead><tbody>'+rows+'</tbody></table></div>');
+  }
+
+  function ha5Section(){
+    var h=HA5.map(function(c,i){ return '<div class="scard"><span class="std">'+esc(c.std)+'</span>'
+      +'<div class="nm">'+esc(c.nm)+'</div><div class="ev">'+esc(c.ev)+'</div>'
+      +'<div class="owner">ผู้รับผิดชอบ: <b>'+esc(c.owner)+'</b></div>'
+      +'<button class="add" onclick="nudgeHa('+i+',this)">📤 แจ้ง '+esc(c.dept)+' ทาง LINE</button></div>'; }).join('');
+    return section('🧠 KPI ที่ "ควรมี" แต่ยังไม่ได้ track','ตามมาตรฐาน HA ฉบับที่ 5 · สรพ.','<div class="sug">'+h+'</div>');
+  }
+  function nudgeHa(i, btn){ var c=HA5[i]||{}; _doNudge('[HA ฉบับ5] '+(c.nm||''), 'ยังไม่ได้ track KPI นี้ · '+(c.ev||'')+' · มอบหมาย → '+(c.dept||''), btn); }
+
+  function referLeakSection(cd){
+    var rl=(cd&&cd.status==='ok')?cd.referleak:null;
+    if(!rl||!rl.by_fy) return '';
+    var fys=['FY67','FY68','FY69'];
+    var maxfy=Math.max.apply(null,fys.map(function(f){return rl.by_fy[f]||0;}).concat([1]));
+    var fybars=fys.map(function(f){var v=rl.by_fy[f]||0;
+      return '<div class="rsrc"><div class="top"><span><b>'+f.replace('FY','ปีงบ ')+'</b>'+(f==='FY69'?' <small>(YTD)</small>':'')+'</span><span style="color:var(--muted)">'+v+' ครั้ง</span></div>'
+        +'<div class="bar"><i style="width:'+Math.round(v/maxfy*100)+'%;background:#c0392b"></i></div></div>'; }).join('');
+    var split=rl.fy69_split||{}, fund=rl.fy69_fund||{};
+    var csmbs=fund['เบิกได้ (ราชการ)']||0;
+    var statBar='<div class="money" style="margin-bottom:12px">'
+      +'<div class="stat"><div class="lab">ส่งต่อออก FY69 (YTD)</div><div class="val">'+(rl.by_fy.FY69||0)+'<small> ครั้ง</small></div><div class="lab" style="margin-top:3px;font-size:11.5px">ER '+(split.ER||0)+' / OPD '+(split.OPD||0)+'</div></div>'
+      +'<div class="stat"><div class="lab">สิทธิเบิกได้ที่หลุดออก</div><div class="val">'+csmbs+'<small> ราย</small></div><div class="lab" style="margin-top:3px;font-size:11.5px">รายได้ที่ "อยู่บ้านได้"</div></div>'
+      +'<div class="stat"><div class="lab">รายได้รั่ว (บาท)</div><div class="val">—<span class="pending-tag">อัตราเบิกไม่มีใน DB</span></div><div class="lab" style="margin-top:3px;font-size:11.5px">ต้องดึงจากการเงิน</div></div>'
+      +'</div>';
+    var grps=(rl.refer_groups||[]).filter(function(g){return g.label!=='อื่นๆ';});
+    var grpRows=grps.map(function(g){
+      return '<div class="mrow"><div><div class="mn">'+esc(g.label)+' <b style="color:#c0392b">'+g.n+' ราย</b></div>'
+        +(g.advice?'<div class="mi">💡 '+esc(g.advice)+'</div>':'')+'</div></div>'; }).join('');
+    var burden=rl.burden||[];
+    var bmax=Math.max.apply(null,burden.map(function(b){return b.hn;}).concat([1]));
+    var bRows=burden.map(function(b){ var col=(b.risk==='low'?'#1f9d55':(b.risk==='mid'?'#cc8400':'#c0392b'));
+      return '<div class="rsrc"><div class="top"><span>'+b.badge+' <b>'+esc(b.label)+'</b></span><span style="color:var(--muted)">'+b.hn+' ราย/ปี</span></div>'
+        +'<div class="bar"><i style="width:'+Math.round(b.hn/bmax*100)+'%;background:'+col+'"></i></div></div>'; }).join('');
+    var subh='font-weight:700;font-size:13px;color:#0f3d5c;margin:0 0 8px';
+    var inner='<div class="panel">'+statBar
+      +'<div style="'+subh+';margin-top:6px">📈 ส่งต่อจริงรายปีงบ (จากค่ารถ refer)</div>'+fybars
+      +'<div style="'+subh+';margin-top:16px">🚑 โรคที่ "ส่งต่อจริง" FY69 → ศักยภาพที่ขาด + ข้อเสนอลงทุน</div>'+grpRows
+      +'<div style="'+subh+';margin-top:16px">📊 โรคเรื้อรังเจอเยอะแต่ทำเองไม่ได้ (service-line ที่ควรเปิด)</div>'
+      +'<div class="note2" style="margin-bottom:8px">🟢 ลงทุนคุ้ม (vol สูง+เบิกได้) · 🟡 พิจารณา (ลงทุนสูง/ผูกพัน) · 🔴 ปล่อย refer (น้อย+เสี่ยงสูง สอนแล้วลืม)</div>'+bRows
+      +'<div class="cav" style="margin-top:11px">⚠️ refer จริง = ค่ารถ refer (icode 3902998/4569) ครอบ OPD/ER · burden = จำนวนคนไข้ที่เจอ ไม่ใช่จำนวน refer · รายได้รั่วเป็นบาทยังคำนวณไม่ได้ (อัตราเบิกอยู่นอก HOSxP)</div>'
+      +'</div>';
+    return section('🩺 Refer-out Leakage · โรคที่ส่งออก = จุดลงทุนดึงรายได้กลับ','refer จริง FY69', inner);
+  }
+
+  function drugEventsSection(d){
+    var de=d&&d.drugEvents;
+    if(!de) return '';
+    if(de.status!=='ok')
+      return section('💊 เฝ้าระวังยาขาดสต็อก / เข้าใหม่','อัปเดตรายสัปดาห์','<div class="pending">⏳ <b>รอข้อมูล</b> — รัน drug_stock_events.py บน cm2</div>');
+    var evs=de.events||[];
+    var body;
+    if(!evs.length){
+      body='<div class="panel"><div class="note2">✅ ยังไม่มีการเปลี่ยนแปลงบัญชียา (บัญชีปัจจุบัน '+(de.formularySize||0)+' รายการ)</div></div>';
+    }else{
+      var boxes=evs.map(function(e){ var out=(e.type==='out');
+        var bg=out?'#fbeeec':'#f1f7ee', bd=out?'#c0392b':'#1f9d55', ico=out?'🔴':'🟢', tag=out?'ยาหมด/ขาดสต็อก':'ยาใหม่/เปิดใช้';
+        return '<div style="background:'+bg+';border-left:4px solid '+bd+';border-radius:0 8px 8px 0;padding:9px 12px;margin-bottom:7px">'
+          +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><b style="font-size:14px">'+ico+' '+esc(e.name)+'</b><small style="white-space:nowrap">'+esc(e.date)+'</small></div>'
+          +'<div style="font-size:12px;color:#555;margin-top:2px">'+esc(tag)+' · '+esc(e.detail)+'</div></div>'; }).join('');
+      body='<div class="panel">'
+        +'<div class="note2" style="margin-bottom:9px">บัญชียาปัจจุบัน '+(de.formularySize||0)+' รายการ · แสดง '+evs.length+' เหตุการณ์ล่าสุด (ใหม่บน เก่าล่าง) · ควรตรวจสอบกับเภสัช</div>'
+        +boxes
+        +'<div class="cav" style="margin-top:9px">⚠️ ตรวจจับจากการเปลี่ยนแปลงบัญชียา active (istatus) เทียบรายสัปดาห์ + ยาที่หยุดจ่าย · ไม่รวมยาหมดอายุ (HOSxP ไม่มี lot/expiry)</div>'
+        +'</div>';
+    }
+    return section('💊 เฝ้าระวังยาขาดสต็อก / เข้าใหม่','อัปเดตรายสัปดาห์'+(de.generatedAt?' · '+de.generatedAt:''), body);
+  }
+
+  function render(d){
+    if(d && d.ok===false){ document.getElementById('body').innerHTML='<div class="loading">🔒 '+esc(d.msg||'เฉพาะผู้ดูแลระบบ (ADMIN)')+'</div>'; return; }
+    var cd=d.cockpit, mny=d.money;
+    var gen=(cd&&cd.generatedAt)||(mny&&mny.generatedAt)||'';
+    if(gen){ document.getElementById('stamp').textContent='ปีงบ 2569 · ข้อมูล '+gen; document.getElementById('genstamp').textContent='ข้อมูลล่าสุด '+gen; }
+    document.getElementById('body').innerHTML =
+      actionSection(cd) + moneySection(cd) + incomeSection(mny, cd) + driversSection(mny) + referLeakSection(cd) + drugEventsSection(d) + kpiTableSection() + ha5Section();
+    if(cd && cd.status==='ok' && cd.money) renderRevTrend(cd.money.rev_monthly);
+  }
+
+  if (window.google && google.script && google.script.run){
+    var _ckEmail='';
+    try{var _ckM=location.search.match(/[?&]email=([^&]+)/);if(_ckM)_ckEmail=decodeURIComponent(_ckM[1]);}catch(e){}
+    if(!_ckEmail){try{_ckEmail=localStorage.getItem('kpi_email')||'';}catch(e){}}
+    window._ckEmail = _ckEmail;
+    google.script.run
+      .withSuccessHandler(render)
+      .withFailureHandler(function(e){ document.getElementById('body').innerHTML='<div class="loading">เกิดข้อผิดพลาด: '+esc(e.message)+'</div>'; })
+      .getCEOCockpit({email:_ckEmail});
+  } else {
+    document.getElementById('body').innerHTML='<div class="loading">เปิดหน้านี้ผ่าน KPI Monitor (?view=cockpit)</div>';
+  }
+</script>
+</body>
+</html>

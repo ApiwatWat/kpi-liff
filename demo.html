@@ -107,6 +107,10 @@ body{font-family:'Prompt',sans-serif;background:#0a1628;color:#e2e8f0;min-height
 .kpi-id{font-size:12px;color:rgba(125,211,252,.45)}
 .kpi-name-wrap{font-weight:500;color:#e2e8f0}
 .kpi-responsible{font-size:12px;color:rgba(125,211,252,.4);margin-top:3px}
+.btn-kpi-info{background:none;border:1px solid rgba(14,165,233,.55);color:rgba(125,211,252,.92);border-radius:50%;width:16px;height:16px;font-size:10px;line-height:1;cursor:pointer;padding:0;vertical-align:middle;transition:all .2s}
+.btn-kpi-info:hover{background:rgba(14,165,233,.15);color:#7dd3fc;border-color:rgba(14,165,233,.6)}
+body.light-mode .btn-kpi-info{color:#C2410C;border-color:#E0894A}
+body.light-mode .btn-kpi-info:hover{background:#FFEDD9;color:#9A3412;border-color:#C2410C}
 .val-cell{font-size:14px;text-align:right;min-width:72px}
 .val-cell.editable{cursor:pointer}
 .val-cell.editable:hover{background:rgba(14,165,233,.1)}
@@ -829,7 +833,7 @@ body.light-mode #dept-bc{color:#9A3412 !important;font-weight:600}
   body.light-mode #ap-actions-list > div[id^="ap-item-"]{background:#FFEDD9 !important;border-color:#EDB680 !important}
   body.light-mode #ap-actions-list span[style*="color:rgba(125,211,252,.4)"]{color:#9A3412 !important}
   body.light-mode #ap-actions-list div[style*="color:rgba(125,211,252,.4)"]{color:#6B4A2B !important}
-  body.light-mode [id^="ap-text-"],body.light-mode [id^="ap-resp-"],body.light-mode [id^="ap-deadline-"],body.light-mode [id^="ap-status-"]{background:#FFF7F0 !important;border-color:#EDB680
+  body.light-mode [id^="ap-text-"],body.light-mode [id^="ap-owner-"],body.light-mode [id^="ap-due-"],body.light-mode [id^="ap-status-"]{background:#FFF7F0 !important;border-color:#EDB680
   !important;color:#3B2817 !important}
 
 /* ★ v9.15: Modal-based edit overlay (1 พ.ค. 2569) */
@@ -1080,6 +1084,12 @@ body.has-demo-ribbon{padding-top:25px}
     getMyDashboardStats:dashboardStats,
     getKPIsByDept:function(dept){return (!dept||dept==='ALL')?KPIS.slice():kpisForDept(dept);},
     getKPIsByUser:function(){return KPIS.slice();},
+    getExecPopSummary:function(){return {ok:true,status:'ok',fy:'FY2569',n:1998,n_high:383,mean_risk_high:28.5,mean_floor:12.0,dm_n:520,dm_high_pct:52,nondm_high_pct:7,high_dm:287,high_dm_pct:75,
+      levers:[{key:'bp',name:'คุมความดัน (SBP<130)',total:1176,top:210,nabove:240},{key:'tc',name:'ลดไขมัน / statin (TC<200)',total:520,top:90,nabove:180},{key:'smk',name:'เลิกบุหรี่',total:210,top:48,nabove:130}],
+      factors:[{name:'เบาหวาน (DM)',n:287,pct:75},{name:'ความดันสูง (SBP≥140)',n:240,pct:63},{name:'ไขมันสูง (TC≥240)',n:165,pct:43},{name:'สูบบุหรี่',n:130,pct:34}],
+      history:[{fy:'65',all:[1100,520,300],mil:[500,200,120]},{fy:'66',all:[1150,540,330],mil:[510,210,130]},{fy:'67',all:[1180,560,360],mil:[520,220,140]},{fy:'68',all:[1200,580,383],mil:[530,230,150]},{fy:'69',all:[1230,600,383],mil:[540,240,160]}],
+      wait:{opd:{median:133,mean:137,p90:234,n:13098},er:{median:13,mean:36,p90:101,n:3354}},
+      generatedAt:'27 มิ.ย. (เดโม่)'};},
     getYoYStats:function(dept){return yoyStats(dept);},
     getHeatmapStats:heatmapStats,
     getUsers:fakeUsers,
@@ -1142,7 +1152,7 @@ body.has-demo-ribbon{padding-top:25px}
   <div class="topbar-left">
     <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
     <div class="logo"><img src="https://apiwatwat.github.io/kpi-liff/KPI_Monitor_Logo_DonutRing.jpg" style="width:32px;height:32px;border-radius:8px"></div>
-    <h1>KPI Monitor<span>โรงพยาบาลค่ายเขตอุดมศักดิ์ HA v.5</span></h1>
+    <h1>KPI Monitor<span><?!= tenantGet('hospital_name') ?> HA v.5</span></h1>
   </div>
   <div style="display:flex;align-items:center;gap:12px">
     <span id="top-date" style="font-size:12px;color:rgba(125,211,252,.3)" class="top-date-text"></span>
@@ -1214,6 +1224,7 @@ body.has-demo-ribbon{padding-top:25px}
     <div class="sb-section">ภาพรวม</div>
     <div class="sb-item active" id="nav-home" onclick="showPage(this.dataset.p)" data-p="home">&#128202; Dashboard</div>
     <div class="sb-item" id="nav-exec" onclick="showPage(this.dataset.p)" data-p="exec">&#127775; Executive Summary</div>
+    <a class="sb-item" id="nav-cockpit" href="<?= ScriptApp.getService().getUrl() ?>?view=cockpit" target="_blank" rel="noopener" style="display:none;text-decoration:none">&#129658; CEO Cockpit</a>
     <div class="sb-item" id="nav-byuser" onclick="showPage(this.dataset.p)" data-p="byuser">&#128100; KPI ของฉัน</div>
     <div class="sb-item" id="nav-ai" onclick="showPage(this.dataset.p)" data-p="ai">&#129504; AI Insight</div>
     <div class="sb-item" id="nav-ai-report" onclick="showPage(this.dataset.p)" data-p="ai-report">&#128209; AI Report</div>
@@ -1222,6 +1233,8 @@ body.has-demo-ribbon{padding-top:25px}
     <div class="sb-section" style="margin-top:10px">ระบบ</div>
     <div class="sb-item" id="nav-users" onclick="showPage(this.dataset.p)" data-p="users">&#128101; จัดการ Users</div>
     <div class="sb-item" id="nav-log" onclick="showPage(this.dataset.p)" data-p="log">&#128203; Audit Log</div>
+    <div class="sb-item" id="nav-ha-std" onclick="showPage(this.dataset.p)" data-p="ha-std" style="display:none">&#127973; มาตรฐาน HA</div>
+    <a class="sb-item" id="nav-military" href="<?= ScriptApp.getService().getUrl() ?>?view=military" target="_blank" rel="noopener" style="text-decoration:none">&#127894; ความพร้อมกำลังพล</a>
   </nav>
   <main class="main">
     <div class="page active" id="page-home">
@@ -1252,11 +1265,14 @@ body.has-demo-ribbon{padding-top:25px}
          EXECUTIVE SUMMARY PAGE
     ══════════════════════════════════════════════ -->
     <div class="page" id="page-exec">
-      <div class="page-title">Executive Summary</div>
+      <div class="page-title">Executive Summary <span id="exec-data-date" style="font-size:13px;font-weight:400;color:#94a3b8;margin-left:8px"></span></div>
       <div class="page-sub" id="exec-sub">ภาพรวมเชิงคลินิกและการดำเนินงาน</div>
 
-      <!-- KPI Highlight Cards -->
-      <div id="exec-highlights" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:24px">
+      <!-- ระยะเวลาในระบบ OPD/ER (เพิ่ม 27 มิ.ย.69) -->
+      <!-- KPI Highlight Cards (รวม รอคอย OPD/ER — ย่อการ์ดเล็กน้อยให้พอดีแถวเดียวกัน) -->
+      <div id="exec-highlights" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px">
+        <div class="exec-card"><div class="ec-icon">&#9201;&#65039;</div><div class="ec-val" id="ex-wait-opd">-</div><div class="ec-label">รอคอย OPD</div><div class="ec-sub" id="ex-wait-opd-sub">เปิด→จุดสุดท้าย</div></div>
+        <div class="exec-card"><div class="ec-icon">&#128657;</div><div class="ec-val" id="ex-wait-er">-</div><div class="ec-label">รอคอย ER</div><div class="ec-sub" id="ex-wait-er-sub">proxy*</div></div>
         <div class="exec-card"><div class="ec-icon">&#129656;</div><div class="ec-val" id="ex-hba1c">-</div><div class="ec-label">HbA1c Controlled</div><div class="ec-sub">DM ที่ HbA1c ≤7%</div></div>
         <div class="exec-card"><div class="ec-icon">&#128147;</div><div class="ec-val" id="ex-bp">-</div><div class="ec-label">BP Controlled</div><div class="ec-sub">HT ที่ BP &lt;140/90</div></div>
         <div class="exec-card"><div class="ec-icon">&#127973;</div><div class="ec-val" id="ex-los">-</div><div class="ec-label">LOS เฉลี่ย</div><div class="ec-sub">ระยะวันนอน IPD</div></div>
@@ -1327,6 +1343,12 @@ body.has-demo-ribbon{padding-top:25px}
         </div>
       </div>
 
+      <!-- Population Health (ASCVD/NCD) — ADMIN only, from ExecSummary tab (26 มิ.ย.69) -->
+      <div id="exec-pophealth-section" style="display:none">
+        <div style="font-size:18px;font-weight:800;color:#e2e8f0;margin-bottom:14px;margin-top:8px;display:flex;align-items:center;gap:8px">&#10084;&#65039; สุขภาพประชากร — ความเสี่ยงหัวใจ-หลอดเลือด (ASCVD)</div>
+        <div id="exec-pop-body"></div>
+      </div>
+
       <!-- Key Insights -->
       <div style="font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:14px;margin-top:24px">&#128161; Key Insights</div>
       <div id="exec-insights" style="display:grid;grid-template-columns:1fr 1fr;gap:14px"></div>
@@ -1336,7 +1358,7 @@ body.has-demo-ribbon{padding-top:25px}
       <div class="page-title" id="dept-title"></div><div class="page-sub" id="dept-sub"></div>
       <div class="loading" id="dept-load" style="display:none"><div class="spinner"></div><span>กำลังโหลด...</span></div>
       <div id="dept-content" style="display:none">
-        <div class="toolbar"><div class="section-title">ตารางข้อมูล KPI</div><span class="badge" id="dept-badge"></span><button class="btn btn-add" id="btn-add-kpi" onclick="openAddKPI()">+ เพิ่ม KPI</button></div>
+        <div class="toolbar"><div class="section-title">ตารางข้อมูล KPI</div><span class="badge" id="dept-badge"></span><button class="btn btn-add" id="btn-bulk-import" onclick="openBulkImport()" style="margin-right:6px;background:rgba(14,165,233,.12);color:#7dd3fc;border-color:rgba(14,165,233,.3)">📥 นำเข้า Excel</button><button class="btn btn-add" id="btn-add-kpi" onclick="openAddKPI()">+ เพิ่ม KPI</button></div>
         <!-- ★ TOP SCROLLBAR ★ -->
         <div class="top-scrollbar" id="dept-top-scroll"><div class="top-scrollbar-inner" id="dept-top-scroll-inner"></div></div>
         <div class="kpi-scroll-container" id="dept-table-scroll"><table class="kpi-table"><thead id="dept-thead"></thead><tbody id="dept-tbody"></tbody></table></div>
@@ -1530,6 +1552,12 @@ body.has-demo-ribbon{padding-top:25px}
       </div>
       <div class="loading" id="audit-loading" style="display:none"><div class="spinner"></div><span>กำลังโหลด...</span></div>
       <div class="table-wrap"><table class="kpi-table" style="font-size:12px"><thead><tr><th style="width:90px">เวลา</th><th style="width:90px">Action</th><th style="width:140px">Email</th><th style="width:80px">KPI</th><th>รายละเอียด</th><th style="width:100px">ค่าเดิม</th><th style="width:100px">ค่าใหม่</th></tr></thead><tbody id="audit-tbody"><tr><td colspan="7" style="text-align:center;padding:40px;color:rgba(125,211,252,.35)">กำลังเตรียมโหลด...</td></tr></tbody></table></div>
+    </div>
+    <!-- ===== มาตรฐาน HA TAB (H0-T6 13 มิ.ย.69) — ADMIN only ===== -->
+    <div class="page" id="page-ha-std">
+      <div class="page-title">มาตรฐาน HA ฉบับ 5</div>
+      <div class="page-sub">Coverage map KPI &#8596; มาตรฐาน สรพ. &middot; ADMIN only</div>
+      <div id="ha-std-body"><div style="padding:30px;text-align:center;color:#64748b">กำลังโหลด...</div></div>
     </div>
     <!-- ===== AI REPORT TAB (22 พ.ค.69) — F2 + report consolidation ===== -->
     <div class="page" id="page-ai-report">
@@ -1992,7 +2020,7 @@ body.has-demo-ribbon{padding-top:25px}
   <label>รหัส KPI (ไม่บังคับ)</label>
 <input id="f-customid" placeholder="กำลังโหลด..." readonly style="background:rgba(125,211,252,0.1);color:rgba(125,211,252,0.8);cursor:default;">
 <div style="font-size:12px;color:rgba(125,211,252,.4);margin-top:5px">ด้านว่างระบบจะสร้างให้อัตโนมัติ</div>
-</div><div class="form-row"><label>ชื่อ KPI</label><input id="f-name" placeholder="ชื่อตัวชี้วัด"></div><div class="form-row"><label>หน่วย</label><input id="f-unit" placeholder="%, ราย, ครั้ง"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="form-row"><label>เป้าหมาย</label><input id="f-target" placeholder=">80%, 0"></div><div class="form-row"><label>ทิศทาง</label><select id="f-dir"><option value="up">สูงยิ่งดี</option><option value="down">ต่ำยิ่งดี</option><option value="">ไม่ระบุ</option></select></div></div><div class="form-row"><label>รอบการกรอก</label><select id="f-freq"><option value="1">ทุกเดือน</option><option value="2">ทุก 2 เดือน</option><option value="3">รายไตรมาส</option><option value="6">ทุก 6 เดือน</option><option value="12">ปีละครั้ง</option></select></div><div class="form-row" id="f-dtype-wrap"><label>ประเภทการเก็บข้อมูล</label><select id="f-datatype" onchange="toggleStartMonth()"><option value="forward">เก็บไปข้างหน้า (ไม่เก็บย้อนหลัง)</option><option value="retroactive">เก็บย้อนหลัง (สูงสุด 3 ปี)</option></select></div><div id="f-start-wrap"><div class="form-row"><label id="f-start-label">เดือนเริ่มต้น</label><select id="f-startmonth"></select><div style="font-size:12px;color:rgba(125,211,252,.4);margin-top:5px" id="f-start-hint">เลือกเดือนที่จะเริ่มเก็บข้อมูล</div></div></div><div class="modal-footer"><button class="btn btn-cancel" onclick="closeModal('modal-kpi')">ยกเลิก</button><button class="btn btn-save" onclick="submitKPI()">บันทึก</button></div></div></div>
+</div><div class="form-row"><label>ชื่อ KPI</label><input id="f-name" placeholder="ชื่อตัวชี้วัด"></div><div class="form-row"><label>หน่วย</label><input id="f-unit" placeholder="%, ราย, ครั้ง"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="form-row"><label>เป้าหมาย</label><input id="f-target" placeholder=">80%, 0"></div><div class="form-row"><label>ทิศทาง</label><select id="f-dir"><option value="up">สูงยิ่งดี</option><option value="down">ต่ำยิ่งดี</option><option value="">ไม่ระบุ</option></select></div></div><div class="form-row"><label>รอบการกรอก</label><select id="f-freq"><option value="1">ทุกเดือน</option><option value="2">ทุก 2 เดือน</option><option value="3">รายไตรมาส</option><option value="6">ทุก 6 เดือน</option><option value="12">ปีละครั้ง</option></select></div><div class="form-row" id="f-dtype-wrap"><label>ประเภทการเก็บข้อมูล</label><select id="f-datatype" onchange="toggleStartMonth()"><option value="forward">เก็บไปข้างหน้า (ไม่เก็บย้อนหลัง)</option><option value="retroactive">เก็บย้อนหลัง (สูงสุด 3 ปี)</option></select></div><div id="f-start-wrap"><div class="form-row"><label id="f-start-label">เดือนเริ่มต้น</label><select id="f-startmonth"></select><div style="font-size:12px;color:rgba(125,211,252,.4);margin-top:5px" id="f-start-hint">เลือกเดือนที่จะเริ่มเก็บข้อมูล</div></div></div><div class="form-row" id="f-def-wrap"><label>&#128218; นิยาม KPI (ไม่บังคับ)</label><textarea id="f-definition" placeholder="คำอธิบายตัวชี้วัด สูตรคำนวณ หรือหมายเหตุ..." style="min-height:56px"></textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="form-row"><label>ค่าต่ำสุดปกติ</label><input id="f-valmin" type="number" step="any" placeholder="เช่น 0"></div><div class="form-row"><label>ค่าสูงสุดปกติ</label><input id="f-valmax" type="number" step="any" placeholder="เช่น 100"></div></div><div class="modal-footer"><button class="btn btn-cancel" onclick="closeModal('modal-kpi')">ยกเลิก</button><button class="btn btn-save" onclick="submitKPI()">บันทึก</button></div></div></div>
 
 <div class="modal-overlay" id="modal-goal" role="dialog" aria-modal="true" aria-label="แก้ไข Goal เดือนนี้"><div class="modal"><h3>แก้ไข Goal เดือนนี้</h3><div id="modal-goal-info" style="font-size:14px;color:rgba(125,211,252,.5);margin-bottom:18px"></div><div class="form-row"><label>Goal ใหม่</label><input id="g-goal" placeholder=">85%, 0"></div><div class="form-row"><label>ทิศทาง</label><select id="g-dir"><option value="up">สูงยิ่งดี</option><option value="down">ต่ำยิ่งดี</option></select></div><div class="modal-footer"><button class="btn btn-cancel" onclick="closeModal('modal-goal')">ยกเลิก</button><button class="btn btn-save" onclick="submitGoal()">บันทึก Goal</button></div></div></div>
 
@@ -2013,6 +2041,8 @@ body.has-demo-ribbon{padding-top:25px}
       <div id="ap-kpi-name" style="font-weight:600;color:#152d47;margin-top:6px;font-size:15px"></div>
       <div id="ap-kpi-meta" style="font-size:12px;color:#6b7c93;margin-top:4px"></div>
     </div>
+    <!-- H2: follow-up รอบก่อน (KPI before/after) -->
+    <div id="ap-followup"></div>
     <!-- 2x2 PDCA grid -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <!-- P -->
@@ -2058,12 +2088,47 @@ body.has-demo-ribbon{padding-top:25px}
   </div>
 </div>
 
+<!-- Bulk import modal (DocTa P2-T9) -->
+<div class="modal-overlay" id="bulk-import-modal">
+  <div class="modal" style="max-width:640px">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;color:#e2e8f0">📥 นำเข้า KPI จาก Excel</h3>
+    <div style="font-size:12px;color:#64748b;margin-bottom:14px">วาง (Ctrl+V) จาก Excel — คอลัมน์: <code>KPI_ID | ฝ่าย | ชื่อ KPI | หน่วย | เป้าหมาย | ทิศทาง | Frequency | Owner | DataType</code></div>
+    <div id="bulk-step-paste">
+      <textarea id="bulk-tsv" style="width:100%;height:180px;padding:10px;background:#0f172a;border:1px solid rgba(14,165,233,.25);border-radius:8px;color:#e2e8f0;font-size:12px;font-family:monospace;resize:vertical" placeholder="ZZTEST-1&#9;PCT&#9;ชื่อทดสอบ&#9;%&#9;≥90&#9;↑&#9;1&#9;PCT&#9;forward"></textarea>
+      <div id="bulk-parse-err" style="color:#f87171;font-size:12px;margin-top:6px"></div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn btn-cancel" onclick="closeModal('bulk-import-modal')">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="bulkPreview()">ดูตัวอย่าง →</button>
+      </div>
+    </div>
+    <div id="bulk-step-preview" style="display:none">
+      <div id="bulk-preview-table" style="overflow-x:auto;max-height:280px;overflow-y:auto;margin-bottom:12px;font-size:12px"></div>
+      <div id="bulk-preview-err" style="color:#f87171;font-size:12px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-cancel" onclick="bulkBackToPaste()">← แก้ไข</button>
+        <button class="btn btn-primary" id="btn-bulk-confirm" onclick="bulkConfirm()">✓ นำเข้า</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Definition viewer modal (DocTa P2-T7) -->
+<div class="modal-overlay" id="def-modal">
+  <div class="modal" style="max-width:520px">
+    <h3 id="def-modal-title" style="font-size:16px;font-weight:700;margin-bottom:18px">คำนิยาม KPI</h3>
+    <div id="def-modal-body" style="min-height:80px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-cancel" onclick="closeModal('def-modal')">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <script>
 var DEPT_CFG = {'ทีมนำ':{color:'#3b82f6'},'TL':{color:'#3b82f6'},'NSO':{color:'#22c55e'},'PCT':{color:'#f59e0b'},'PTC':{color:'#8b5cf6'},'RM':{color:'#ec4899'},'HRD':{color:'#10b981'},'ENV':{color:'#3b82f6'},'IC':{color:'#f97316'},'IM':{color:'#06b6d4'},'HPH':{color:'#84cc16'},'การเงิน':{color:'#ef4444'},'FIN':{color:'#ef4444'}};
 function getDeptColor(dept){var key=dept?dept.split('-')[0]:'';if(DEPT_CFG[dept])return DEPT_CFG[dept].color;if(DEPT_CFG[key])return DEPT_CFG[key].color;return'#94a3b8';}
 
-var S={email:null,role:null,name:null,dept:null,depts:null,userId:null,kpis:null,chart:null,editCell:null,pendingGoal:{},pendingComment:{},editKpiId:null};
+var S={email:null,role:null,name:null,dept:null,depts:null,userId:null,kpis:null,chart:null,editCell:null,pendingGoal:{},pendingComment:{},editKpiId:null,kpiDefMap:{}};
 var cdTimer=null;var S_editUserId=null;
 var DEPTS_LIST=['ทีมนำ','NSO','PCT','PTC','RM','HRD','ENV','IC','IM','HPH','การเงิน'];
 var MN=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -2196,6 +2261,9 @@ function doLogin(){
     document.getElementById('user-pill-text').textContent=info.name+' ('+info.role+')';
     document.getElementById('home-sub').textContent='สวัสดีครับ '+info.name;
     if(info.role==='ADMIN')document.getElementById('btn-sheet').style.display='inline-block';
+    if(info.role==='ADMIN'){var haNavEl=document.getElementById('nav-ha-std');if(haNavEl)haNavEl.style.display='';}
+    if(info.role==='ADMIN'){var ckNavEl=document.getElementById('nav-cockpit');if(ckNavEl){ckNavEl.style.display='';if(ckNavEl.href.indexOf('email=')<0)ckNavEl.href=ckNavEl.href+'&email='+encodeURIComponent(email);}}
+
     /* F7 Smart Suggest — show bell after login (23 พ.ค.69) */
     var bellEl=document.getElementById('bell-smart-suggest');if(bellEl)bellEl.style.display='flex';
     /* AssistiveTouch — show ball after login + init drag (23 พ.ค.69) */
@@ -2222,7 +2290,7 @@ function doLogout(){var menu=document.getElementById('logout-menu');menu.classNa
 
 function buildSidebar(depts){var html='';for(var i=0;i<depts.length;i++){var d=depts[i];html+='<div class="sb-item" id="nav-dept-'+d+'" data-dept="'+d+'" onclick="navToDept(this)"><span class="dept-dot" style="background:'+getDeptColor(d)+'"></span><span>'+d+'</span></div>';}document.getElementById('dept-nav').innerHTML=html;}
 
-function showPage(id){var menu=document.getElementById('logout-menu');menu.className=menu.className.replace(/\s*open/g,'');var pages=document.querySelectorAll('.page');for(var i=0;i<pages.length;i++){pages[i].classList.remove('active');}document.getElementById('page-'+id).classList.add('active');var navItems=document.querySelectorAll('.sb-item');for(var j=0;j<navItems.length;j++){navItems[j].classList.remove('active');}var nav=document.getElementById('nav-'+id);if(nav)nav.classList.add('active'); if(id==='home')loadDashboard();if(id==='byuser'){loadMyKPIs();ssAutoShowIfNeeded();}if(id==='users')loadUsers();if(id==='exec')loadExecSummary();if(id==='ai')aiInitPage();if(id==='ai-report')airepInit();if(id==='log')loadAuditLog();}
+function showPage(id){var menu=document.getElementById('logout-menu');menu.className=menu.className.replace(/\s*open/g,'');var pages=document.querySelectorAll('.page');for(var i=0;i<pages.length;i++){pages[i].classList.remove('active');}document.getElementById('page-'+id).classList.add('active');var navItems=document.querySelectorAll('.sb-item');for(var j=0;j<navItems.length;j++){navItems[j].classList.remove('active');}var nav=document.getElementById('nav-'+id);if(nav)nav.classList.add('active'); if(id==='home')loadDashboard();if(id==='byuser'){loadMyKPIs();ssAutoShowIfNeeded();}if(id==='users')loadUsers();if(id==='exec')loadExecSummary();if(id==='ai')aiInitPage();if(id==='ai-report')airepInit();if(id==='log')loadAuditLog();if(id==='ha-std')openHAStd();}
 
 function refreshPage(){if(!S.email)return;bcClear();showToast('กำลัง Clear Cache...','info');google.script.run.withSuccessHandler(function(){google.script.run.withSuccessHandler(function(info){if(info.role==='GUEST')return;S.role=info.role;S.name=info.name;S.dept=info.dept;S.depts=info.depts||[info.dept];S.kpis=info.kpis||[];S.haFillActive=!!info.haFillActive;document.getElementById('user-pill-text').textContent=info.name+' ('+info.role+')';if(info.role==='ADMIN')document.getElementById('btn-sheet').style.display='inline-block';loadDashboard();var activePage=document.querySelector('.page.active');if(!activePage)return;var id=activePage.id.replace('page-','');if(id==='dept'){var dept=document.getElementById('dept-title').textContent;if(dept)loadDept(dept);}else if(id==='byuser')loadMyKPIs();else if(id==='users')loadUsers();showToast('Refresh สำเร็จ','success');}).checkPermission(S.email);}).forceClearCacheAPI();
 }
@@ -2374,6 +2442,12 @@ function renderTable(kpis, mode, dept) {
     document.getElementById('dept-badge').textContent = kpis.length + ' KPIs';
   }
   if (!kpis.length) { document.getElementById(tbodyId).innerHTML = '<tr><td colspan="20" style="text-align:center;padding:40px;color:#6b7c93">ไม่พบข้อมูล KPI</td></tr>'; return; }
+  // H1: populate definition map for Definition Card + range check
+  if (!S.kpiDefMap) S.kpiDefMap = {};
+  for (var _di = 0; _di < kpis.length; _di++) {
+    var _k = kpis[_di];
+    if (_k.id) S.kpiDefMap[_k.id] = {definition: _k.definition || '', defSource: _k.defSource || '', valMin: _k.valMin !== undefined ? _k.valMin : null, valMax: _k.valMax !== undefined ? _k.valMax : null};
+  }
   var SHOW = 25;
   var months = kpis[0].months.slice(-SHOW);
   var now = new Date();
@@ -2492,8 +2566,8 @@ var safeName = (kpi.name || '').split('"').join('&quot;').split('<').join('&lt;'
     }
 
     tbHTML += '<tr data-kid="' + kpi.id + '" data-mode="' + mode + '" onclick="selectKPIRow(this,event)" id="row-' + mode + '-' + kpi.id + '">';
-    tbHTML += '<td class="kpi-id">' + kpi.id + ' <button class="kdef-btn" data-kid="' + kpi.id + '" onclick="event.stopPropagation();kpiDefClick(this)" title="ดูนิยามตัวชี้วัด">&#9432;</button></td>';
-    tbHTML += '<td class="kpi-name-wrap">' + escHtml(kpi.name) + '<div class="kpi-responsible">Owner: ' + escHtml(ownerDisplay) + ownerBadge + dtBadge + (function() {
+    tbHTML += '<td class="kpi-id">' + kpi.id + '</td>';
+    tbHTML += '<td class="kpi-name-wrap">' + escHtml(kpi.name) + ' <button class="btn-kpi-info" onclick="event.stopPropagation();openDefModal(\'' + kpi.id + '\')" title="คำนิยาม KPI">ⓘ</button><div class="kpi-responsible">Owner: ' + escHtml(ownerDisplay) + ownerBadge + dtBadge + (function() {
   var fl = {1:'ทุกเดือน', 3:'ทุก 3 เดือน', 6:'ทุก 6 เดือน', 12:'ทุกปี'};
   var fc = {1:'#0ea5e9', 3:'#8b5cf6', 6:'#f59e0b', 12:'#10b981'};
   var label = fl[freq] || 'ทุก '+freq+' เดือน';
@@ -2557,7 +2631,7 @@ html+='<div class="chart-container"><canvas id="chart-canvas"></canvas></div>';p
 function startEdit(cell,kpiId,month,curVal){if(S.editCell)cancelEdit();S.editCell=cell;cell.setAttribute('data-prev',curVal||'');var v=(curVal==='NA'||curVal===''||curVal===null||curVal===undefined)?'':curVal;var html='<input type="number" step="any" value="'+v+'" id="edit-inp" style="width:70px;padding:3px 6px;border:1.5px solid #1e90d4;border-radius:4px;font-size:12px;outline:none">';html+='<button onclick="commitEdit()" style="background:#17b89a;color:#fff;border:none;border-radius:4px;padding:3px 7px;font-size:11px;font-weight:600;cursor:pointer;margin-left:2px">&#10003;</button>';html+='<button onclick="cancelEdit()" style="background:none;border:1px solid #dde3ec;border-radius:4px;padding:3px 5px;font-size:11px;cursor:pointer;margin-left:2px">&#10005;</button>';cell.innerHTML=html;var inp=document.getElementById('edit-inp');if(inp){inp.focus();inp.onkeydown=function(e){if(e.keyCode===13)commitEdit();if(e.keyCode===27)cancelEdit();};}cell.setAttribute('data-kpiid',kpiId);cell.setAttribute('data-month',month);}
 function commitEdit(){var cell=S.editCell;if(!cell)return;var inp=document.getElementById('edit-inp');var val=inp?inp.value.trim():'';var kpiId=cell.getAttribute('data-kpiid');var month=cell.getAttribute('data-month');cell.innerHTML='<span style="color:#888;font-size:11px">กำลังบันทึก...</span>';S.editCell=null;_doSaveKPI(kpiId,month,val,cell,false);}
 
-function _doSaveKPI(kpiId,month,val,cell,force){var valToSend=val===''?'NA':parseFloat(val);google.script.run.withSuccessHandler(function(r){if(r&&r.needs_confirm){var msg='ค่านี้เพิ่งถูกยืนยันผ่าน LINE เมื่อ '+r.hours_since+' ชม.ที่แล้ว\n(เวลา '+r.prev_at+' โดย '+(r.prev_by||'ผู้ใช้')+')\n\nค่าเดิม: '+r.old_value+'\nค่าใหม่: '+r.new_value+'\n\nต้องการเขียนทับหรือไม่?';if(confirm(msg)){cell.innerHTML='<span style="color:#888;font-size:11px">กำลังบันทึก...</span>';_doSaveKPI(kpiId,month,val,cell,true);}else{cell.innerHTML=r.old_value!==undefined&&r.old_value!==''?r.old_value:'<span style="color:#c8d0db">NA</span>';showToast('ยกเลิกการแก้ไข','info');}return;}cell.innerHTML=val===''?'<span style="color:#c8d0db">NA</span>':val;if(r&&r.ok){bcClear();showToast('บันทึก '+kpiId+' = '+(val||'NA')+' สำเร็จ','success');}else{showToast('Error: '+(r&&r.msg?r.msg:'unknown'),'error');}}).saveKPIValue(kpiId,month,valToSend,S.email,force);}
+function _doSaveKPI(kpiId,month,val,cell,force){var valToSend=val===''?'NA':parseFloat(val);if(!force&&val!==''&&!isNaN(valToSend)){var _info=(S.kpiDefMap&&S.kpiDefMap[kpiId])||null;if(!checkRangeOK(_info,valToSend)){var prev=cell.getAttribute('data-prev')||'';cell.innerHTML=(prev===''||prev==='NA')?'<span style="color:#c8d0db">NA</span>':prev;showToast('ยกเลิก','info');return;}var _oor=false;if(_info&&(_info.valMin!==null||_info.valMax!==null)){var _lo=_info.valMin,_hi=_info.valMax;if((_lo!==null&&valToSend<_lo)||(_hi!==null&&valToSend>_hi))_oor=true;}google.script.run.withSuccessHandler(function(r){if(r&&r.needs_confirm){var msg='ค่านี้เพิ่งถูกยืนยันผ่าน LINE เมื่อ '+r.hours_since+' ชม.ที่แล้ว\n(เวลา '+r.prev_at+' โดย '+(r.prev_by||'ผู้ใช้')+')\n\nค่าเดิม: '+r.old_value+'\nค่าใหม่: '+r.new_value+'\n\nต้องการเขียนทับหรือไม่?';if(confirm(msg)){cell.innerHTML='<span style="color:#888;font-size:11px">กำลังบันทึก...</span>';_doSaveKPI(kpiId,month,val,cell,true);}else{cell.innerHTML=r.old_value!==undefined&&r.old_value!==''?r.old_value:'<span style="color:#c8d0db">NA</span>';showToast('ยกเลิกการแก้ไข','info');}return;}cell.innerHTML=val===''?'<span style="color:#c8d0db">NA</span>':val;if(r&&r.ok){bcClear();showToast('บันทึก '+kpiId+' = '+(val||'NA')+' สำเร็จ','success');}else{showToast('Error: '+(r&&r.msg?r.msg:'unknown'),'error');}}).saveKPIValue(kpiId,month,valToSend,S.email,force,_oor);}else{var _oor2=false;google.script.run.withSuccessHandler(function(r){if(r&&r.needs_confirm){var msg='ค่านี้เพิ่งถูกยืนยันผ่าน LINE เมื่อ '+r.hours_since+' ชม.ที่แล้ว\n(เวลา '+r.prev_at+' โดย '+(r.prev_by||'ผู้ใช้')+')\n\nค่าเดิม: '+r.old_value+'\nค่าใหม่: '+r.new_value+'\n\nต้องการเขียนทับหรือไม่?';if(confirm(msg)){cell.innerHTML='<span style="color:#888;font-size:11px">กำลังบันทึก...</span>';_doSaveKPI(kpiId,month,val,cell,true);}else{cell.innerHTML=r.old_value!==undefined&&r.old_value!==''?r.old_value:'<span style="color:#c8d0db">NA</span>';showToast('ยกเลิกการแก้ไข','info');}return;}cell.innerHTML=val===''?'<span style="color:#c8d0db">NA</span>':val;if(r&&r.ok){bcClear();showToast('บันทึก '+kpiId+' = '+(val||'NA')+' สำเร็จ','success');}else{showToast('Error: '+(r&&r.msg?r.msg:'unknown'),'error');}}).saveKPIValue(kpiId,month,valToSend,S.email,force,_oor2);}}
 function cancelEdit(){var cell=S.editCell;if(!cell)return;var prev=cell.getAttribute('data-prev')||'';cell.innerHTML=(prev===''||prev==='NA')?'<span style="color:#c8d0db">NA</span>':prev;S.editCell=null;}
 
   // ★ v9.15: Modal-based edit handlers (1 พ.ค. 2569 — replaces inline startEdit/commitEdit)
@@ -2576,6 +2650,24 @@ function cancelEdit(){var cell=S.editCell;if(!cell)return;var prev=cell.getAttri
              curVal === 'ค้างกรอก') ? '' : curVal;
     inp.value = v;
     document.getElementById('ekm-history').textContent = 'กำลังโหลด...';
+    var defCard = document.getElementById('ekm-def-card');
+    if (defCard) {
+      var defInfo = (S.kpiDefMap && S.kpiDefMap[kpiId]) || {};
+      if (defInfo.definition) {
+        var dHtml = '&#128218; ' + escHtml(defInfo.definition);
+        if (defInfo.valMin !== null || defInfo.valMax !== null) {
+          dHtml += '<br>ช่วงค่าปกติ: ' + (defInfo.valMin !== null ? defInfo.valMin : '-') + ' &ndash; ' + (defInfo.valMax !== null ? defInfo.valMax : '-');
+        }
+        if (defInfo.defSource === 'ai_draft') {
+          var badgeCol = (document.body.className.indexOf('light-mode') >= 0) ? '#92600a' : '#fcd34d';
+          dHtml += '<br><span style="color:' + badgeCol + ';font-size:11px">&#9888;&#65039; ร่างโดย AI — รอทีม HA ยืนยัน</span>';
+        }
+        defCard.innerHTML = dHtml;
+        defCard.style.display = 'block';
+      } else {
+        defCard.style.display = 'none';
+      }
+    }
     document.getElementById('edit-kpi-modal').style.display = 'flex';
     setTimeout(function(){ inp.focus(); inp.select(); }, 50);
     google.script.run.withSuccessHandler(function(history) {
@@ -2649,6 +2741,17 @@ function cancelEdit(){var cell=S.editCell;if(!cell)return;var prev=cell.getAttri
     return true;
   }
 
+ function checkRangeOK(kpiInfo, val) {
+    if (!kpiInfo) return true;
+    var v = parseFloat(val);
+    if (isNaN(v)) return true;
+    var lo = kpiInfo.valMin, hi = kpiInfo.valMax;
+    if (lo === null && hi === null) return true;
+    if ((lo === null || v >= lo) && (hi === null || v <= hi)) return true;
+    return confirm('⚠️ ค่าปกติของ KPI นี้อยู่ระหว่าง ' + (lo !== null ? lo : '-') + ' ถึง ' + (hi !== null ? hi : '-')
+      + '\nคุณกรอก: ' + v + '\n\nยืนยันบันทึกค่านี้?');
+  }
+
  function ekmSaveClick() {
     var inp = document.getElementById('ekm-input');
     var raw = inp.value;
@@ -2660,6 +2763,18 @@ function cancelEdit(){var cell=S.editCell;if(!cell)return;var prev=cell.getAttri
     if (!EKM_STATE.kpiId || !EKM_STATE.month) {
       showToast('ข้อมูล KPI ไม่ครบ — โปรดเปิด modal ใหม่', 'error');
       return;
+    }
+    var _oor = false;
+    if (raw !== '' && !isNaN(valToSend)) {
+      var _defInfo = (S.kpiDefMap && S.kpiDefMap[EKM_STATE.kpiId]) || null;
+      if (!checkRangeOK(_defInfo, valToSend)) {
+        showToast('ยกเลิก', 'info');
+        return;
+      }
+      if (_defInfo && (_defInfo.valMin !== null || _defInfo.valMax !== null)) {
+        var _lo = _defInfo.valMin, _hi = _defInfo.valMax;
+        if ((_lo !== null && valToSend < _lo) || (_hi !== null && valToSend > _hi)) _oor = true;
+      }
     }
     var kpi = EKM_STATE.kpiId;
     var month = EKM_STATE.month;
@@ -2676,14 +2791,14 @@ function cancelEdit(){var cell=S.editCell;if(!cell)return;var prev=cell.getAttri
           showToast('กำลังบันทึก (force)...', 'info');
           google.script.run.withSuccessHandler(function(rr){
             handleEKMSaveResult(rr, kpi, month, valToSend);
-          }).saveKPIValue(kpi, month, valToSend, S.email, true);
+          }).saveKPIValue(kpi, month, valToSend, S.email, true, _oor);
         } else {
           showToast('ยกเลิกการแก้ไข', 'info');
         }
         return;
       }
       handleEKMSaveResult(r, kpi, month, valToSend);
-    }).saveKPIValue(kpi, month, valToSend, S.email, false);
+    }).saveKPIValue(kpi, month, valToSend, S.email, false, _oor);
   }
 
   function handleEKMSaveResult(r, kpi, month, displayVal) {
@@ -2810,6 +2925,9 @@ document.getElementById('f-customid').value = 'กำลังโหลด...';
       }).getNextKpiId(dept);
   document.getElementById('f-dtype-wrap').style.display = 'block';
   document.getElementById('f-start-wrap').style.display = 'block';
+  document.getElementById('f-definition').value = '';
+  document.getElementById('f-valmin').value = '';
+  document.getElementById('f-valmax').value = '';
   toggleStartMonth();
   openModal('modal-kpi');
 }
@@ -2839,6 +2957,15 @@ function openEditKPI(kpiId, name, unit, target, dir, freq) {
     document.getElementById('f-datatype').value = 'forward';
     toggleStartMonth();
   }
+  if (curKpi) {
+    document.getElementById('f-definition').value = curKpi.definition || '';
+    document.getElementById('f-valmin').value = curKpi.valMin !== null ? curKpi.valMin : '';
+    document.getElementById('f-valmax').value = curKpi.valMax !== null ? curKpi.valMax : '';
+  } else {
+    document.getElementById('f-definition').value = '';
+    document.getElementById('f-valmin').value = '';
+    document.getElementById('f-valmax').value = '';
+  }
   openModal('modal-kpi');
 }
 function submitKPI() {
@@ -2867,7 +2994,10 @@ function submitKPI() {
         }).forceClearCacheAPI();
       }
       else showToast('Error: ' + r.msg, 'error');
-}).saveKPIMeta(S.editKpiId, name, unit, freq, S.email, target, dir, document.getElementById('f-datatype').value, document.getElementById('f-startmonth').value);
+}).saveKPIMeta(S.editKpiId, name, unit, freq, S.email, target, dir, document.getElementById('f-datatype').value, document.getElementById('f-startmonth').value,
+    document.getElementById('f-definition').value,
+    document.getElementById('f-valmin').value,
+    document.getElementById('f-valmax').value);
   } else {
   var dataType = document.getElementById('f-datatype').value;
   var startMonth = document.getElementById('f-startmonth').value;
@@ -2976,6 +3106,8 @@ function renderMyDashboard(stats){
 var _apKpiId='';
 var _apMonth='';
 var _apActionCount=0;
+var _apOwners=[];          // [{email,name}] ของฝ่าย KPI ปัจจุบัน (H2)
+var _apLastNotified={};    // 'ap-'+idx → last_notified ของ action เดิม (preserve)
 
 function openActionPlan(kpiId,kpiName,month,curVal,target,dir){
   _apKpiId=kpiId;
@@ -2988,6 +3120,10 @@ function openActionPlan(kpiId,kpiName,month,curVal,target,dir){
   document.getElementById('ap-check').value='';
   document.getElementById('ap-adjust').value='';
   document.getElementById('ap-actions-list').innerHTML='';
+  _apOwners=[];_apLastNotified={};
+  // H2: โหลดผู้รับผิดชอบ (ฝ่าย KPI) + follow-up รอบก่อน
+  google.script.run.withSuccessHandler(function(o){_apOwners=(o&&o.owners)||[];rebuildOwnerSelects();}).getActionOwners(kpiId);
+  loadActionFollowup(kpiId,month);
 
   // โหลด plan ที่มีอยู่ (new schema: P/C/A separate fields)
   google.script.run.withSuccessHandler(function(plans){
@@ -3001,7 +3137,8 @@ function openActionPlan(kpiId,kpiName,month,curVal,target,dir){
       document.getElementById('ap-adjust').value=existing.adjust||'';
       var actions=existing.actions||[];
       for(var j=0;j<actions.length;j++){
-        addActionItem(actions[j].text,actions[j].responsible,actions[j].deadline,actions[j].status);
+        addActionItem(actions[j].text,actions[j].owner,actions[j].due,actions[j].status,actions[j].responsible,actions[j].deadline);
+        _apLastNotified['ap-'+_apActionCount]=actions[j].last_notified||'';
       }
     }
     if(_apActionCount===0)addActionItem();
@@ -3012,22 +3149,63 @@ function openActionPlan(kpiId,kpiName,month,curVal,target,dir){
   }).getActionPlans(kpiId);
 }
 
-function addActionItem(text,responsible,deadline,status){
+function addActionItem(text,owner,due,status,responsibleOld,deadlineOld){
   _apActionCount++;
   var idx=_apActionCount;
   var safeText=(text||'').split('"').join('&quot;').split('<').join('&lt;');
-  var safeResp=(responsible||'').split('"').join('&quot;').split('<').join('&lt;');
-  var safeDl=(deadline||'').split('"').join('&quot;').split('<').join('&lt;');
+  // backward compat: action เก่า owner/due ว่าง → ลองดึงจาก responsible/deadline เก่า
+  var ownerVal=owner||((responsibleOld&&responsibleOld.indexOf('@')>=0)?responsibleOld:'');
+  var dueVal=due||((deadlineOld&&/^\d{4}-\d{2}-\d{2}$/.test(deadlineOld))?deadlineOld:'');
+  var safeDue=(dueVal||'').split('"').join('&quot;');
   var html='<div id="ap-item-'+idx+'" style="background:#fffaef;border:1px solid #fed7aa;border-radius:8px;padding:8px;margin-bottom:6px">';
-  html+='<div style="display:flex;gap:8px;margin-bottom:5px;align-items:center"><span style="font-size:11px;color:#9a3412;font-weight:700">Action '+idx+'</span><button onclick="removeActionItem('+idx+')" style="margin-left:auto;background:none;border:none;color:#dc2626;cursor:pointer;font-size:11px">✕ ลบ</button></div>';
+  html+='<div style="display:flex;gap:8px;margin-bottom:5px;align-items:center"><span style="font-size:11px;color:#9a3412;font-weight:700">Action '+idx+'</span><button onclick="removeActionItem('+idx+')" style="margin-left:auto;background:none;border:none;color:#dc2626;cursor:pointer;font-size:11px">&#10005; ลบ</button></div>';
   html+='<input id="ap-text-'+idx+'" value="'+safeText+'" placeholder="ทำอะไร" style="width:100%;padding:6px 10px;border:1px solid #fed7aa;border-radius:6px;font-family:Sarabun,sans-serif;font-size:12px;background:#fff;color:#1e293b">';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px">';
-  html+='<input id="ap-resp-'+idx+'" value="'+safeResp+'" placeholder="ใคร" style="padding:5px 8px;border:1px solid #fed7aa;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;font-family:Sarabun,sans-serif">';
-  html+='<input id="ap-deadline-'+idx+'" value="'+safeDl+'" placeholder="เมื่อไหร่" style="padding:5px 8px;border:1px solid #fed7aa;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;font-family:Sarabun,sans-serif">';
+  html+='<select id="ap-owner-'+idx+'" data-val="'+(ownerVal||'').split('"').join('&quot;')+'" title="ผู้รับผิดชอบ" style="padding:5px 8px;border:1px solid #fed7aa;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;font-family:Sarabun,sans-serif">'+ownerOptionsHtml_(ownerVal)+'</select>';
+  html+='<input id="ap-due-'+idx+'" type="date" value="'+safeDue+'" title="กำหนดเสร็จ" style="padding:5px 8px;border:1px solid #fed7aa;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;font-family:Sarabun,sans-serif">';
   html+='</div>';
-  html+='<select id="ap-status-'+idx+'" style="width:100%;padding:5px 8px;border:1px solid #fed7aa;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;margin-top:5px;font-family:Sarabun,sans-serif"><option value="pending"'+(status==='pending'||!status?' selected':'')+'>⏳ รอเริ่ม</option><option value="in_progress"'+(status==='in_progress'?' selected':'')+'>🔄 กำลังทำ</option><option value="done"'+(status==='done'?' selected':'')+'>✅ เสร็จ</option></select>';
+  html+='<select id="ap-status-'+idx+'" style="width:100%;padding:5px 8px;border:1px solid #fed7aa;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;margin-top:5px;font-family:Sarabun,sans-serif"><option value="pending"'+(status==='pending'||!status?' selected':'')+'>&#9203; รอเริ่ม</option><option value="in_progress"'+(status==='in_progress'?' selected':'')+'>&#128260; กำลังทำ</option><option value="done"'+(status==='done'?' selected':'')+'>&#9989; เสร็จ</option></select>';
   html+='</div>';
   document.getElementById('ap-actions-list').insertAdjacentHTML('beforeend',html);
+}
+
+// สร้าง <option> ของ owner select — "ไม่ระบุ" + รายชื่อฝ่าย + ค่าเดิมถ้าไม่อยู่ในลิสต์
+function ownerOptionsHtml_(sel){
+  var h='<option value=""'+(!sel?' selected':'')+'>— ไม่ระบุ —</option>';
+  var found=false,i;
+  for(i=0;i<_apOwners.length;i++){
+    var em=(_apOwners[i].email||'').split('"').join('&quot;');
+    var nm=(_apOwners[i].name||em).split('<').join('&lt;');
+    var s=(sel===_apOwners[i].email);if(s)found=true;
+    h+='<option value="'+em+'"'+(s?' selected':'')+'>'+nm+'</option>';
+  }
+  if(sel&&!found){var se=sel.split('"').join('&quot;');h+='<option value="'+se+'" selected>'+se+'</option>';}
+  return h;
+}
+
+// rebuild owner <select> ทุกตัวหลัง _apOwners โหลดเสร็จ (รักษาค่าที่เลือกไว้)
+function rebuildOwnerSelects(){
+  for(var i=1;i<=_apActionCount;i++){
+    var el=document.getElementById('ap-owner-'+i);
+    if(!el)continue;
+    var cur=el.value||el.getAttribute('data-val')||'';
+    el.innerHTML=ownerOptionsHtml_(cur);
+  }
+}
+
+// follow-up: action รอบก่อน + KPI before/after
+function loadActionFollowup(kpiId,month){
+  var el=document.getElementById('ap-followup');
+  if(!el)return;
+  el.innerHTML='';
+  google.script.run.withSuccessHandler(function(f){
+    if(!f||!f.ok||!f.has){el.innerHTML='';return;}
+    var vIcon=f.verdict==='better'?'✅ ดีขึ้น':(f.verdict==='worse'?'🔴 แย่ลง':(f.verdict==='same'?'➖ เท่าเดิม':'— ยังไม่มีข้อมูลเทียบ'));
+    var bg=f.verdict==='better'?'#e8f7ee':(f.verdict==='worse'?'#fde8e8':'#f1f5f9');
+    var kpiTxt=(f.before!==''&&f.after!=='')?(f.before+' → '+f.after+' ('+escHtml(f.afterMonth)+')'):'ยังไม่มีค่าเทียบ';
+    el.innerHTML='<div style="background:'+bg+';border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:#1e293b">'
+      +'<b>ผลรอบก่อน ('+escHtml(f.month)+')</b>: Action ทำแล้ว '+f.doneN+'/'+f.total+' &middot; KPI '+kpiTxt+' '+vIcon+'</div>';
+  }).getActionFollowup(kpiId,month);
 }
 
 function removeActionItem(idx){
@@ -3048,9 +3226,10 @@ function submitActionPlan(){
     if(!text)continue;
     actions.push({
       text:text,
-      responsible:(document.getElementById('ap-resp-'+i)||{}).value||'',
-      deadline:(document.getElementById('ap-deadline-'+i)||{}).value||'',
-      status:(document.getElementById('ap-status-'+i)||{}).value||'pending'
+      owner:(document.getElementById('ap-owner-'+i)||{}).value||'',
+      due:(document.getElementById('ap-due-'+i)||{}).value||'',
+      status:(document.getElementById('ap-status-'+i)||{}).value||'pending',
+      last_notified:(_apLastNotified['ap-'+i]||'')
     });
   }
   if(actions.length===0){showToast('กรุณาเพิ่มอย่างน้อย 1 action (D)','error');return;}
@@ -3085,6 +3264,112 @@ function getLatestVal(kpi){if(!kpi.values)return'NA';for(var i=kpi.values.length
 function evalSt(info,val){if(val===null||val===undefined||val===''||val==='NA')return'na';var num=parseFloat(val);if(isNaN(num))return'na';var t=parseFloat((info.target||'').toString().replace(/[^0-9.]/g,''));if(isNaN(t))return'na';var dir=info.direction||'';if(dir==='↑'||dir==='up')return num>=t?'hit':'miss';if(dir==='↓'||dir==='down')return num<=t?'hit':'miss';return'na';}
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
+// DocTa P2-T7: KPI definition viewer
+function openDefModal(kpiId) {
+  document.getElementById('def-modal-title').textContent = kpiId;
+  document.getElementById('def-modal-body').innerHTML = '<div class="spinner"></div>';
+  openModal('def-modal');
+  google.script.run
+    .withSuccessHandler(showDefModal)
+    .withFailureHandler(function(e) {
+      document.getElementById('def-modal-body').innerHTML =
+        '<p style="color:#f87171;font-size:13px">เกิดข้อผิดพลาด: ' + (e.message || '') + '</p>';
+    })
+    .getKPIDefinition(kpiId);
+}
+function showDefModal(r) {
+  var body = document.getElementById('def-modal-body');
+  // theme-aware: light = peach (ตัวอักษรเข้ม) / dark = ตัวอักษรอ่อน
+  var isLight = (document.body.className.indexOf('light-mode') >= 0);
+  var cLabel = isLight ? '#9A3412' : '#93c5fd';
+  var cText  = isLight ? '#3B2817' : '#e2e8f0';
+  var cMuted = isLight ? '#6B4A2B' : '#94a3b8';
+  var cBd    = isLight ? '#EDB680' : 'rgba(14,165,233,.15)';
+  if (!r || !r.ok) { body.innerHTML = '<p style="color:' + cMuted + ';font-style:italic;font-size:13px">ไม่พบข้อมูล KPI</p>'; return; }
+  document.getElementById('def-modal-title').textContent = r.kpiId + (r.name ? ' — ' + r.name : '');
+  function defRow(label, val) {
+    if (!val) return '';
+    return '<div style="margin-bottom:14px">'
+      + '<div style="font-size:11px;font-weight:700;color:' + cLabel + ';text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">' + label + '</div>'
+      + '<div style="font-size:13px;color:' + cText + ';line-height:1.65">' + escHtml(val) + '</div>'
+      + '</div>';
+  }
+  var html = defRow('คำนิยาม', r.definition) + defRow('สูตรคำนวณ', r.formula) + defRow('ตัวอย่าง', r.example);
+  if (!r.definition && !r.formula && !r.example) {
+    html = '<div style="padding:8px 0;color:' + cMuted + ';font-style:italic;font-size:13px">ยังไม่มีคำนิยาม — ติดต่อ admin เพื่อเพิ่มข้อมูล</div>';
+  }
+  if (r.def_source) html += '<div style="font-size:10px;color:' + cMuted + ';margin-top:6px;border-top:1px solid ' + cBd + ';padding-top:8px">ที่มา: ' + escHtml(r.def_source) + '</div>';
+  body.innerHTML = html;
+}
+// DocTa P2-T9: Bulk KPI import
+var _bulkRows_ = [];
+function openBulkImport() {
+  document.getElementById('bulk-tsv').value = '';
+  document.getElementById('bulk-parse-err').textContent = '';
+  document.getElementById('bulk-step-paste').style.display = '';
+  document.getElementById('bulk-step-preview').style.display = 'none';
+  openModal('bulk-import-modal');
+}
+function bulkPreview() {
+  var raw = document.getElementById('bulk-tsv').value.trim();
+  document.getElementById('bulk-parse-err').textContent = '';
+  if (!raw) { document.getElementById('bulk-parse-err').textContent = 'กรุณาวางข้อมูลก่อน'; return; }
+  var COLS = ['id','dept','name','unit','target','direction','frequency','owner','dataType'];
+  var lines = raw.split('\n');
+  _bulkRows_ = [];
+  var parseErrors = [];
+  for (var i = 0; i < lines.length; i++) {
+    var cols = lines[i].split('\t');
+    var obj = {};
+    for (var c = 0; c < COLS.length; c++) obj[COLS[c]] = (cols[c] || '').trim();
+    obj.frequency = parseInt(obj.frequency, 10) || 1;
+    _bulkRows_.push(obj);
+  }
+  // Build preview table
+  var html = '<table style="width:100%;border-collapse:collapse">';
+  html += '<thead><tr>';
+  COLS.forEach(function(c){ html += '<th style="padding:4px 8px;font-size:10px;color:#64748b;text-align:left;border-bottom:1px solid rgba(14,165,233,.12)">' + c + '</th>'; });
+  html += '</tr></thead><tbody>';
+  _bulkRows_.forEach(function(row, idx) {
+    var hasErr = (!row.dept || !row.name || (row.direction !== '↑' && row.direction !== '↓') || [1,3,6,12].indexOf(row.frequency) < 0);
+    html += '<tr style="background:' + (hasErr ? 'rgba(248,113,113,.08)' : 'transparent') + '">';
+    COLS.forEach(function(c){ html += '<td style="padding:3px 8px;font-size:11px;color:' + (hasErr ? '#fca5a5' : '#e2e8f0') + '">' + escHtml(String(row[c] || '')) + '</td>'; });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('bulk-preview-table').innerHTML = html;
+  document.getElementById('bulk-preview-err').textContent = '';
+  document.getElementById('bulk-step-paste').style.display = 'none';
+  document.getElementById('bulk-step-preview').style.display = '';
+}
+function bulkBackToPaste() {
+  document.getElementById('bulk-step-paste').style.display = '';
+  document.getElementById('bulk-step-preview').style.display = 'none';
+}
+function bulkConfirm() {
+  var btn = document.getElementById('btn-bulk-confirm');
+  btn.disabled = true; btn.textContent = '⏳ กำลังนำเข้า...';
+  document.getElementById('bulk-preview-err').textContent = '';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      btn.disabled = false; btn.textContent = '✓ นำเข้า';
+      if (!r.ok) {
+        var msg = r.msg || '';
+        if (r.errors && r.errors.length) msg = r.errors.map(function(e){ return 'แถว '+e.row+': '+e.msg; }).join(' | ');
+        document.getElementById('bulk-preview-err').textContent = 'ผิดพลาด: ' + msg;
+        return;
+      }
+      closeModal('bulk-import-modal');
+      showToast('นำเข้า ' + r.count + ' KPI สำเร็จ', 'success');
+      var dept = document.getElementById('btn-add-kpi').getAttribute('data-dept');
+      if (dept) loadDept(dept);
+    })
+    .withFailureHandler(function(e) {
+      btn.disabled = false; btn.textContent = '✓ นำเข้า';
+      document.getElementById('bulk-preview-err').textContent = 'เกิดข้อผิดพลาด: ' + (e.message || e);
+    })
+    .bulkImportKPIsFromRows(_bulkRows_, S.email);
+}
 function showToast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(function(){t.className='toast';},3000);}
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');}
 function toggleSidebarCollapse(){var sb=document.getElementById('sidebar');var icon=document.getElementById('collapse-icon');var isTablet=window.innerWidth>=769&&window.innerWidth<=1100;if(isTablet){if(sb.className.indexOf('expanded')>=0){sb.className=sb.className.replace(/\s*expanded/g,'');icon.innerHTML='&#9654;';}else{sb.className=(sb.className+' expanded').replace(/^\s+/,'');icon.innerHTML='&#9664;';}}else{if(sb.className.indexOf('collapsed')>=0){sb.className=sb.className.replace(/\s*collapsed/g,'');icon.innerHTML='&#9664;';}else{sb.className=(sb.className+' collapsed').replace(/^\s+/,'');icon.innerHTML='&#9654;';}}try{localStorage.setItem('kpi_sidebar',sb.className.indexOf('collapsed')>=0||sb.className.indexOf('expanded')<0?'collapsed':'expanded');}catch(e){}}
@@ -3165,51 +3450,55 @@ function atInit() {
     }
   } catch (e) {}
 
-  /* Drag + tap via POINTER EVENTS — the correct, reliable model on iPad with
-     touch-action:none. setPointerCapture keeps move/up on the ball even if the
-     finger drifts; a release with no movement is a tap → toggle the menu. */
-  var dragState = { active: false, moved: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0, id: null };
-  function pDown(e) {
-    if (dragState.active) return;
-    try { if (window.AT_DEBUG && typeof showToast === 'function') showToast('🧭 down · type=' + e.pointerType, 'info'); } catch (_) {}
-    dragState.active = true; dragState.moved = false; dragState.id = e.pointerId;
+  /* Drag logic — touch + mouse, threshold 6px to distinguish tap from drag */
+  var dragState = { active: false, moved: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0 };
+  function pointerDown(e) {
+    var t = e.touches ? e.touches[0] : e;
     var rect = ball.getBoundingClientRect();
-    dragState.startX = e.clientX; dragState.startY = e.clientY;
-    dragState.offsetX = e.clientX - rect.left; dragState.offsetY = e.clientY - rect.top;
-    try { ball.setPointerCapture(e.pointerId); } catch (err) {}
+    dragState.active = true; dragState.moved = false;
+    dragState.startX = t.clientX; dragState.startY = t.clientY;
+    dragState.offsetX = t.clientX - rect.left; dragState.offsetY = t.clientY - rect.top;
+    if (e.cancelable) e.preventDefault();
   }
-  function pMove(e) {
-    if (!dragState.active || e.pointerId !== dragState.id) return;
-    var dx = e.clientX - dragState.startX, dy = e.clientY - dragState.startY;
-    if (!dragState.moved && Math.sqrt(dx*dx + dy*dy) > 10) {   /* 10px: tolerate tap jitter */
-      dragState.moved = true; ball.className = 'dragging'; atCloseMenu();
+  function pointerMove(e) {
+    if (!dragState.active) return;
+    var t = e.touches ? e.touches[0] : e;
+    var dx = t.clientX - dragState.startX, dy = t.clientY - dragState.startY;
+    if (!dragState.moved && Math.sqrt(dx*dx + dy*dy) > 6) {
+      dragState.moved = true;
+      ball.className = 'dragging';
+      atCloseMenu();
     }
     if (dragState.moved) {
-      ball.style.left = Math.max(8, Math.min(window.innerWidth - 76, e.clientX - dragState.offsetX)) + 'px';
-      ball.style.top = Math.max(8, Math.min(window.innerHeight - 76, e.clientY - dragState.offsetY)) + 'px';
+      var newLeft = Math.max(8, Math.min(window.innerWidth - 76, t.clientX - dragState.offsetX));
+      var newTop = Math.max(8, Math.min(window.innerHeight - 76, t.clientY - dragState.offsetY));
+      ball.style.left = newLeft + 'px';
+      ball.style.top = newTop + 'px';
       ball.style.right = 'auto'; ball.style.bottom = 'auto';
+      if (e.cancelable) e.preventDefault();
     }
   }
-  function pUp(e) {
-    if (!dragState.active || e.pointerId !== dragState.id) return;
-    dragState.active = false; ball.className = '';
-    try { ball.releasePointerCapture(e.pointerId); } catch (err) {}
+  function pointerUp(e) {
+    if (!dragState.active) return;
+    dragState.active = false;
+    ball.className = '';
     if (dragState.moved) {
       var rect = ball.getBoundingClientRect();
       try { localStorage.setItem('at_ball_pos', JSON.stringify({ left: rect.left, top: rect.top })); } catch (e2) {}
     } else {
-      atToggleMenu();   /* tap → open/close */
-      try { if (window.AT_DEBUG && typeof showToast === 'function') { var mu = document.getElementById('at-menu'); showToast('🧭 tap → menu items=' + mu.querySelectorAll('.at-item').length + ' show=' + mu.classList.contains('show'), 'success'); } } catch (_) {}
+      atToggleMenu();
     }
   }
-  ball.addEventListener('pointerdown', pDown);
-  ball.addEventListener('pointermove', pMove);
-  ball.addEventListener('pointerup', pUp);
-  ball.addEventListener('pointercancel', pUp);
+  ball.addEventListener('mousedown', pointerDown);
+  ball.addEventListener('touchstart', pointerDown, { passive: false });
+  document.addEventListener('mousemove', pointerMove);
+  document.addEventListener('touchmove', pointerMove, { passive: false });
+  document.addEventListener('mouseup', pointerUp);
+  document.addEventListener('touchend', pointerUp);
 
-  /* Tap outside the menu closes it */
-  document.addEventListener('pointerdown', function(e) {
-    if (menu.classList.contains('show') && !menu.contains(e.target) && e.target !== ball && !ball.contains(e.target)) {
+  /* Outside click closes menu */
+  document.addEventListener('click', function(e) {
+    if (menu.classList.contains('show') && !menu.contains(e.target) && e.target !== ball) {
       atCloseMenu();
     }
   });
@@ -3275,13 +3564,16 @@ function atBuildMenu() {
       }
     } else if (el.className && el.className.indexOf('sb-item') >= 0) {
       var pId = el.getAttribute('data-p');
+      var href = (el.tagName === 'A') ? el.getAttribute('href') : null;
+      var raw = el.textContent.trim();
+      var parts = raw.split(' ');
+      var icon = parts[0] || '•';
+      var name = parts.slice(1).join(' ');
       if (pId) {
-        var raw = el.textContent.trim();
-        var parts = raw.split(' ');
-        var icon = parts[0] || '•';
-        var name = parts.slice(1).join(' ');
         var isActive = el.classList.contains('active');
         html += '<div class="at-item' + (isActive ? ' active' : '') + '" onclick="atGotoPage(\'' + escJs(pId) + '\')"><span class="at-icon">' + escHtml(icon) + '</span><span>' + escHtml(name) + '</span></div>';
+      } else if (href) {
+        html += '<div class="at-item" onclick="atCloseMenu();window.open(\'' + escJs(href) + '\',\'_blank\')"><span class="at-icon">' + escHtml(icon) + '</span><span>' + escHtml(name) + '</span></div>';
       }
     }
   }
@@ -3295,6 +3587,112 @@ function atGotoDept(el) {
   atCloseMenu();
   var dept = el.getAttribute('data-dept');
   if (typeof loadDept === 'function' && dept) loadDept(dept);
+}
+
+/* ── มาตรฐาน HA (H0-T6 13 มิ.ย.69) ── */
+function openHAStd(){
+  document.getElementById('ha-std-body').innerHTML='<div style="padding:30px;text-align:center">&#9203; กำลังโหลด...</div>';
+  google.script.run.withSuccessHandler(function(gap){
+    google.script.run.withSuccessHandler(function(queue){
+      renderHAStd(gap,queue);
+    }).withFailureHandler(function(e){showToast('queue error: '+e.message,'error');}).haQueueList(S.email);
+  }).withFailureHandler(function(e){showToast('gap error: '+e.message,'error');}).computeHAGapForUI();
+}
+
+function renderHAStd(gap,queue){
+  var html='';
+  // theme-aware palette — อ่าน body.light-mode (toggle ถาวรผ่าน localStorage kpi_theme)
+  var isLight=(document.body.className.indexOf('light-mode')>=0);
+  var P=isLight?{
+    head:'#1e293b',part:'#1d4ed8',id:'#1d4ed8',meta:'#6b7c93',text:'#334155',
+    cardBg:'#ffffff',cardBd:'#dbe3ee',inBg:'#fffaef',inTx:'#1e293b',inBd:'#cbd5e1',
+    name:'#1e293b',list:'#6b7c93',count:'#475569',sar:'#1d4ed8',hole:'#c0392b',
+    coachTx:'#92600a',coachBg:'#fff7e6',coachBd:'#f0b429',
+    okBg:'#e8f7ee',okBd:'#10b981',okTx:'#0f7a45',
+    edBg:'#fff7e6',edBd:'#d9920a',edTx:'#92600a',
+    inrBg:'#f1f5f9',inrBd:'#94a3b8',inrTx:'#475569',
+    gGap:'#fde8e8',gHas:'#e8f7ee',gEmp:'#f1f5f9',rowBd:'#e2e8f0'
+  }:{
+    head:'#e2e8f0',part:'#7dd3fc',id:'#93c5fd',meta:'#94a3b8',text:'#cbd5e1',
+    cardBg:'#0f1d32',cardBd:'rgba(14,165,233,.22)',inBg:'#0b1626',inTx:'#e2e8f0',inBd:'#334155',
+    name:'#e2e8f0',list:'#94a3b8',count:'#cbd5e1',sar:'#7dd3fc',hole:'#f87171',
+    coachTx:'#fcd34d',coachBg:'rgba(251,191,36,.12)',coachBd:'rgba(251,191,36,.45)',
+    okBg:'rgba(16,185,129,.15)',okBd:'#10b981',okTx:'#6ee7b7',
+    edBg:'rgba(251,191,36,.12)',edBd:'#fbbf24',edTx:'#fde68a',
+    inrBg:'rgba(148,163,184,.12)',inrBd:'#475569',inrTx:'#cbd5e1',
+    gGap:'rgba(220,38,38,.18)',gHas:'rgba(16,185,129,.12)',gEmp:'rgba(51,65,85,.35)',rowBd:'rgba(148,163,184,.18)'
+  };
+  if(queue&&queue.ok){
+    html+='<h3 style="margin:6px 0;color:'+P.head+'">รอยืนยัน ('+queue.items.length+') &middot; รอ AI ('+queue.pendingAI+')</h3>';
+    var i,it;
+    for(i=0;i<queue.items.length;i++){
+      it=queue.items[i];
+      var rid='haq_'+it.row;
+      var inStyle='background:'+P.inBg+';color:'+P.inTx+';border:1px solid '+P.inBd+';border-radius:4px;padding:2px 6px';
+      html+='<div style="border:1px solid '+P.cardBd+';border-radius:8px;padding:10px;margin:8px 0;background:'+P.cardBg+'">'
+        +'<b style="color:'+P.id+'">'+escHtml(it.kpi_id)+'</b> <span style="font-size:11px;color:'+P.meta+'">('+escHtml(it.engine)+' &middot; '+escHtml(it.confidence)+')</span><br>'
+        +'<div style="font-size:12px;margin:4px 0;color:'+P.text+'">เสนอหมวด: <input id="'+rid+'_codes" value="'+escHtml(it.codes)+'" style="width:140px;'+inStyle+'"> &mdash; '+escHtml(it.reason)+'</div>'
+        +(it.coach_note?'<div style="font-size:12px;color:'+P.coachTx+';background:'+P.coachBg+';border:1px solid '+P.coachBd+';padding:5px 8px;border-radius:6px;margin:4px 0">&#128161; '+escHtml(it.coach_note)+'</div>':'')
+        +'<div style="font-size:12px;margin:4px 0;color:'+P.text+'">นิยาม (ร่าง): <textarea id="'+rid+'_def" style="width:100%;min-height:40px;'+inStyle+';padding:4px 6px;box-sizing:border-box;font-family:Sarabun,sans-serif">'+escHtml(it.definition)+'</textarea></div>'
+        +'<div style="font-size:12px;color:'+P.text+'">สูตร: <input id="'+rid+'_form" value="'+escHtml(it.formula)+'" style="width:44%;'+inStyle+'">'
+        +' หน่วย: <input id="'+rid+'_unit" value="'+escHtml(it.unit)+'" style="width:60px;'+inStyle+'">'
+        +' ช่วงค่า: <input id="'+rid+'_range" value="'+escHtml(it.range)+'" placeholder="0..100" style="width:90px;'+inStyle+'"></div>'
+        +'<div style="margin-top:6px">'
+        +'<button onclick="haReview('+it.row+',\''+escJs(it.kpi_id)+'\',\'approve\')" style="background:'+P.okBg+';border:1px solid '+P.okBd+';color:'+P.okTx+';border-radius:6px;padding:4px 10px;cursor:pointer;font-family:Sarabun,sans-serif;font-size:12px;margin-right:4px">&#9989; ยืนยัน</button>'
+        +'<button onclick="haReview('+it.row+',\''+escJs(it.kpi_id)+'\',\'edit\')" style="background:'+P.edBg+';border:1px solid '+P.edBd+';color:'+P.edTx+';border-radius:6px;padding:4px 10px;cursor:pointer;font-family:Sarabun,sans-serif;font-size:12px;margin-right:4px">&#9999;&#65039; บันทึกตามที่แก้</button>'
+        +'<button onclick="haReview('+it.row+',\''+escJs(it.kpi_id)+'\',\'internal\')" style="background:'+P.inrBg+';border:1px solid '+P.inrBd+';color:'+P.inrTx+';border-radius:6px;padding:4px 10px;cursor:pointer;font-family:Sarabun,sans-serif;font-size:12px">&#128204; KPI ภายใน</button>'
+        +'</div></div>';
+    }
+    if(queue.items.length===0)html+='<div style="font-size:13px;color:'+P.meta+';padding:8px 0">ไม่มีรายการรอยืนยัน</div>';
+  }
+  if(gap&&gap.ok){
+    html+='<h3 style="margin:14px 0 6px;color:'+P.head+'">Coverage มาตรฐาน ('+gap.generated+') &middot; ยังไม่ map: '+gap.unmapped+' &middot; ภายใน: '+gap.internals.length+'</h3>';
+    var partNames={I:'ตอน I ภาพรวมการบริหาร',II:'ตอน II ระบบงานสำคัญ',III:'ตอน III กระบวนการดูแล',IV:'ตอน IV ผลลัพธ์'};
+    var pk=['I','II','III','IV'];
+    for(var p=0;p<pk.length;p++){
+      var rows=gap.parts[pk[p]]||[];
+      html+='<div style="font-weight:bold;margin:10px 0 4px;color:'+P.part+'">'+partNames[pk[p]]+'</div>';
+      for(var j=0;j<rows.length;j++){
+        var c=rows[j];
+        var bg=c.gap?P.gGap:(c.count>0?P.gHas:P.gEmp);
+        var kn='';
+        for(var k=0;k<c.kpis.length;k++)kn+=(k?', ':'')+c.kpis[k].id;
+        html+='<div style="display:flex;align-items:center;background:'+bg+';border:1px solid '+P.rowBd+';border-radius:6px;padding:6px 10px;margin:3px 0;font-size:13px">'
+          +'<div style="width:60px;font-weight:bold;color:'+P.id+'">'+escHtml(c.code)+'</div>'
+          +'<div style="flex:1;color:'+P.name+'">'+escHtml(c.name)+(c.gap?' <b style="color:'+P.hole+'">&mdash; โหว่!</b>':'')+'</div>'
+          +'<div style="width:260px;font-size:11px;color:'+P.list+'">'+escHtml(kn||'&mdash;')+'</div>'
+          +'<div style="width:28px;text-align:right;color:'+P.count+'">'+c.count+'</div>'
+          +(c.count>0?'<div style="width:32px;text-align:right"><button onclick="haSar(\''+escJs(c.code)+'\')" title="SAR Export" style="background:none;border:none;cursor:pointer;font-size:14px;padding:0;color:'+P.sar+'">&#128196;</button></div>':'<div style="width:32px"></div>')
+          +'</div>';
+      }
+    }
+  }
+  document.getElementById('ha-std-body').innerHTML=html;
+}
+
+function haReview(row,kpiId,decision){
+  var rid='haq_'+row;
+  var rng=(document.getElementById(rid+'_range')?document.getElementById(rid+'_range').value:'').split('..');
+  var payload={row:row,kpiId:kpiId,decision:decision,
+    codes:(document.getElementById(rid+'_codes')?document.getElementById(rid+'_codes').value:''),
+    definition:(document.getElementById(rid+'_def')?document.getElementById(rid+'_def').value:''),
+    formula:(document.getElementById(rid+'_form')?document.getElementById(rid+'_form').value:''),
+    unit:(document.getElementById(rid+'_unit')?document.getElementById(rid+'_unit').value:''),
+    valMin:(rng[0]||'').trim(),valMax:(rng[1]||'').trim(),
+    defReview:decision==='edit'?'edited':(decision==='internal'?'skipped':'approved')};
+  showToast('กำลังบันทึก...','info');
+  google.script.run.withSuccessHandler(function(r){
+    if(r&&r.ok){showToast('บันทึกแล้ว','success');openHAStd();}
+    else showToast('ผิดพลาด: '+(r&&r.msg||''),'error');
+  }).withFailureHandler(function(e){showToast('error: '+e.message,'error');}).haQueueReview(S.email,payload);
+}
+
+function haSar(code){
+  showToast('กำลังสร้างเอกสาร SAR...','info');
+  google.script.run.withSuccessHandler(function(r){
+    if(r&&r.ok){window.open(r.url,'_blank');showToast('สร้างแล้ว ('+r.kpis+' KPI)','success');}
+    else showToast('ผิดพลาด: '+(r&&r.msg||''),'error');
+  }).withFailureHandler(function(e){showToast('error: '+e.message,'error');}).haSarExport(S.email,code);
 }
 
 /* ── Audit Log lazy view (23 พ.ค.69) ── */
@@ -3591,7 +3989,7 @@ function airepGeneratePDCA(kpiId, attempt) {
   }
 
   document.getElementById('airep-pdca-output').style.display = 'grid';
-  var msg = attempt > 1 ? 'AI Retry ครั้งที่ ' + attempt + ' — ' + kpiId : 'AI กำลังวิเคราะห์ ' + kpiId + ' ... (~10-20 วินาที)';
+  var msg = attempt > 1 ? 'AI Retry ครั้งที่ ' + attempt + ' — ' + kpiId : 'AI กำลังวิเคราะห์ ' + kpiId + ' ... (~15-60 วินาที)';
   var loadingHTML = '<div class="airep-loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:6px">' + msg + '</span></div>';
   document.getElementById('airep-full').innerHTML = loadingHTML;
   document.getElementById('airep-short').innerHTML = loadingHTML;
@@ -3609,7 +4007,9 @@ function airepGeneratePDCA(kpiId, attempt) {
       if (d && d.ok) {
         document.getElementById('airep-full').textContent = d.full || '(empty)';
         document.getElementById('airep-short').textContent = d.sarShort || '(empty)';
-        if (d.fromCache) showToast('โหลดจาก cache (≤24 ชม.)', 'info');
+        /* Hybrid 10 มิ.ย.69 — บอกผู้ใช้ว่า engine ไหนเป็นคนเขียน */
+        var engineName = d.engine === 'claude' ? 'Claude 🟣' : 'Gemini 🔵';
+        showToast((d.fromCache ? 'โหลดจาก cache (≤24 ชม.) — สร้างโดย ' : 'สร้างโดย ') + engineName, 'info');
       } else if (d && d.retryAfter && attempt < 3) {
         /* Quota 429 — auto countdown + retry */
         var wait = Math.min(d.retryAfter + 2, 90);
@@ -3764,6 +4164,13 @@ function aiAskServer(question, actionKey) {
         aiAddAIMsg(r.answer, r.meta);
         _aiHistory.push({ role: 'user', text: question });
         _aiHistory.push({ role: 'ai', text: r.answer, meta: r.meta });
+      } else if (r && r.ai_disabled) {
+        var area = document.getElementById('ai-chat-area');
+        var d = document.createElement('div');
+        d.style.cssText = 'padding:10px 14px;color:var(--tx-3,#888);font-size:13px;font-style:italic;';
+        d.textContent = 'ℹ️ ' + (r.msg || 'AI ยังไม่เปิดใช้');
+        area.appendChild(d);
+        aiScrollToBottom();
       } else {
         var msg = (r && r.msg) ? r.msg : 'ไม่ทราบสาเหตุ';
         aiAddAIMsg('⚠️ ' + msg);
@@ -3991,20 +4398,110 @@ function exportWordReport() {
 var _execCharts = {};
 
 function loadExecSummary() {
-  document.getElementById('exec-sub').textContent = 'ภาพรวมเชิงคลินิกและการดำเนินงาน — ' + S.name;
+  document.getElementById('exec-sub').textContent = 'ภาพรวมสุขภาพประชากรและการดำเนินงานคลินิก — ' + S.name;
+  // รายได้ย้ายไป CEO Cockpit แล้ว (26 มิ.ย.69) — ซ่อนส่วนรายได้ในหน้านี้
   var revSection = document.getElementById('exec-revenue-section');
-  if (revSection) revSection.style.display = (S.role === 'ADMIN') ? 'block' : 'none';
+  if (revSection) revSection.style.display = 'none';
+
+  // population-health (ASCVD) — ทุกคนที่ login ดูได้ (aggregate, no PII), อ่านจาก ExecSummary tab
+  if (typeof loadExecPopHealth === 'function') loadExecPopHealth();
 
   google.script.run.withSuccessHandler(function(pctKpis) {
     renderExecClinical(pctKpis);
     google.script.run.withSuccessHandler(function(imKpis) {
       renderExecCMI(imKpis);
-      if (S.role === 'ADMIN') {
-        renderExecFinance();
-      }
       renderExecInsights(pctKpis, imKpis);
     }).getKPIsByDept('IM');
   }).getKPIsByDept('PCT');
+}
+
+/* Population-health (ASCVD/NCD) — ADMIN only, from ExecSummary tab (bridge, 26 มิ.ย.69) */
+function loadExecPopHealth() {
+  google.script.run.withSuccessHandler(renderExecPopHealth)
+    .withFailureHandler(function(e) { var s = document.getElementById('exec-pophealth-section'); if (s) s.style.display = 'none'; })
+    .getExecPopSummary({ email: S.email });
+}
+
+function renderExecPopHealth(r) {
+  var sec = document.getElementById('exec-pophealth-section');
+  var body = document.getElementById('exec-pop-body');
+  if (!sec || !body || !r || r.ok === false) { if (sec) sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  if (r.status !== 'ok') {
+    body.innerHTML = '<div class="exec-panel" style="text-align:center;color:#94a3b8;padding:18px;font-size:14px">&#128202; ยังไม่มีข้อมูลสุขภาพประชากร — รัน <b>exec_summary_tab_sync.py</b> บน cm2 เพื่อสร้างข้อมูล</div>';
+    return;
+  }
+  // ระยะเวลาในระบบ OPD/ER (proxy cur_dep_time) — เติมค่าในการ์ด exec-highlights (ระดับเดียวกับกลุ่มเดิม)
+  var w = r.wait || {}, wo = w.opd || {}, wr = w.er || {};
+  var _setWait = function (id, sid, mn, sub) {
+    var el = document.getElementById(id); if (el && mn != null) el.innerHTML = mn + ' <span style="font-size:13px;font-weight:600">น.</span>';
+    var se = document.getElementById(sid); if (se && sub) se.textContent = sub;
+  };
+  _setWait('ex-wait-opd', 'ex-wait-opd-sub', wo.median, (wo.p90 != null ? 'median · 10% เกิน ' + wo.p90 + 'น.' : 'เปิด→จุดสุดท้าย'));
+  _setWait('ex-wait-er', 'ex-wait-er-sub', wr.median, 'proxy* · ER แผนกเดียว');
+  if (!r.history || !r.history.length || !r.factors || !r.factors.length) {   // tab format เก่า → ให้รัน Python ใหม่
+    body.innerHTML = '<div class="exec-panel" style="text-align:center;color:#94a3b8;padding:18px;font-size:14px">&#128260; รูปแบบข้อมูลอัปเดตแล้ว — รัน <b>exec_summary_tab_sync.py</b> บน cm2 อีกครั้งเพื่อแสดงกราฟย้อนหลัง</div>';
+    return;
+  }
+  // ---- 1) กราฟย้อนหลัง FY65-69 — 6 แท่ง/ปี (ทั้งหมด=โทนฟ้า, ทหาร=โทนส้ม) ----
+  var i;
+  var html = '<div class="exec-panel">'
+    + '<div class="ep-title" style="font-size:16px">&#128202; การกระจายความเสี่ยง ASCVD ย้อนหลัง (ปีงบ 65-69)</div>'
+    + '<div class="ep-sub" style="font-size:13px">แต่ละปี 6 แท่ง · <b style="color:#60a5fa">โทนฟ้า = ประชากรทั้งหมด</b> · <b style="color:#fb923c">โทนส้ม = กำลังพล มทบ.44</b> · เข้มขึ้น = เสี่ยงมากขึ้น (น้อย→ปานกลาง→สูง)</div>'
+    + '<div style="position:relative;height:340px;margin-top:10px"><canvas id="exec-pop-history"></canvas></div></div>';
+
+  // ---- 2) ปัจจัยเสี่ยงในกลุ่มเสี่ยงสูง (prevalence: กี่คน/กี่% ของ n_high) ----
+  var facs = r.factors || [], fmax = 1;
+  for (i = 0; i < facs.length; i++) { if (facs[i].n > fmax) fmax = facs[i].n; }
+  var fcols = ['#d64545', '#e8833a', '#14b8a6', '#9333ea', '#64748b'], fHtml = '';
+  for (i = 0; i < facs.length; i++) {
+    var ft = facs[i], w = Math.round(ft.n / fmax * 100);
+    fHtml += '<div style="display:grid;grid-template-columns:210px 1fr 150px;gap:14px;align-items:center;margin:11px 0;font-size:14.5px">'
+      + '<div style="font-weight:700;color:#e2e8f0">' + escHtml(ft.name) + '</div>'
+      + '<div style="height:18px;background:rgba(148,163,184,.12);border-radius:5px;overflow:hidden"><i style="display:block;height:100%;width:' + w + '%;background:' + (fcols[i] || '#64748b') + '"></i></div>'
+      + '<div style="color:#cbd5e1;text-align:right"><b style="color:#e2e8f0;font-size:16px">' + ft.n + '</b> คน <span style="color:#94a3b8">(' + ft.pct + '%)</span></div></div>';
+  }
+  html += '<div class="exec-panel" style="margin-top:14px;border-left:4px solid #d64545">'
+    + '<div class="ep-title" style="font-size:16px">&#127919; ปัจจัยเสี่ยงในกลุ่มเสี่ยงสูง (' + r.n_high + ' คน)</div>'
+    + '<div class="ep-sub" style="font-size:13px">ในผู้ป่วยเสี่ยงสูง ' + r.n_high + ' คน มีปัจจัยเสี่ยงแต่ละอย่างกี่คน (เรียงมาก→น้อย)</div>' + fHtml
+    + '<div style="font-size:13.5px;color:#e2e8f0;background:rgba(214,69,69,.12);border-radius:8px;padding:10px 13px;margin-top:8px">&#128161; <b>เบาหวานเด่นสุด</b> — ผู้ป่วย DM เป็นกลุ่มเสี่ยงสูง ' + r.dm_high_pct + '% (ไม่ DM แค่ ' + r.nondm_high_pct + '%) → คุมเบาหวานดี = ลดเสี่ยงหัวใจ-หลอดเลือดได้มากที่สุด</div></div>';
+
+  var dd = document.getElementById('exec-data-date');
+  if (dd) dd.textContent = r.generatedAt ? ('ข้อมูลรวบรวมล่าสุด ' + r.generatedAt) : '';
+  body.innerHTML = html;
+  renderExecPopChart(r.history);   // build chart AFTER innerHTML (canvas must exist)
+}
+
+function renderExecPopChart(hist) {
+  var cv = document.getElementById('exec-pop-history');
+  if (!cv || !window.Chart || !hist || !hist.length) return;
+  if (_execCharts['pop-history']) { _execCharts['pop-history'].destroy(); }
+  var labels = [], aLo = [], aMid = [], aHi = [], mLo = [], mMid = [], mHi = [], i;
+  for (i = 0; i < hist.length; i++) {
+    var h = hist[i];
+    labels.push('ปี ' + h.fy);
+    aLo.push(h.all[0]); aMid.push(h.all[1]); aHi.push(h.all[2]);
+    mLo.push(h.mil ? h.mil[0] : 0); mMid.push(h.mil ? h.mil[1] : 0); mHi.push(h.mil ? h.mil[2] : 0);
+  }
+  function ds(lab, data, col) { return { label: lab, data: data, backgroundColor: col, categoryPercentage: 0.86, barPercentage: 0.96 }; }
+  _execCharts['pop-history'] = new Chart(cv.getContext('2d'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [
+      ds('ทั้งหมด-น้อย', aLo, '#93c5fd'), ds('ทั้งหมด-ปานกลาง', aMid, '#3b82f6'), ds('ทั้งหมด-สูง', aHi, '#1d4ed8'),
+      ds('ทหาร-น้อย', mLo, '#fdba74'), ds('ทหาร-ปานกลาง', mMid, '#f97316'), ds('ทหาร-สูง', mHi, '#c2410c')
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { family: 'Prompt', size: 11 }, color: '#cbd5e1', boxWidth: 12, padding: 7 } },
+        tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y + ' คน'; } } }
+      },
+      scales: {
+        x: { stacked: false, ticks: { font: { family: 'Prompt', size: 13 }, color: '#e2e8f0' }, grid: { display: false } },
+        y: { stacked: false, ticks: { font: { family: 'Prompt', size: 11 }, color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,.05)' }, title: { display: true, text: 'จำนวนคน', font: { family: 'Prompt', size: 11 }, color: '#94a3b8' } }
+      }
+    }
+  });
 }
 
 function findKPI(kpis, id) {
@@ -4370,6 +4867,7 @@ function renderExecInsights(pctKpis, imKpis) {
         <div class="ekm-row"><strong>KPI:</strong> <span id="ekm-kpi-name">-</span></div>
         <div class="ekm-row"><strong>เดือน:</strong> <span id="ekm-month">-</span></div>
         <div class="ekm-row"><strong>เป้า:</strong> <span id="ekm-target">-</span></div>
+        <div id="ekm-def-card" style="display:none;font-size:12px;background:rgba(30,64,175,.12);border-left:3px solid #1e90d4;border-radius:6px;padding:8px 10px;margin:8px 0"></div>
         <hr style="margin:14px 0;border:none;border-top:1px solid rgba(125,211,252,0.15)">
         <div class="ekm-input-row">
           <label for="ekm-input">ค่าปัจจุบัน:</label>
@@ -4389,163 +4887,5 @@ function renderExecInsights(pctKpis, imKpis) {
       </div>
     </div>
   </div>
-<!-- ===== DEMO: AI Report sample previews (injected) — clicking a report card shows a mock output ===== -->
-<style>
-#rp-ov{position:fixed;inset:0;z-index:100000;background:rgba(8,15,28,.8);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:26px 12px;font-family:'Sarabun','Prompt',sans-serif}
-#rp-ov.show{display:flex}
-.rp-shell{width:100%;max-width:880px;background:#0f1b2e;border:1px solid rgba(125,211,252,.18);border-radius:16px;box-shadow:0 20px 70px rgba(0,0,0,.55);overflow:hidden;margin:auto}
-.rp-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#13243c;border-bottom:1px solid rgba(125,211,252,.14)}
-.rp-bar .t{color:#e6f3ff;font-weight:700;font-size:15px;display:flex;gap:9px;align-items:center}
-.rp-bar .t .dm{font-size:11px;font-weight:700;background:#0ea5e9;color:#fff;padding:2px 9px;border-radius:999px}
-.rp-bar .x{cursor:pointer;color:#9fb6cc;font-size:21px;background:none;border:none;line-height:1}
-.rp-body{max-height:80vh;overflow:auto;padding:22px;background:#0b1626}
-.rp-paper{background:#fff;color:#1a2230;max-width:720px;margin:0 auto;padding:42px 50px;border-radius:4px;box-shadow:0 8px 30px rgba(0,0,0,.4);font-size:14px;line-height:1.62}
-.rp-paper h1{font-size:20px;text-align:center;margin:0 0 2px;color:#0f2942}
-.rp-paper .sub{text-align:center;color:#5b6b7a;font-size:13px;margin-bottom:16px}
-.rp-paper h2{font-size:15.5px;color:#0e7c86;border-bottom:2px solid #cfe8ea;padding-bottom:4px;margin:18px 0 8px}
-.rp-paper table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
-.rp-paper th,.rp-paper td{border:1px solid #d7e0e8;padding:6px 8px;text-align:left;vertical-align:top}
-.rp-paper td{color:#1a2230 !important}
-.rp-paper,.rp-paper p,.rp-paper h1,.rp-paper h2,.rp-paper .sub,.rp-paper .ai{color:#1a2230}
-.rp-paper h1{color:#0f2942 !important}.rp-paper h2{color:#0e7c86 !important}.rp-paper .sub{color:#5b6b7a !important}
-.rp-paper th{background:#eef6f7;color:#0f2942 !important}
-.rp-hit{color:#1c8a4e;font-weight:700}.rp-miss{color:#c0392b;font-weight:700}
-.rp-paper .ai{background:#f0f9fa;border-left:4px solid #13a3b0;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0;font-size:13.5px}
-.rp-sign{margin-top:26px;text-align:right;color:#5b6b7a;font-size:13px}
-.rp-xls{background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:760px;margin:0 auto}
-.rp-xls .xtop{background:#107c41;color:#fff;font-weight:700;padding:9px 14px;font-size:13px;display:flex;align-items:center;gap:8px}
-.rp-xls table{width:100%;border-collapse:collapse;font-size:11.5px;color:#1a2230}
-.rp-xls th,.rp-xls td{border:1px solid #d0d7de;padding:4px 7px;white-space:nowrap}
-.rp-xls thead.col th{background:#f3f3f3;color:#57606a;text-align:center;font-weight:600}
-.rp-xls .hdr td{background:#e8f3ee;font-weight:700;text-align:center}
-.rp-xls .lbl{background:#fafafa;font-weight:600}
-.rp-xls .g{background:#d6f0e0;color:#157a43;text-align:center}
-.rp-xls .r{background:#fbe0de;color:#c0392b;text-align:center}
-.rp-slide{aspect-ratio:16/9;background:linear-gradient(135deg,#0f2942,#16395c 55%,#0e7c86);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.5);color:#fff;padding:38px 44px;display:flex;flex-direction:column;justify-content:center;max-width:760px;margin:0 auto}
-.rp-slide .kick{color:#8fd6dd;letter-spacing:.1em;font-size:13px;font-weight:600;text-transform:uppercase}
-.rp-slide h1{font-size:29px;margin:6px 0 16px}
-.rp-slide .stats{display:flex;gap:13px;flex-wrap:wrap}
-.rp-slide .stat{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:13px 17px;min-width:115px}
-.rp-slide .stat b{font-size:28px;color:#3fe0ea;display:block;line-height:1.1}
-.rp-slide .stat span{font-size:12.5px;color:#cfe3ea}
-.rp-slide ul{margin:14px 0 0;padding-left:20px;color:#eafafa;font-size:14px}
-.rp-note{text-align:center;color:#7d97a8;font-size:12px;margin-top:16px}
-.rp-note .dl{display:inline-block;margin-top:6px;background:#0ea5e9;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:700;font-size:13px;cursor:default;opacity:.85}
-.kdef-btn{background:rgba(14,165,233,.16);border:1px solid rgba(14,165,233,.45);color:#7dd3fc;border-radius:50%;width:19px;height:19px;font-size:12px;line-height:1;cursor:pointer;padding:0;vertical-align:middle;margin-left:3px}
-.kdef-btn:hover{background:rgba(14,165,233,.32)}
-.rp-paper table th{white-space:nowrap}
-/* AssistiveTouch floating ball didn't receive taps on iPad (no pointer events
-   reached it — likely an iOS overlay). Hidden for the demo; the sidebar provides
-   department navigation. Remove this rule to re-enable. */
-#at-ball,#at-menu{display:none !important}
-</style>
-<div id="rp-ov" onclick="if(event.target===this)rpClose()">
-  <div class="rp-shell">
-    <div class="rp-bar"><div class="t"><span id="rp-icon">📄</span><span id="rp-title">ตัวอย่างรายงาน</span><span class="dm">ตัวอย่าง DEMO</span></div>
-      <button class="x" onclick="rpClose()" aria-label="close">✕</button></div>
-    <div class="rp-body" id="rp-body"></div>
-  </div>
-</div>
-<script>
-(function(){
-  window.AT_DEBUG = (''+location.hash).indexOf('atdebug') >= 0;  /* AssistiveTouch diagnostic via demo.html#atdebug */
-  var M='มิ.ย. 2569';
-  function show(icon,title,html){document.getElementById('rp-icon').textContent=icon;document.getElementById('rp-title').textContent=title;var b=document.getElementById('rp-body');b.innerHTML=html;document.getElementById('rp-ov').classList.add('show');b.scrollTop=0;}
-  window.rpClose=function(){document.getElementById('rp-ov').classList.remove('show');};
-  var DL='<div class="rp-note">— นี่คือ "ตัวอย่าง" หน้าตาไฟล์ในโหมดสาธิต · ระบบจริงสร้างไฟล์ดาวน์โหลดได้ —<br><button class="rp-dl">⬇ ดาวน์โหลด (ตัวอย่าง)</button></div>';
-  var K=[['PCT-10','ผู้ป่วยเบาหวานคุม HbA1c &lt; 7%','%','≥ 40','49.0',1],
-         ['PCT-11','ผู้ป่วยความดันโลหิตคุมได้ &lt;140/90','%','≥ 50','44.0',0],
-         ['PCT-12','STEMI เปิดเส้นเลือด/ส่งต่อ ≤30 นาที','%','≥ 80','85',1],
-         ['IC-4','ความร่วมมือการล้างมือ','%','≥ 85','88',1],
-         ['IM-9','คอมพิวเตอร์มีโปรแกรมป้องกันไวรัส','%','≥ 95','92',0],
-         ['RM-1','จำนวนรายงานอุบัติการณ์ความเสี่ยง','ราย','≥ 30','33',1]];
-  function st(h){return h?'<span class="rp-hit">✔ บรรลุ</span>':'<span class="rp-miss">✘ ไม่บรรลุ</span>';}
-  function wordPreview(){
-    var rows=K.map(function(k){return '<tr><td>'+k[0]+'</td><td>'+k[1]+'</td><td style="text-align:center">'+k[3]+'</td><td style="text-align:center">'+k[4]+' '+k[2]+'</td><td style="text-align:center">'+st(k[5])+'</td></tr>';}).join('');
-    return '<div class="rp-paper"><h1>รายงานสรุปตัวชี้วัดคุณภาพโรงพยาบาล</h1><div class="sub">โรงพยาบาลตัวอย่าง (เดโม่) · ประจำเดือน '+M+'</div>'
-      +'<h2>๑. บทสรุปผู้บริหาร</h2><p>เดือน '+M+' โรงพยาบาลติดตามตัวชี้วัดคุณภาพรวม <b>20 ตัวชี้วัด</b> ใน 8 ฝ่าย กรอกข้อมูลครบ 100% บรรลุเป้าหมาย <b>16 ตัวชี้วัด (80%)</b> ไม่บรรลุ 4 ตัวชี้วัด ที่ต้องเฝ้าระวังคือการคุมความดันโลหิต (PCT-11) ซึ่งมีแนวโน้มลดลงต่อเนื่อง</p>'
-      +'<h2>๒. ตารางสรุปตัวชี้วัดสำคัญ</h2><table><thead><tr><th>รหัส</th><th>ตัวชี้วัด</th><th>เป้าหมาย</th><th>ผลเดือนนี้</th><th>สถานะ</th></tr></thead><tbody>'+rows+'</tbody></table>'
-      +'<h2>๓. บทวิเคราะห์โดย AI (Gemini)</h2><div class="ai">🤖 จุดแข็งของเดือนนี้คือการล้างมือ (IC-4 = 88%) และการเปิดเส้นเลือด STEMI (85%) ที่ทำได้ดีต่อเนื่อง สำหรับ <b>PCT-11 (ความดันโลหิต 44%)</b> ที่หลุดเป้า แนะนำให้เริ่มโครงการวัดความดันที่บ้าน (Home BP) ในกลุ่มที่คุมไม่ได้ และทบทวนความสม่ำเสมอของการรับประทานยา · ส่วน IM-9 (AV 92%) เหลือเพียง 2 เครื่องที่ยังไม่ติดตั้ง ควรเร่งดำเนินการให้ครบ</div>'
-      +'<div class="rp-sign">ผู้จัดทำ: ระบบ KPI Monitor (อัตโนมัติ)<br>วันที่พิมพ์รายงาน: '+M+'</div></div>'+DL;
-  }
-  function excelPreview(){
-    var mn=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.'];
-    var cols='<thead class="col"><tr><th></th><th>A</th><th>B</th><th>C</th>'+mn.map(function(m,i){return '<th>'+String.fromCharCode(68+i)+'</th>';}).join('')+'</tr></thead>';
-    var hdr='<tr class="hdr"><td>1</td><td>รหัส</td><td>ตัวชี้วัด</td><td>เป้า</td>'+mn.map(function(m){return '<td>'+m+'</td>';}).join('')+'</tr>';
-    var body=K.map(function(k,ri){
-      var base=parseFloat(k[4]); var cells='';
-      for(var i=0;i<6;i++){var v=Math.round((base+(i-5)*0.6)*10)/10; var ok=k[5]; cells+='<td class="'+(ok?'g':(i<5?'g':'r'))+'">'+v+'</td>';}
-      return '<tr><td class="lbl" style="text-align:center">'+(ri+2)+'</td><td>'+k[0]+'</td><td style="max-width:230px;overflow:hidden;text-overflow:ellipsis">'+k[1]+'</td><td style="text-align:center">'+k[3]+'</td>'+cells+'</tr>';
-    }).join('');
-    return '<div class="rp-xls"><div class="xtop">📊 KPI_Report_'+M.replace(' ','_')+'.xlsx — แผ่นงาน: สรุปทุกฝ่าย</div><table>'+cols+'<tbody>'+hdr+body+'</tbody></table></div>'+DL;
-  }
-  // PDCA preview = render the NEW format (6-DNA SAR-short + multi-layer FULL) returned by the
-  // mock generatePDCA. Lightweight markdown -> HTML so the popup looks like a polished document.
-  function _pdcaInline(s){return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');}
-  function pdcaHtml(d,id){
-    var md=(d&&d.full)?d.full:'', sar=(d&&d.sarShort)?d.sarShort:'';
-    var lines=md.split('\n'), html='', inTable=false, tbl='', tblRow=0;
-    function flush(){ if(inTable){html+='<table style="border-collapse:collapse;margin:6px 0 14px">'+tbl+'</table>';tbl='';inTable=false;} }
-    for(var i=0;i<lines.length;i++){
-      var ln=lines[i];
-      if(/^\s*\|/.test(ln)){
-        var cells=ln.replace(/^\s*\|/,'').replace(/\|\s*$/,'').split('|').map(function(c){return c.trim();});
-        if(cells.join('').replace(/[-\s]/g,'')===''){continue;}
-        if(!inTable){inTable=true;tbl='';tblRow=0;}
-        var tag=(tblRow===0)?'th':'td', bg=(tblRow===0)?'background:#1e3a5f;color:#fff':'';
-        tbl+='<tr>'+cells.map(function(c){return '<'+tag+' style="border:1px solid #d9e2ec;padding:4px 10px;text-align:left;font-family:Sarabun,sans-serif;font-size:13px;'+bg+'">'+_pdcaInline(c)+'</'+tag+'>';}).join('')+'</tr>';
-        tblRow++; continue;
-      }
-      flush();
-      if(/^####\s+/.test(ln)) html+='<div style="font-weight:700;color:#1e3a5f;margin:13px 0 3px;border-left:3px solid #ea580c;padding-left:8px">'+_pdcaInline(ln.replace(/^####\s+/,''))+'</div>';
-      else if(/^###\s+/.test(ln)) html+='<h2 style="font-size:16px;color:#0f2942;margin:16px 0 6px">'+_pdcaInline(ln.replace(/^###\s+/,''))+'</h2>';
-      else if(/^##\s+/.test(ln)) html+='<h1 style="font-size:19px;color:#0f2942;margin:2px 0 10px">'+_pdcaInline(ln.replace(/^##\s+/,''))+'</h1>';
-      else if(/^\s*-\s+/.test(ln)) html+='<div style="margin:2px 0 2px 14px;font-family:Sarabun,sans-serif;line-height:1.6">• '+_pdcaInline(ln.replace(/^\s*-\s+/,''))+'</div>';
-      else if(ln.trim()!=='') html+='<p style="font-family:Sarabun,sans-serif;line-height:1.7;margin:4px 0">'+_pdcaInline(ln)+'</p>';
-    }
-    flush();
-    var sarCard='<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:13px 16px;margin:0 0 16px"><div style="font-weight:700;color:#c2410c;margin-bottom:5px">📋 SAR-short · คัดลอกลงเอกสาร SAR ได้เลย</div><div style="font-family:Sarabun,sans-serif;line-height:1.75;color:#7c2d12;font-size:13.5px">'+_pdcaInline(sar)+'</div></div>';
-    return '<div class="rp-paper">'+sarCard+html+'<div class="ai">🤖 วิเคราะห์โดย AI (Claude/Gemini) จากข้อมูลย้อนหลังของตัวชี้วัด — ระบบจริงสร้าง PDCA หลายชั้น + SAR-short ให้ทุกตัวชี้วัดอัตโนมัติ</div></div>'+DL;
-  }
-  function slidePreview(){
-    return '<div class="rp-slide"><div class="kick">KPI Monitor · รายงานผู้บริหาร</div><h1>สรุปผลตัวชี้วัดคุณภาพ ประจำเดือน '+M+'</h1>'
-      +'<div class="stats"><div class="stat"><b>20</b><span>ตัวชี้วัดที่ติดตาม</span></div><div class="stat"><b>80%</b><span>บรรลุเป้าหมาย</span></div><div class="stat"><b>100%</b><span>กรอกข้อมูลครบ</span></div><div class="stat"><b>8</b><span>ฝ่ายที่เข้าร่วม</span></div></div>'
-      +'<ul><li>จุดแข็ง: ล้างมือ (88%) · STEMI ส่งต่อ ≤30 นาที (85%)</li><li>ต้องเฝ้าระวัง: ความดันโลหิต (PCT-11) แนวโน้มลดลง</li></ul></div>'
-      +'<div class="rp-note">— สไลด์นี้เป็นตัวอย่างหน้าตา · ระบบจริงสร้างเป็น Google Slides ทั้งชุดให้อัตโนมัติ —<br><button class="rp-dl">⬇ เปิดใน Google Slides (ตัวอย่าง)</button></div>';
-  }
-  // override the demo report actions to show a polished preview instead of a no-op toast
-  window.airepClickWord=function(){show('📄','Word Report — ฉบับสมบูรณ์',wordPreview());};
-  window.airepSubmitExcel=function(){try{closeModal('modal-airep-excel');}catch(e){}show('📊','Excel Report — สรุปทุกฝ่าย',excelPreview());};
-  window.airepSubmitSlideDeck=function(){try{closeModal('modal-airep-slide');}catch(e){}show('📽️','Slide Deck — รายงานผู้บริหาร',slidePreview());};
-  window.airepGeneratePDCA=function(id){
-    show('🔄','PDCA — วิเคราะห์โดย AI','<div style="padding:40px 20px;text-align:center;color:#5b6b7a;font-family:Sarabun,sans-serif">⏳ AI กำลังวิเคราะห์ '+(id||'')+' จากข้อมูลย้อนหลัง ...</div>');
-    try{
-      window.google.script.run.withSuccessHandler(function(d){
-        if(d&&d.ok) show('🔄','PDCA · '+(id||'')+' — วิเคราะห์โดย AI',pdcaHtml(d,id));
-        else show('🔄','PDCA — วิเคราะห์โดย AI','<div style="padding:30px;font-family:Sarabun,sans-serif">'+((d&&d.msg)||'สร้างไม่สำเร็จ')+'</div>'+DL);
-      }).withFailureHandler(function(e){
-        show('🔄','PDCA — วิเคราะห์โดย AI','<div style="padding:30px;font-family:Sarabun,sans-serif">เกิดข้อผิดพลาด: '+e+'</div>'+DL);
-      }).generatePDCA(id,'');
-    }catch(e){ show('🔄','PDCA — วิเคราะห์โดย AI','<div style="padding:30px;font-family:Sarabun,sans-serif">'+e+'</div>'+DL); }
-  };
-  // ⓘ KPI definition popup (button injected into each KPI row)
-  function esc(s){return (typeof escHtml==='function')?escHtml(s==null?'':s):(''+(s==null?'':s));}
-  function defHtml(k){
-    var fl={1:'ทุกเดือน',3:'ทุก 3 เดือน',6:'ทุก 6 เดือน',12:'ทุกปี'};
-    function r(l,v){return '<tr><th>'+l+'</th><td>'+esc(v)+'</td></tr>';}
-    return '<div class="rp-paper" style="max-width:620px"><h1>นิยามตัวชี้วัด (KPI)</h1><div class="sub">'+esc(k.id)+(k.dept?' · ฝ่าย '+esc(k.dept):'')+'</div>'
-      +'<table>'+r('ชื่อตัวชี้วัด',k.name)+r('หน่วยวัด',k.unit)+r('เป้าหมาย',(k.direction||'')+' '+(k.target||'')+' '+(k.unit||''))+r('ความถี่การเก็บ',fl[k.frequency]||('ทุก '+(k.frequency||1)+' เดือน'))+r('ผู้รับผิดชอบ',k.ownerName||k.owner)+'</table>'
-      +'<h2>สูตรการคำนวณ</h2><div class="ai" style="font-family:Sarabun,sans-serif">'+esc(k.formula||'(ไม่ระบุสูตร)')+'</div>'
-      +'<div class="rp-note" style="text-align:left;color:#5b6b7a">ℹ️ นิยามนี้ดึงจากทะเบียนตัวชี้วัด (KPI_Master) — ระบบจริงให้ผู้ใช้กดดูได้ทุกตัว</div></div>';
-  }
-  window.kpiDefClick=function(btn){
-    var id=btn.getAttribute('data-kid');
-    var list=(window._deptKPIs||[]).concat(window._userKPIs||[]);
-    var k=null;for(var i=0;i<list.length;i++){if(list[i].id===id){k=list[i];break;}}
-    if(!k)return;
-    show('ⓘ','นิยามตัวชี้วัด '+id, defHtml(k));
-  };
-})();
-</script>
 </body>
 </html>

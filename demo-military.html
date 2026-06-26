@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>ความพร้อมกำลังพล — มทบ.44</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root{--olive:#4b5320;--olive2:#6b7a2f;--khaki:#7c6f4a;--ink:#23291a;--muted:#7a8067;--line:#e4e3d3;
+        --bg:#f4f4ec;--card:#fff;--green:#3f8f3f;--amber:#cc8400;--red:#c0392b;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Sarabun,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;padding-bottom:40px}
+  .wrap{max-width:980px;margin:0 auto;padding:0 14px}
+  header{background:linear-gradient(120deg,#3b401a,#5a6a2c);color:#fff;padding:20px 0 16px;margin-bottom:14px;
+         box-shadow:0 2px 10px rgba(0,0,0,.15)}
+  header h1{font-size:24px;font-weight:800;letter-spacing:.3px;display:flex;align-items:center;gap:10px}
+  header .tag{color:#d8e0bf;font-size:13.5px;margin-top:3px}
+  header .stamp{color:#c2cba0;font-size:12px;margin-top:6px}
+  .accbar{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .accbar input[type=range]{width:130px;accent-color:#cddc7a}
+  .accbar .lab{font-size:12px;color:#d8e0bf}
+  .sec{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px;
+       box-shadow:0 1px 4px rgba(75,83,32,.05)}
+  .sec-h{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+  .sec-h h2{font-size:17px;font-weight:800;color:var(--olive)}
+  .sec-h .tag{font-size:11.5px;color:var(--muted);background:#f0f0e2;padding:2px 9px;border-radius:20px}
+  .sec-h .ln{flex:1;height:1px;background:var(--line)}
+  .ready{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .rcard{border:1px solid var(--line);border-radius:12px;padding:13px 14px;text-align:center}
+  .rcard .lab{font-size:13px;color:var(--muted)}
+  .rcard .big{font-size:30px;font-weight:800;line-height:1.1;margin:3px 0}
+  .rcard .pct{font-size:13px;font-weight:700}
+  .rcard.g{background:#f1f7ee;border-color:#cfe6c6}.rcard.g .big{color:var(--green)}
+  .rcard.a{background:#fdf6e9;border-color:#f0dcb0}.rcard.a .big{color:var(--amber)}
+  .rcard.r{background:#fbeeec;border-color:#eccac4}.rcard.r .big{color:var(--red)}
+  .stackbar{display:flex;height:16px;border-radius:8px;overflow:hidden;margin-top:12px;border:1px solid var(--line)}
+  .stackbar i{display:block}
+  .note2{font-size:12.5px;color:var(--muted);margin-top:10px}
+  .prog{background:#f0f0e2;border-radius:8px;padding:8px 12px;margin-top:10px;font-size:13px;color:#5a5f47}
+  .fybar{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 16px;margin-bottom:14px;font-size:15px;font-weight:600;color:var(--olive);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .fybar select{font-family:Sarabun,sans-serif;font-size:15px;font-weight:700;color:var(--ink);padding:5px 12px;border:1px solid var(--line);border-radius:8px;background:#f8f8f0;cursor:pointer}
+  /* heat sentinel */
+  .heat{border-radius:14px;padding:16px 18px;margin-bottom:14px;border:2px solid}
+  .heat.ok{background:#f1f7ee;border-color:#9ecb8e}.heat.alert{background:#fbeeec;border-color:#c0392b}
+  .heat .ht{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:800;color:var(--olive)}
+  .heat .stroke{display:flex;align-items:baseline;gap:9px;margin:10px 0 4px}
+  .heat .stroke b{font-size:30px}.heat.ok .stroke b{color:var(--green)}.heat.alert .stroke b{color:var(--red)}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+  .chip{background:#fff;border:1px solid var(--line);border-radius:18px;padding:3px 11px;font-size:12.5px}
+  .advice{background:#eef3e3;border-left:3px solid var(--olive2);border-radius:0 8px 8px 0;padding:8px 12px;
+          font-size:13px;color:#46502a;margin-top:10px}
+  /* conscript illness */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
+  @media(max-width:680px){.grid,.ready{grid-template-columns:1fr}}
+  .gcard{border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .gcard .gh{display:flex;justify-content:space-between;align-items:baseline}
+  .gcard .gh b{font-size:14.5px;color:var(--ink)}
+  .gcard .gh .n{font-size:20px;font-weight:800;color:var(--olive)}
+  .gcard .top{font-size:12px;color:var(--muted);margin-top:4px}
+  .gcard .adv{font-size:12px;color:#46502a;margin-top:7px;background:#f3f5ea;border-radius:7px;padding:6px 9px}
+  .rf{margin-top:4px}
+  .rfrow{margin:9px 0}
+  .rfrow .top{display:flex;justify-content:space-between;font-size:13px}
+  .rfbar{height:9px;background:#eceadb;border-radius:6px;margin-top:3px;overflow:hidden}
+  .rfbar i{display:block;height:100%;background:linear-gradient(90deg,#6b7a2f,#9aac57)}
+  .pending{text-align:center;color:var(--muted);padding:40px 20px;font-size:15px}
+  .loading{text-align:center;color:var(--muted);padding:60px 20px}
+  footer{font-size:11.5px;color:var(--muted);text-align:center;padding:8px 0 0}
+  small{font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+<script>
+/* demo mock for MilitaryReadiness.html — fake getMilitaryReadiness (per-FY), no backend */
+(function(){
+  function mk(data){
+    var succ=null;
+    var api={withSuccessHandler:function(c){succ=c;return api;},withFailureHandler:function(){return api;},
+      getMilitaryReadiness:function(){setTimeout(function(){if(succ)succ(data);},140);return api;}};
+    return new Proxy(api,{get:function(t,p){if(p in t)return t[p];return function(){setTimeout(function(){if(succ)succ(null);},60);return api;};}});
+  }
+  function ill(label,advice,patients,top){return {label:label,advice:advice,patients:patients,top:top||[]};}
+  var perfy={
+    '2569':{cadre:{total:1158,normal:1060,risk:34,disease:64,complete:false,screened:240,checked_total:1158,
+        rf:{dm:59,htn:17,lipid:14,prediabetes:51,smoking:679,ascvd_high:0}},
+      conscript:{total:1451,visited:670,illness:{
+        respiratory:ill('ทางเดินหายใจ','วัคซีนไข้หวัดใหญ่ + ระบายอากาศโรงนอน + สุขอนามัย',329,[{code:'J00',name:'หวัด',n:226},{code:'J039',name:'ทอนซิลอักเสบ',n:50}]),
+        injury:ill('บาดเจ็บ/กล้ามเนื้อ-กระดูก','ป้องกันบาดเจ็บจากการฝึก + warm-up',142,[{code:'S934',name:'ข้อเท้าแพลง',n:14}]),
+        skin:ill('ผิวหนัง/ติดเชื้อ','สุขอนามัยส่วนบุคคล + ความสะอาดที่พัก',78,[{code:'L024',name:'ฝี/หนอง',n:20}]),
+        eye:ill('ตา (ตาแดง)','แยกผู้ป่วยตาแดง + ล้างมือ',50,[{code:'H103',name:'ตาแดง',n:29}]),
+        dental:ill('ฟัน/ช่องปาก','หน่วยทันตกรรมเคลื่อนที่',64,[{code:'K040',name:'Pulpitis',n:22}])}},
+      heat:{patients:10,stroke:0,by_type:[{label:'เกร็งแดด/หายใจเร็ว',n:10}]}},
+    '2568':{cadre:{total:1217,normal:835,risk:299,disease:83,complete:true,screened:1103,checked_total:1217,
+        rf:{dm:77,htn:84,lipid:165,prediabetes:348,smoking:694,ascvd_high:0}},
+      conscript:{total:1394,visited:704,illness:{
+        respiratory:ill('ทางเดินหายใจ','วัคซีนไข้หวัดใหญ่ + ระบายอากาศโรงนอน',414,[{code:'J00',name:'หวัด',n:260}]),
+        injury:ill('บาดเจ็บ/กล้ามเนื้อ-กระดูก','ป้องกันบาดเจ็บจากการฝึก',204,[{code:'S934',name:'ข้อเท้าแพลง',n:18}]),
+        skin:ill('ผิวหนัง/ติดเชื้อ','สุขอนามัยส่วนบุคคล',70,[]),
+        dental:ill('ฟัน/ช่องปาก','ตรวจฟันแรกเข้า',58,[])}},
+      heat:{patients:22,stroke:0,by_type:[{label:'เกร็งแดด/หายใจเร็ว',n:22}]}},
+    '2567':{cadre:{total:1192,normal:850,risk:268,disease:74,complete:true,screened:1100,checked_total:1192,
+        rf:{dm:70,htn:80,lipid:150,prediabetes:300,smoking:650,ascvd_high:0}},
+      conscript:{total:1527,visited:659,illness:{
+        respiratory:ill('ทางเดินหายใจ','วัคซีนไข้หวัดใหญ่',342,[{code:'J00',name:'หวัด',n:210}]),
+        injury:ill('บาดเจ็บ/กล้ามเนื้อ-กระดูก','ป้องกันบาดเจ็บจากการฝึก',192,[])}},
+      heat:{patients:21,stroke:0,by_type:[{label:'เกร็งแดด/หายใจเร็ว',n:21}]}}
+  };
+  var data={status:'ok',hospital:'รพ.ค่ายเขตอุดมศักดิ์ มทบ.44 (เดโม่)',fys:[2567,2568,2569],default_fy:2568,per_fy:perfy,
+    trend:{'2565':{normal:779,risk:162,disease:63},'2566':{normal:879,risk:222,disease:64},'2567':{normal:850,risk:268,disease:74},'2568':{normal:835,risk:299,disease:83}},
+    caveat:'โหมดสาธิต · พลทหาร = proxy (ทหารบก+ชาย+อายุ18-25+เพิ่งขึ้นทะเบียน)',generatedAt:'27 มิ.ย. (เดโม่)'};
+  window.google={script:{get run(){return mk(data);},host:{close:function(){},setHeight:function(){}}}};
+})();
+</script>
+
+<header><div class="wrap">
+  <h1>🎖️ ความพร้อมกำลังพล <small style="font-weight:600;color:#c2cba0">มทบ.44</small></h1>
+  <div class="tag">สุขภาพและความพร้อมรบของกำลังพล — เพื่อการดูแลเชิงรุกและป้องกันโรค</div>
+  <div class="stamp" id="stamp"></div>
+  <div class="accbar">
+    <span class="lab">ขนาดตัวอักษร</span>
+    <input type="range" id="fz" min="1" max="4" value="2" oninput="setFz(this.value)">
+    <span class="lab" id="fzlab">ปกติ</span>
+  </div>
+</div></header>
+<div class="wrap"><div id="body"><div class="loading">⏳ กำลังโหลดข้อมูล…</div></div>
+<footer id="foot"></footer></div>
+
+<script>
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function fmt(n){return (n==null||isNaN(Number(n)))?'—':Number(n).toLocaleString('th-TH');}
+  function pct(a,b){return (b>0)?Math.round(a/b*100):0;}
+  function section(title,tag,inner){return '<section class="sec"><div class="sec-h"><h2>'+title+'</h2>'
+    +(tag?'<span class="tag">'+esc(tag)+'</span>':'')+'<span class="ln"></span></div>'+inner+'</section>';}
+
+  function setFz(v){var z=[0,0.9,1.0,1.15,1.32][v],lab=['','เล็ก','ปกติ','ใหญ่','ใหญ่มาก'][v];
+    document.body.style.zoom=z;document.getElementById('fzlab').textContent=lab;
+    try{localStorage.setItem('mil_fz',v);}catch(e){}}
+  (function(){try{var s=localStorage.getItem('mil_fz');if(s){document.getElementById('fz').value=s;setFz(s);}}catch(e){}})();
+
+  // ---- กลุ่มโรคพลทหาร: ลำดับแสดง + ไอคอน ----
+  var GROUP_ORDER=['respiratory','injury','skin','gi','eye','dental','other'];
+  var GROUP_ICON={respiratory:'🫁',injury:'🏃',skin:'🧴',gi:'🍚',eye:'👁️',dental:'🦷',other:'➕',checkup:'📋'};
+
+  function readinessSection(cd, fy){
+    if(!cd) return '';
+    var n=cd.normal||0,r=cd.risk||0,dd=cd.disease||0,t=cd.total||0;
+    var bar='<div class="stackbar">'
+      +'<i style="width:'+pct(n,t)+'%;background:#7fb069"></i>'
+      +'<i style="width:'+pct(r,t)+'%;background:#e2b04a"></i>'
+      +'<i style="width:'+pct(dd,t)+'%;background:#cf5a4c"></i></div>';
+    var cards='<div class="ready">'
+      +'<div class="rcard g"><div class="lab">🟢 ปกติ (พร้อมรบ)</div><div class="big">'+fmt(n)+'</div><div class="pct">'+pct(n,t)+'%</div></div>'
+      +'<div class="rcard a"><div class="lab">🟡 เสี่ยง</div><div class="big">'+fmt(r)+'</div><div class="pct">'+pct(r,t)+'%</div></div>'
+      +'<div class="rcard r"><div class="lab">🔴 เป็นโรค</div><div class="big">'+fmt(dd)+'</div><div class="pct">'+pct(dd,t)+'%</div></div>'
+      +'</div>'+bar;
+    var note='';
+    if(cd.complete===false){ note='<div class="prog">📋 การตรวจสุขภาพปีงบ '+fy+' ยังไม่ครบ — ตรวจไปแล้ว '
+      +fmt(cd.screened)+'/'+fmt(cd.checked_total)+' นาย ('+pct(cd.screened,cd.checked_total)+'%) · ตัวเลขจะนิ่งเมื่อตรวจครบ</div>'; }
+    return section('🪖 ความพร้อมรบ · กำลังพลประจำการ','ปีงบ '+fy+(cd.complete?' (ตรวจครบ)':' (กำลังตรวจ)')+' · '+fmt(t)+' นาย',
+      cards+note);
+  }
+
+  function heatSection(h, fy){
+    if(!h || h.patients==null) return '';
+    var stroke=h.stroke||0, ok=(stroke===0);
+    var chips=(h.by_type||[]).map(function(x){return '<span class="chip">'+esc(x.label)+' <b>'+fmt(x.n)+'</b></span>';}).join('');
+    var strokeLine= ok
+      ? '<div class="stroke"><b>0</b><span>เคส Heat stroke (โรคลมร้อนรุนแรง) — ไม่มีผู้ป่วยปีนี้ ✅</span></div>'
+      : '<div class="stroke"><b>'+fmt(stroke)+'</b><span style="color:#c0392b;font-weight:700">เคส Heat stroke ⚠️ — ต้องทบทวนทันที</span></div>';
+    return '<div class="heat '+(ok?'ok':'alert')+'">'
+      +'<div class="ht">🌡️ เฝ้าระวังโรคจากความร้อน (Heat-related) <span style="font-size:11.5px;color:var(--muted);font-weight:600">นิยามกรมแพทย์ทหาร · ทหารบกทั้งหมด · ปีงบ '+fy+'</span></div>'
+      +strokeLine
+      +'<div class="note2">ผู้ป่วยโรคจากความร้อนรวม <b>'+fmt(h.patients)+'</b> นาย</div>'
+      +(chips?'<div class="chips">'+chips+'</div>':'')
+      +'<div class="advice">🛡️ ป้องกัน: ตารางฝึกเลี่ยงช่วงแดดจัด + จุดน้ำ/จุดพัก + เฝ้าระวัง heat index + ทีม/อุปกรณ์ปฐมพยาบาล heat stroke (ice/cooling)</div>'
+      +'</div>';
+  }
+
+  function conscriptSection(co, fy){
+    if(!co || co.total==null) return '';
+    var ill=co.illness||{};
+    var keys=GROUP_ORDER.filter(function(k){return ill[k] && ill[k].patients>0;});
+    keys.sort(function(a,b){return ill[b].patients-ill[a].patients;});
+    var cards=keys.map(function(k){var g=ill[k];
+      var tops=(g.top||[]).slice(0,3).map(function(x){return esc((x.name||x.code))+' '+fmt(x.n);}).join(' · ');
+      return '<div class="gcard"><div class="gh"><b>'+(GROUP_ICON[k]||'')+' '+esc(g.label)+'</b><span class="n">'+fmt(g.patients)+'</span></div>'
+        +'<div class="top">'+tops+'</div>'
+        +(g.advice?'<div class="adv">🛡️ '+esc(g.advice)+'</div>':'')+'</div>';
+    }).join('');
+    var head='<div class="note2" style="margin-bottom:11px">พลทหารกำลังประจำการ <b>'+fmt(co.total)+'</b> นาย · มา รพ. ปีนี้ <b>'+fmt(co.visited)+'</b> นาย '
+      +'<small>(เฝ้าระวังโรคเพื่อการป้องกัน — primary prevention)</small></div>';
+    return section('🪖 พลทหาร · เฝ้าระวังโรค → ป้องกัน (กลุ่มพิจารณาเฉพาะ)','ปีงบ '+fy, head+'<div class="grid">'+cards+'</div>');
+  }
+
+  function riskSection(rf, fy){
+    if(!rf) return '';
+    var items=[
+      ['สูบบุหรี่', rf.smoking, '#7c6f4a'],
+      ['ภาวะก่อนเบาหวาน (FBS/A1C)', rf.prediabetes, '#cc8400'],
+      ['คอเลสเตอรอลสูง (≥240)', rf.lipid, '#b8860b'],
+      ['ความดันโลหิตสูง (≥140)', rf.htn, '#c0392b'],
+      ['เป็นเบาหวาน', rf.dm, '#a04000']
+    ].filter(function(x){return x[1]!=null;});
+    var max=Math.max.apply(null,items.map(function(x){return Number(x[1])||0;}).concat([1]));
+    var rows=items.map(function(it){var v=Number(it[1])||0;
+      return '<div class="rfrow"><div class="top"><span>'+esc(it[0])+'</span><b>'+fmt(v)+' นาย</b></div>'
+        +'<div class="rfbar"><i style="width:'+Math.round(v/max*100)+'%;background:'+it[2]+'"></i></div></div>';
+    }).join('');
+    return section('⚕️ ปัจจัยเสี่ยงสุขภาพเด่น · กำลังพลประจำการ','ปีงบ '+fy+' · สำหรับวางโปรแกรมส่งเสริมสุขภาพ','<div class="rf">'+rows+'</div>');
+  }
+
+  function trendSection(trend){
+    var ys=Object.keys(trend||{}).sort();
+    if(ys.length<2) return '';
+    return section('📈 แนวโน้มความพร้อมรบ 5 ปี','เฉพาะปีที่ตรวจครบ',
+      '<div style="position:relative;height:280px"><canvas id="mil-trend"></canvas></div>');
+  }
+  function renderTrend(trend){
+    var cv=document.getElementById('mil-trend'); if(!cv||!window.Chart||!trend) return;
+    var ys=Object.keys(trend).sort(); if(ys.length<2) return;
+    var labels=ys.map(function(y){return 'ปี '+String(y).slice(2);});
+    function ser(key,col,lab){return {label:lab,data:ys.map(function(y){return trend[y][key]||0;}),backgroundColor:col,stack:'s'};}
+    if(window._mt) window._mt.destroy();
+    window._mt=new Chart(cv.getContext('2d'),{type:'bar',
+      data:{labels:labels,datasets:[ser('normal','#7fb069','ปกติ'),ser('risk','#e2b04a','เสี่ยง'),ser('disease','#cf5a4c','เป็นโรค')]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top',labels:{font:{family:'Sarabun',size:12}}}},
+        scales:{x:{stacked:true,grid:{display:false},ticks:{font:{family:'Sarabun',size:12}}},
+          y:{stacked:true,ticks:{font:{family:'Sarabun',size:11}},title:{display:true,text:'จำนวน (นาย)',font:{family:'Sarabun',size:11}}}}}});
+  }
+
+  var DATA=null;
+  function render(d){
+    if(!d || d.status!=='ok'){
+      document.getElementById('body').innerHTML='<div class="pending">⏳ <b>รอข้อมูล</b><br>กรุณารัน <code>military_readiness_sync.py</code> บน cm2 เพื่อสร้างข้อมูล</div>';
+      return;
+    }
+    DATA=d;
+    if(d.generatedAt){ document.getElementById('stamp').textContent='ข้อมูลล่าสุด '+d.generatedAt; }
+    var fys=(d.fys||[]).slice().sort();
+    var opts=fys.map(function(y){return '<option value="'+y+'"'+(String(y)===String(d.default_fy)?' selected':'')+'>ปีงบประมาณ '+y+'</option>';}).join('');
+    var selBar=fys.length?'<div class="fybar">📅 เลือกปีงบประมาณ: <select id="fysel" onchange="renderFY(this.value)">'+opts+'</select>'
+      +'<span style="font-size:12.5px;color:var(--muted);font-weight:400">ครอบคลุมกำลังพลทุกนาย · พลทหารแยกพิจารณาเฉพาะ</span></div>':'';
+    document.getElementById('body').innerHTML = selBar + '<div id="fy-body"></div>' + trendSection(d.trend);
+    if(d.trend) renderTrend(d.trend);
+    renderFY(d.default_fy);
+    document.getElementById('foot').textContent='⚠️ '+(d.caveat||'')+' · ข้อมูลเชิงรวม ไม่มีข้อมูลรายบุคคล (PDPA)';
+  }
+  function renderFY(fy){
+    var pf=(DATA&&DATA.per_fy)?(DATA.per_fy[fy]||DATA.per_fy[String(fy)]):null;
+    var el=document.getElementById('fy-body'); if(!el) return;
+    if(!pf){ el.innerHTML='<div class="pending">ไม่มีข้อมูลปีงบ '+esc(fy)+'</div>'; return; }
+    el.innerHTML = readinessSection(pf.cadre, fy) + heatSection(pf.heat, fy)
+      + conscriptSection(pf.conscript, fy) + riskSection(pf.cadre&&pf.cadre.rf, fy);
+  }
+
+  if(window.google && google.script && google.script.run){
+    var _em='';
+    try{var mm=location.search.match(/[?&]email=([^&]+)/);if(mm)_em=decodeURIComponent(mm[1]);}catch(e){}
+    google.script.run
+      .withSuccessHandler(render)
+      .withFailureHandler(function(e){document.getElementById('body').innerHTML='<div class="loading">เกิดข้อผิดพลาด: '+esc(e&&e.message)+'</div>';})
+      .getMilitaryReadiness({email:_em});
+  } else {
+    document.getElementById('body').innerHTML='<div class="loading">เปิดหน้านี้ผ่าน KPI Monitor (?view=military)</div>';
+  }
+</script>
+</body>
+</html>
