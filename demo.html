@@ -1186,7 +1186,6 @@ body.has-demo-ribbon{padding-top:25px}
   }
 
   function showWordPreview(){
-    if(typeof closeModal==='function')closeModal('modal-airep-word');
     var body='<div style="padding:24px 30px;font-family:Sarabun,sans-serif;color:#1f2937;line-height:1.7">'
       +'<div style="text-align:center;border-bottom:2px solid #1d4ed8;padding-bottom:12px;margin-bottom:16px"><div style="font-size:20px;font-weight:800;color:#1e3a8a">รายงานการประเมินตนเอง (SAR)</div><div style="font-size:13px;color:#64748b">PCT-10 · DM คุมได้ HbA1c &lt;7% · รพ.ค่ายเขตอุดมศักดิ์ มทบ.44 · FY2569</div></div>'
       +'<h3 style="color:#1e3a8a;font-size:15px;margin:14px 0 4px">1. บริบทและความสำคัญ</h3><p style="margin:0">ตัวชี้วัด DM คุม HbA1c &lt;7% สะท้อนคุณภาพการดูแลผู้ป่วยเบาหวานต่อเนื่อง ลดภาวะแทรกซ้อนระยะยาว (ไต/ตา/เท้า/หัวใจ)</p>'
@@ -1208,6 +1207,11 @@ body.has-demo-ribbon{padding-top:25px}
       window.airepClickWord=showWordPreview;
       window.airepSubmitExcel=showExcelPreview;
       window.airepSubmitSlideDeck=function(){showSlidePreview();};
+      // ลิงก์ cockpit/military ใน sidebar default ชี้ Apps Script จริง (ต้อง login) → ชี้หน้า demo แทน
+      setTimeout(function(){
+        var nc=document.getElementById('nav-cockpit'); if(nc){nc.href='demo-cockpit.html';nc.style.display='';}
+        var nm=document.getElementById('nav-military'); if(nm)nm.href='demo-military.html';
+      },900);
     }catch(e){console.error('demo auto-login',e);}
   });
 })();
