@@ -1135,6 +1135,56 @@ body.has-demo-ribbon{padding-top:25px}
   }
   window.google={script:{get run(){return makeRunner();},host:{close:function(){},setHeight:function(){}}}};
 
+  // ---- demo-only previews: Excel report (table+graph) & Slide deck (4 slides) ----
+  // ของจริงสร้างไฟล์ .xlsx / Google Slides ภายนอก — ในเดโม่โชว์เป็น overlay ตัวอย่างแทน
+  function _demoOverlay(inner){
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;font-family:Sarabun,sans-serif';
+    ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:860px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+inner+'</div>';
+    ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+    document.body.appendChild(ov); return ov;
+  }
+  function _demoHead(grad,eyebrow,title){
+    return '<div style="background:'+grad+';color:#fff;padding:15px 22px;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:11px;opacity:.85">'+eyebrow+'</div><div style="font-size:18px;font-weight:800">'+title+'</div></div>'
+      +'<button onclick="var o=this.closest(\'div\');while(o&&o.parentNode!==document.body)o=o.parentNode;if(o)o.remove();" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:15px">&#10005;</button></div>';
+  }
+  function showExcelPreview(){
+    if(typeof closeModal==='function')closeModal('modal-airep-excel');
+    var rows=[['ต.ค.',2.10],['พ.ย.',2.30],['ธ.ค.',2.00],['ม.ค.',2.40],['ก.พ.',2.20],['มี.ค.',2.60]];
+    var tbl='<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:18px"><thead><tr style="background:#f0fdf4">'
+      +'<th style="text-align:left;padding:8px 10px;border:1px solid #dcfce7">เดือน</th><th style="padding:8px;border:1px solid #dcfce7">ยา</th><th style="padding:8px;border:1px solid #dcfce7">Lab</th><th style="padding:8px;border:1px solid #dcfce7">X-ray</th><th style="padding:8px;border:1px solid #dcfce7">รวม (ลบ.)</th></tr></thead><tbody>'
+      +rows.map(function(r){return '<tr><td style="padding:7px 10px;border:1px solid #eee">'+r[0]+'</td><td style="text-align:right;padding:7px;border:1px solid #eee">'+(r[1]*0.62).toFixed(2)+'</td><td style="text-align:right;padding:7px;border:1px solid #eee">'+(r[1]*0.18).toFixed(2)+'</td><td style="text-align:right;padding:7px;border:1px solid #eee">'+(r[1]*0.10).toFixed(2)+'</td><td style="text-align:right;padding:7px;border:1px solid #eee;font-weight:700">'+r[1].toFixed(2)+'</td></tr>';}).join('')+'</tbody></table>';
+    var body='<div style="padding:20px 22px">'+tbl
+      +'<div style="font-weight:700;font-size:14px;margin:6px 0 8px;color:#15803d">📈 กราฟแนวโน้ม (อยู่ในไฟล์จริงด้วย — ทั้ง data table + chart)</div>'
+      +'<div style="position:relative;height:250px"><canvas id="_demoExcelChart"></canvas></div></div>';
+    _demoOverlay(_demoHead('linear-gradient(135deg,#16a34a,#15803d)','ตัวอย่างโหมดสาธิต · ของจริงดาวน์โหลดเป็น .xlsx','📊 Excel Report — PCT (FY2569)')+body);
+    setTimeout(function(){ if(!window.Chart)return; new Chart(document.getElementById('_demoExcelChart'),{type:'bar',
+      data:{labels:rows.map(function(r){return r[0];}),datasets:[
+        {label:'ยา',data:rows.map(function(r){return +(r[1]*0.62).toFixed(2);}),backgroundColor:'#3b82f6'},
+        {label:'Lab',data:rows.map(function(r){return +(r[1]*0.18).toFixed(2);}),backgroundColor:'#10b981'},
+        {label:'X-ray',data:rows.map(function(r){return +(r[1]*0.10).toFixed(2);}),backgroundColor:'#f59e0b'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{family:'Sarabun'}}}},scales:{x:{stacked:true,ticks:{font:{family:'Sarabun'}}},y:{stacked:true,title:{display:true,text:'ล้านบาท',font:{family:'Sarabun'}}}}}});
+    },140);
+  }
+  function showSlidePreview(){
+    if(typeof closeModal==='function')closeModal('modal-airep-slide');
+    var slides=[
+      {t:'รายงานผลการดำเนินงาน',s:'รพ.ค่ายเขตอุดมศักดิ์ มทบ.44 · พ.ค. 2569',b:'สรุปภาพรวม KPI · การเงิน · คุณภาพ HA',c:'#0f3d5c'},
+      {t:'ความพร้อม HA ฉบับ 5',s:'KPI ผ่านเป้า 120/165 (73%)',b:'จุดแข็ง: คัดกรองไต DM 94% · จุดต้องเร่ง: A1C<7%, ER revisit',c:'#1f9d55'},
+      {t:'ภาพการเงิน',s:'รายได้ FY69 สะสม 26.1 ล้านบาท',b:'ค่ายา 62% · สิทธิเบิกได้ราชการ 80% · CMI 0.53',c:'#cc8400'},
+      {t:'ข้อเสนอเชิงนโยบาย',s:'3 เรื่องที่ต้องสั่งการ',b:'DM ค้างเจาะ HbA1c · ASCVD ยังไม่ได้ statin · ลงทุน NIV ดึงเคส refer กลับ',c:'#7c2d12'}
+    ];
+    var deck='<div style="padding:18px 22px;display:flex;flex-direction:column;gap:14px">'
+      +slides.map(function(sl,i){return '<div style="border-radius:12px;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,.12)"><div style="aspect-ratio:16/9;background:linear-gradient(135deg,'+sl.c+',#0f172a);color:#fff;padding:24px 28px;display:flex;flex-direction:column;justify-content:center">'
+        +'<div style="font-size:11px;opacity:.65">สไลด์ '+(i+1)+' / 4</div>'
+        +'<div style="font-size:25px;font-weight:800;margin-top:4px;line-height:1.2">'+sl.t+'</div>'
+        +'<div style="font-size:15px;opacity:.92;margin-top:7px">'+sl.s+'</div>'
+        +'<div style="font-size:13px;opacity:.82;margin-top:13px;border-top:1px solid rgba(255,255,255,.22);padding-top:10px">'+sl.b+'</div></div></div>';}).join('')
+      +'</div>';
+    _demoOverlay(_demoHead('linear-gradient(135deg,#ea580c,#c2410c)','ตัวอย่างโหมดสาธิต · ของจริงสร้างเป็น Google Slides','🎬 Monthly Slide Deck — เลื่อนดู 4 สไลด์')+deck);
+  }
+
   // auto-login on load (no real login needed)
   window.addEventListener('load',function(){
     document.body.classList.add('has-demo-ribbon');
@@ -1142,6 +1192,9 @@ body.has-demo-ribbon{padding-top:25px}
       var inp=document.getElementById('email-inp');
       if(inp)inp.value='admin@hospital.demo';
       if(typeof doLogin==='function')doLogin();
+      // demo: ปุ่ม Generate Excel / สร้างสไลด์ → โชว์ตัวอย่าง preview (ของจริงเป็นไฟล์ภายนอก)
+      window.airepSubmitExcel=showExcelPreview;
+      window.airepSubmitSlideDeck=function(){showSlidePreview();};
     }catch(e){console.error('demo auto-login',e);}
   });
 })();
