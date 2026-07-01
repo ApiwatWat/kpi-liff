@@ -343,6 +343,9 @@ body.has-demo-ribbon{padding-top:25px}
       setTimeout(function(){
         var nc=document.getElementById('nav-cockpit'); if(nc){nc.href='demo-cockpit.html';nc.style.display='';}
         var nm=document.getElementById('nav-military'); if(nm)nm.href='demo-military.html';
+        // JARVIS launcher (real app -> Tailscale URL) -> pre-recorded demo page (rebuild-safe)
+        var nj=document.querySelector('a[href*="tailed46e2"],a[href*="8444"]');
+        if(nj){nj.href='demo-jarvis.html';nj.removeAttribute('target');nj.removeAttribute('rel');nj.onclick=null;}
       },900);
     }catch(e){console.error('demo auto-login',e);}
   });
