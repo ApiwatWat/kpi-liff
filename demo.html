@@ -1303,6 +1303,7 @@ body.has-demo-ribbon{padding-top:25px}
     <div class="sb-section" style="margin-top:10px">ระบบ</div>
     <div class="sb-item" id="nav-users" onclick="showPage(this.dataset.p)" data-p="users">&#128101; จัดการ Users</div>
     <div class="sb-item" id="nav-log" onclick="showPage(this.dataset.p)" data-p="log">&#128203; Audit Log</div>
+    <div class="sb-item" id="nav-sysvitals" onclick="showPage(this.dataset.p)" data-p="sysvitals">&#128200; มิติการใช้จริง</div>
     <div class="sb-item" id="nav-ha-std" onclick="showPage(this.dataset.p)" data-p="ha-std" style="display:none">&#127973; มาตรฐาน HA</div>
     <a class="sb-item" id="nav-military" href="<?= ScriptApp.getService().getUrl() ?>?view=military" target="_blank" rel="noopener" style="text-decoration:none">&#127894; ความพร้อมกำลังพล</a>
   </nav>
@@ -1635,6 +1636,31 @@ body.has-demo-ribbon{padding-top:25px}
       </div>
       <div class="loading" id="audit-loading" style="display:none"><div class="spinner"></div><span>กำลังโหลด...</span></div>
       <div class="table-wrap"><table class="kpi-table" style="font-size:12px"><thead><tr><th style="width:90px">เวลา</th><th style="width:90px">Action</th><th style="width:140px">Email</th><th style="width:80px">KPI</th><th>รายละเอียด</th><th style="width:100px">ค่าเดิม</th><th style="width:100px">ค่าใหม่</th></tr></thead><tbody id="audit-tbody"><tr><td colspan="7" style="text-align:center;padding:40px;color:rgba(125,211,252,.35)">กำลังเตรียมโหลด...</td></tr></tbody></table></div>
+    </div>
+    <!-- ===== มิติการใช้จริง / System Vital Signs (5 ก.ค.69) — mockup ===== -->
+    <div class="page" id="page-sysvitals">
+      <style>
+        #page-sysvitals #sv-cards>div,#page-sysvitals .sv-panel{transition:background .3s}
+        body.light-mode #page-sysvitals #sv-cards>div{background:#fff!important;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+        body.light-mode #page-sysvitals #sv-activity,body.light-mode #page-sysvitals #sv-fb-list{color:#334155!important}
+        @media(max-width:820px){#page-sysvitals .sv-grid{grid-template-columns:1fr!important}}
+      </style>
+      <div class="page-title">&#128200; มิติการใช้จริง <span style="font-size:13px;font-weight:400;color:rgba(125,211,252,.5)">System Vital Signs</span></div>
+      <div class="page-sub">ตัวชี้วัดว่าระบบถูกใช้งานจริง ฝังในองค์กรจริง — วัด "ชีพจร" ของโปรแกรมเอง (ดึงจาก Audit Log + Users + KPI_Master)</div>
+      <div id="sv-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:14px;margin:18px 0 22px"></div>
+      <div class="sv-grid" style="display:grid;grid-template-columns:1.3fr 1fr;gap:18px">
+        <div class="sv-panel" style="background:rgba(14,165,233,.05);border:1px solid rgba(14,165,233,.14);border-radius:14px;padding:16px">
+          <div style="font-size:12px;font-weight:700;color:#0ea5e9;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">&#128336; กิจกรรมล่าสุดในระบบ</div>
+          <div id="sv-activity" style="font-size:13px;line-height:1.6;color:rgba(226,232,240,.75)"></div>
+        </div>
+        <div class="sv-panel" style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:14px;padding:16px">
+          <div style="font-size:12px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">&#128172; เสนอแนะ / แจ้งปัญหา</div>
+          <div style="font-size:12px;color:rgba(148,163,184,.9);margin-bottom:8px">อยากให้ปรับอะไร เจอบั๊กตรงไหน พิมพ์ได้เลย — ทีมพัฒนาจะเห็นและนำไปปรับปรุง (เข้าคิวงานด้านพัฒนาคุณภาพ)</div>
+          <textarea id="sv-fb-text" rows="3" placeholder="เช่น อยากให้เพิ่มกราฟแนวโน้ม..., ปุ่ม X กดแล้วช้า" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid rgba(34,197,94,.3);border-radius:8px;background:rgba(10,22,40,.35);color:#e2e8f0;font-family:Sarabun,sans-serif;font-size:13px;resize:vertical"></textarea>
+          <button onclick="submitSysFeedback()" style="margin-top:8px;width:100%;padding:9px;border:none;border-radius:8px;background:#22c55e;color:#04220f;font-weight:700;font-size:13px;cursor:pointer;font-family:Sarabun,sans-serif">ส่งข้อเสนอแนะ</button>
+          <div id="sv-fb-list" style="margin-top:12px;font-size:12px;color:rgba(226,232,240,.6)"></div>
+        </div>
+      </div>
     </div>
     <!-- ===== มาตรฐาน HA TAB (H0-T6 13 มิ.ย.69) — ADMIN only ===== -->
     <div class="page" id="page-ha-std">
@@ -2373,12 +2399,51 @@ function doLogout(){var menu=document.getElementById('logout-menu');menu.classNa
 
 function buildSidebar(depts){var html='';for(var i=0;i<depts.length;i++){var d=depts[i];html+='<div class="sb-item" id="nav-dept-'+d+'" data-dept="'+d+'" onclick="navToDept(this)"><span class="dept-dot" style="background:'+getDeptColor(d)+'"></span><span>'+d+'</span></div>';}document.getElementById('dept-nav').innerHTML=html;}
 
-function showPage(id){var menu=document.getElementById('logout-menu');menu.className=menu.className.replace(/\s*open/g,'');var pages=document.querySelectorAll('.page');for(var i=0;i<pages.length;i++){pages[i].classList.remove('active');}document.getElementById('page-'+id).classList.add('active');var navItems=document.querySelectorAll('.sb-item');for(var j=0;j<navItems.length;j++){navItems[j].classList.remove('active');}var nav=document.getElementById('nav-'+id);if(nav)nav.classList.add('active'); if(id==='home')loadDashboard();if(id==='byuser'){loadMyKPIs();ssAutoShowIfNeeded();}if(id==='users')loadUsers();if(id==='exec')loadExecSummary();if(id==='ai')aiInitPage();if(id==='ai-report')airepInit();if(id==='log')loadAuditLog();if(id==='ha-std')openHAStd();}
+function showPage(id){var menu=document.getElementById('logout-menu');menu.className=menu.className.replace(/\s*open/g,'');var pages=document.querySelectorAll('.page');for(var i=0;i<pages.length;i++){pages[i].classList.remove('active');}document.getElementById('page-'+id).classList.add('active');var navItems=document.querySelectorAll('.sb-item');for(var j=0;j<navItems.length;j++){navItems[j].classList.remove('active');}var nav=document.getElementById('nav-'+id);if(nav)nav.classList.add('active'); if(id==='home')loadDashboard();if(id==='byuser'){loadMyKPIs();ssAutoShowIfNeeded();}if(id==='users')loadUsers();if(id==='exec')loadExecSummary();if(id==='ai')aiInitPage();if(id==='ai-report')airepInit();if(id==='log')loadAuditLog();if(id==='sysvitals')loadSysVitals();if(id==='ha-std')openHAStd();}
 
 function refreshPage(){if(!S.email)return;bcClear();showToast('กำลัง Clear Cache...','info');google.script.run.withSuccessHandler(function(){google.script.run.withSuccessHandler(function(info){if(info.role==='GUEST')return;S.role=info.role;S.name=info.name;S.dept=info.dept;S.depts=info.depts||[info.dept];S.kpis=info.kpis||[];S.haFillActive=!!info.haFillActive;document.getElementById('user-pill-text').textContent=info.name+' ('+info.role+')';if(info.role==='ADMIN')document.getElementById('btn-sheet').style.display='inline-block';loadDashboard();var activePage=document.querySelector('.page.active');if(!activePage)return;var id=activePage.id.replace('page-','');if(id==='dept'){var dept=document.getElementById('dept-title').textContent;if(dept)loadDept(dept);}else if(id==='byuser')loadMyKPIs();else if(id==='users')loadUsers();showToast('Refresh สำเร็จ','success');}).checkPermission(S.email);}).forceClearCacheAPI();
 }
 
 function loadDashboard(){google.script.run.withSuccessHandler(renderDashboard).getDashboardStats();loadYoY();loadHeatmap();}
+
+// ===== มิติการใช้จริง / System Vital Signs (mockup 5 ก.ค.69) =====
+// DEMO uses mock data mirroring REAL sources. Real backend later = one function
+// getSystemVitals(): age from MIN(Users.CreatedAt); kpiCount from KPI_Master rows;
+// dataEntries from Audit_Log action='WRITE_OK'; activeUsers from DISTINCT(email) in
+// Audit_Log last 30d; activity from getNotifications(). Feedback -> System_Feedback sheet.
+function loadSysVitals(){
+  var launch=new Date(2025,9,20).getTime(); // mock launch 20 ต.ค.2568
+  renderSysVitals({launch:launch,kpiCount:167,deptCount:11,dataEntries:4287,
+    activeUsers30:7,totalUsers:18,totalEvents:5140,lastUpdate:'วันนี้ 14:32',
+    activity:[
+      {t:'2 นาที',who:'พ.ต.อภิวัธน์',act:'บันทึก PCT-10 (DM A1c&lt;7%) = 48.4%'},
+      {t:'25 นาที',who:'ร.ท.หญิง บุญญิสา',act:'บันทึก IC-03 = 1.2‰'},
+      {t:'1 ชม.',who:'พรพงศ์',act:'ยืนยันค่า OOR ของ ER-05'},
+      {t:'3 ชม.',who:'ADMIN',act:'เพิ่ม User ใหม่ (ห้องบัตร)'},
+      {t:'เมื่อวาน',who:'ทพญ.ฟ้าใส',act:'บันทึก Dent-02 = 88%'}
+    ]});
+}
+function _svAge(ms){var d=Math.floor((Date.now()-ms)/86400000);return Math.floor(d/30)+' เดือน '+(d%30)+' วัน';}
+function _svCard(icon,big,label,sub,color){return '<div style="border:1px solid rgba(14,165,233,.14);background:rgba(14,165,233,.05);border-radius:14px;padding:16px 12px;text-align:center"><div style="font-size:22px">'+icon+'</div><div style="font-size:22px;font-weight:800;color:'+(color||'#0ea5e9')+';margin-top:4px;line-height:1.1">'+big+'</div><div style="font-size:12px;color:#0ea5e9;margin-top:4px;font-weight:600">'+label+'</div><div style="font-size:10px;color:rgba(148,163,184,.85);margin-top:2px">'+sub+'</div></div>';}
+function renderSysVitals(d){
+  var ls=new Date(d.launch).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('sv-cards').innerHTML=
+    _svCard('&#9201;&#65039;',_svAge(d.launch),'อายุระบบ','เริ่ม '+ls)+
+    _svCard('&#128200;',d.kpiCount,'KPI ที่ติดตาม',d.deptCount+' ฝ่าย')+
+    _svCard('&#9997;&#65039;',d.dataEntries.toLocaleString(),'บันทึกข้อมูลสะสม','จาก Audit Log','#16a34a')+
+    _svCard('&#128101;',d.activeUsers30+' คน','Active 30 วัน','ทั้งหมด '+d.totalUsers+' คน')+
+    _svCard('&#128336;',d.lastUpdate,'อัปเดตล่าสุด',d.totalEvents.toLocaleString()+' events','#d97706');
+  document.getElementById('sv-activity').innerHTML=d.activity.map(function(a){
+    return '<div style="padding:5px 0;border-bottom:1px dashed rgba(14,165,233,.12)"><span style="color:#0ea5e9;font-weight:600">'+a.who+'</span> '+a.act+' <span style="opacity:.5;font-size:11px">· '+a.t+'</span></div>';
+  }).join('');
+}
+function submitSysFeedback(){
+  var el=document.getElementById('sv-fb-text');var t=(el.value||'').trim();
+  if(!t){showToast('พิมพ์ข้อเสนอแนะก่อนครับ','info');return;}
+  var list=document.getElementById('sv-fb-list');
+  list.innerHTML='<div style="padding:6px 0;border-top:1px dashed rgba(34,197,94,.25)">&#9989; '+t.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'+list.innerHTML;
+  el.value='';showToast('ขอบคุณครับ ส่งข้อเสนอแนะแล้ว (เดโม)','success');
+}
 
 function renderDashboard(s){
   document.getElementById('prev-label').textContent=s.prevLabel;
