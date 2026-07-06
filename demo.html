@@ -1662,6 +1662,10 @@ body.has-demo-ribbon{padding-top:25px}
           <textarea id="sv-fb-text" rows="3" placeholder="เช่น อยากให้เพิ่มกราฟแนวโน้ม..., ปุ่ม X กดแล้วช้า" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid rgba(34,197,94,.3);border-radius:8px;background:rgba(10,22,40,.35);color:#e2e8f0;font-family:Sarabun,sans-serif;font-size:13px;resize:vertical"></textarea>
           <button onclick="submitSysFeedback()" style="margin-top:8px;width:100%;padding:9px;border:none;border-radius:8px;background:#22c55e;color:#04220f;font-weight:700;font-size:13px;cursor:pointer;font-family:Sarabun,sans-serif">ส่งข้อเสนอแนะ</button>
           <div id="sv-fb-list" style="margin-top:12px;font-size:12px;color:rgba(226,232,240,.6)"></div>
+          <div id="sv-fb-admin-wrap" style="display:none;margin-top:12px;border-top:1px dashed rgba(34,197,94,.25);padding-top:10px">
+            <button onclick="loadSystemFeedback()" style="width:100%;padding:8px;border:1px solid rgba(34,197,94,.4);border-radius:8px;background:rgba(34,197,94,.08);color:#16a34a;font-weight:700;font-size:12px;cursor:pointer;font-family:Sarabun,sans-serif">&#128203; ดูข้อเสนอแนะที่ส่งเข้ามา (แอดมิน)</button>
+            <div id="sv-fb-admin" style="margin-top:10px;font-size:12px;color:rgba(226,232,240,.7)"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -2457,6 +2461,8 @@ function loadDashboard(){google.script.run.withSuccessHandler(renderDashboard).g
 // dataEntries from Audit_Log action='WRITE_OK'; activeUsers from DISTINCT(email) in
 // Audit_Log last 30d; activity from getNotifications(). Feedback -> System_Feedback sheet.
 function loadSysVitals(){
+  var aw=document.getElementById('sv-fb-admin-wrap'); if(aw) aw.style.display=''; // demo user = admin
+  var ab=document.getElementById('sv-fb-admin'); if(ab) ab.innerHTML='';
   var launch=new Date(2025,9,20).getTime(); // mock launch 20 ต.ค.2568
   renderSysVitals({launch:launch,kpiCount:167,deptCount:11,dataEntries:4287,
     activeUsers30:7,totalUsers:18,totalEvents:5140,lastUpdate:'วันนี้ 14:32',
@@ -2488,6 +2494,17 @@ function submitSysFeedback(){
   var list=document.getElementById('sv-fb-list');
   list.innerHTML='<div style="padding:6px 0;border-top:1px dashed rgba(34,197,94,.25)">&#9989; '+t.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'+list.innerHTML;
   el.value='';showToast('ขอบคุณครับ ส่งข้อเสนอแนะแล้ว (เดโม)','success');
+}
+function loadSystemFeedback(){ // DEMO mock — จริงเรียก getSystemFeedback(S.email) admin-only
+  var items=[
+    {text:'อยากให้เพิ่มกราฟแนวโน้ม 12 เดือนในหน้า Dashboard',email:'nurse.pct@rpk',ts:'7/7/2569 01:20'},
+    {text:'ปุ่มส่งออก Excel กดแล้วช้า บางทีค้าง',email:'admin.im@rpk',ts:'6/7/2569 15:40'},
+    {text:'อยากได้แจ้งเตือน LINE ตอน KPI ตก',email:'head.ic@rpk',ts:'5/7/2569 09:05'}
+  ];
+  var box=document.getElementById('sv-fb-admin');
+  box.innerHTML='<div style="font-weight:700;color:#16a34a;margin-bottom:6px">รวม '+items.length+' รายการ</div>'+items.map(function(f){
+    return '<div style="padding:7px 0;border-bottom:1px dashed rgba(34,197,94,.2)"><div>'+f.text+'</div><div style="opacity:.55;font-size:11px;margin-top:2px">'+f.email+' &middot; '+f.ts+'</div></div>';
+  }).join('');
 }
 
 // ===== Cockpit คุณภาพ / Quality-Meeting (ด้าน 3, mockup 6 ก.ค.69) =====
