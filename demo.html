@@ -1299,7 +1299,7 @@ body.has-demo-ribbon{padding-top:25px}
     <div class="sb-item" id="nav-ai-report" onclick="showPage(this.dataset.p)" data-p="ai-report">&#128209; AI Report</div>
     <div class="sb-section" style="margin-top:10px">&#9670; Cockpit &middot; 3 มิติ</div>
     <a class="sb-item" id="nav-cockpit" href="<?= ScriptApp.getService().getUrl() ?>?view=cockpit" target="_blank" rel="noopener" style="display:none;text-decoration:none;align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>CEO Cockpit</span><span style="font-size:10px;opacity:.5;font-weight:400">บริหาร</span></span></a>
-    <div class="sb-item" id="nav-carecockpit" onclick="showToast('Care Cockpit (เชื่อมโยงคนไข้) — กำลังออกแบบให้ปลอด PDPA','info')" style="opacity:.5;cursor:default;align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>Care Cockpit</span><span style="font-size:10px;opacity:.75;font-weight:400">ผู้ป่วย &middot; เร็วๆ นี้</span></span></div>
+    <div class="sb-item" id="nav-carecockpit" onclick="showPage(this.dataset.p)" data-p="carecockpit" style="align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>Care Cockpit</span><span style="font-size:10px;opacity:.5;font-weight:400">ผู้ป่วย</span></span></div>
     <div class="sb-item" id="nav-qcockpit" onclick="showPage(this.dataset.p)" data-p="qcockpit" style="align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>Quality Cockpit</span><span style="font-size:10px;opacity:.5;font-weight:400">คุณภาพ</span></span></div>
     <div class="sb-section" style="margin-top:10px">ฝ่าย HA</div>
     <div id="dept-nav"></div>
@@ -1664,6 +1664,22 @@ body.has-demo-ribbon{padding-top:25px}
           <div id="sv-fb-list" style="margin-top:12px;font-size:12px;color:rgba(226,232,240,.6)"></div>
         </div>
       </div>
+    </div>
+    <!-- ===== Care Cockpit / มุมคนไข้ (ด้าน 2, 7 ก.ค.69) — mockup, aggregate name-free ===== -->
+    <div class="page" id="page-carecockpit">
+      <style>
+        #page-carecockpit .cc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px}
+        #page-carecockpit .cc-kpi{border:1px solid rgba(14,165,233,.14);border-left:4px solid #16a34a;border-radius:12px;padding:13px 15px;background:rgba(14,165,233,.03)}
+        body.light-mode #page-carecockpit .cc-kpi{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+        #page-carecockpit .cc-val{font-size:25px;font-weight:800;line-height:1.05}
+        #page-carecockpit .cc-unit{font-size:13px;font-weight:600;opacity:.7}
+        #page-carecockpit .cc-lab{font-size:13px;font-weight:600;margin-top:3px}
+        #page-carecockpit .cc-tgt{font-size:11px;opacity:.65;margin-top:3px}
+        #page-carecockpit .cc-gt{margin:22px 0 4px;font-weight:800;color:#c2410c;font-size:15px}
+      </style>
+      <div class="page-title">&#129658; Care Cockpit <span style="font-size:13px;font-weight:400;color:rgba(125,211,252,.5)">มุมคนไข้ · Patient Experience &amp; Outcomes</span></div>
+      <div class="page-sub">โรงพยาบาลในสายตาคนไข้ — วัดประสบการณ์ + ผลลัพธ์แบบภาพรวม · <b style="color:#16a34a">ไม่มีชื่อคนไข้เลย (PDPA-safe)</b></div>
+      <div id="cc-body"></div>
     </div>
     <!-- ===== Cockpit คุณภาพ / Quality-Meeting (ด้าน 3, 6 ก.ค.69) — mockup ===== -->
     <div class="page" id="page-qcockpit">
@@ -2428,7 +2444,7 @@ function doLogout(){var menu=document.getElementById('logout-menu');menu.classNa
 
 function buildSidebar(depts){var html='';for(var i=0;i<depts.length;i++){var d=depts[i];html+='<div class="sb-item" id="nav-dept-'+d+'" data-dept="'+d+'" onclick="navToDept(this)"><span class="dept-dot" style="background:'+getDeptColor(d)+'"></span><span>'+d+'</span></div>';}document.getElementById('dept-nav').innerHTML=html;}
 
-function showPage(id){var menu=document.getElementById('logout-menu');menu.className=menu.className.replace(/\s*open/g,'');var pages=document.querySelectorAll('.page');for(var i=0;i<pages.length;i++){pages[i].classList.remove('active');}document.getElementById('page-'+id).classList.add('active');var navItems=document.querySelectorAll('.sb-item');for(var j=0;j<navItems.length;j++){navItems[j].classList.remove('active');}var nav=document.getElementById('nav-'+id);if(nav)nav.classList.add('active'); if(id==='home')loadDashboard();if(id==='byuser'){loadMyKPIs();ssAutoShowIfNeeded();}if(id==='users')loadUsers();if(id==='exec')loadExecSummary();if(id==='ai')aiInitPage();if(id==='ai-report')airepInit();if(id==='log')loadAuditLog();if(id==='sysvitals')loadSysVitals();if(id==='qcockpit')loadQualityCockpit();if(id==='ha-std')openHAStd();}
+function showPage(id){var menu=document.getElementById('logout-menu');menu.className=menu.className.replace(/\s*open/g,'');var pages=document.querySelectorAll('.page');for(var i=0;i<pages.length;i++){pages[i].classList.remove('active');}document.getElementById('page-'+id).classList.add('active');var navItems=document.querySelectorAll('.sb-item');for(var j=0;j<navItems.length;j++){navItems[j].classList.remove('active');}var nav=document.getElementById('nav-'+id);if(nav)nav.classList.add('active'); if(id==='home')loadDashboard();if(id==='byuser'){loadMyKPIs();ssAutoShowIfNeeded();}if(id==='users')loadUsers();if(id==='exec')loadExecSummary();if(id==='ai')aiInitPage();if(id==='ai-report')airepInit();if(id==='log')loadAuditLog();if(id==='sysvitals')loadSysVitals();if(id==='qcockpit')loadQualityCockpit();if(id==='carecockpit')loadCareCockpit();if(id==='ha-std')openHAStd();}
 
 function refreshPage(){if(!S.email)return;bcClear();showToast('กำลัง Clear Cache...','info');google.script.run.withSuccessHandler(function(){google.script.run.withSuccessHandler(function(info){if(info.role==='GUEST')return;S.role=info.role;S.name=info.name;S.dept=info.dept;S.depts=info.depts||[info.dept];S.kpis=info.kpis||[];S.haFillActive=!!info.haFillActive;document.getElementById('user-pill-text').textContent=info.name+' ('+info.role+')';if(info.role==='ADMIN')document.getElementById('btn-sheet').style.display='inline-block';loadDashboard();var activePage=document.querySelector('.page.active');if(!activePage)return;var id=activePage.id.replace('page-','');if(id==='dept'){var dept=document.getElementById('dept-title').textContent;if(dept)loadDept(dept);}else if(id==='byuser')loadMyKPIs();else if(id==='users')loadUsers();showToast('Refresh สำเร็จ','success');}).checkPermission(S.email);}).forceClearCacheAPI();
 }
@@ -2509,6 +2525,43 @@ function qcSaveMeeting(){
   if(!n){showToast('พิมพ์มติอย่างน้อย 1 เรื่องก่อนครับ','info');return;}
   showToast('บันทึกมติ '+n+' เรื่อง → สร้าง Action_Plan + ร่าง SAR อัตโนมัติ (เดโม)','success');
   document.getElementById('qc-saved').innerHTML='&#9989; บันทึกแล้ว '+n+' มติ → เข้า action_tracker + แนบหลักฐาน HA (ในระบบจริงจะ push เตือน LINE ตามกำหนดทบทวน)';
+}
+
+// ===== Care Cockpit / มุมคนไข้ (ด้าน 2, mockup 7 ก.ค.69) — aggregate ล้วน ไม่มีชื่อคนไข้ =====
+// DEMO mock. ของจริง = ดึง KPI ฝั่งคนไข้ที่มีอยู่แล้ว (waiting/satisfaction/revisit/readmit/
+// control%/no-show) จาก KPI_Data — ไม่ต้องแตะข้อมูลราย HN เลย
+function loadCareCockpit(){
+  var SC={good:'#16a34a',warn:'#d97706',bad:'#dc2626'};
+  var groups=[
+    {t:'🚪 เข้าถึง & รอคอย',k:[
+      {l:'เวลารอ OPD เฉลี่ย',v:'18',u:'นาที',tg:'เป้า <30',s:'good'},
+      {l:'เวลารอ ER ถึงพบแพทย์',v:'8',u:'นาที',tg:'เป้า <10',s:'good'},
+      {l:'เวลารอ refer ออก',v:'45',u:'นาที',tg:'เป้า <60',s:'good'},
+      {l:'คิวนัดล่วงหน้าเฉลี่ย',v:'12',u:'วัน',tg:'',s:'good'}]},
+    {t:'😊 ประสบการณ์ & พึงพอใจ',k:[
+      {l:'ความพึงพอใจรวม',v:'92',u:'%',tg:'เป้า >85',s:'good'},
+      {l:'ข้อร้องเรียน (เดือนนี้)',v:'2',u:'เรื่อง',tg:'',s:'warn'},
+      {l:'ข้อชมเชย',v:'8',u:'เรื่อง',tg:'',s:'good'},
+      {l:'อัตราตอบแบบสอบถาม',v:'68',u:'%',tg:'',s:'warn'}]},
+    {t:'🛡️ ความปลอดภัย & ผลลัพธ์',k:[
+      {l:'Re-visit ER ≤48 ชม.',v:'0.36',u:'%',tg:'เป้า <1',s:'good'},
+      {l:'Re-admit ≤28 วัน',v:'2.1',u:'%',tg:'เป้า <5',s:'good'},
+      {l:'DM คุม A1c<7%',v:'48',u:'%',tg:'เป้า 60',s:'bad'},
+      {l:'HT คุม BP <140/90',v:'55',u:'%',tg:'เป้า 70',s:'bad'}]},
+    {t:'🔄 ความต่อเนื่องการดูแล',k:[
+      {l:'อัตราขาดนัด',v:'8.5',u:'%',tg:'เป้า <10',s:'good'},
+      {l:'หลุด follow-up (เรื้อรัง)',v:'6',u:'%',tg:'',s:'warn'},
+      {l:'refer กลับมารักษาต่อ',v:'78',u:'%',tg:'',s:'good'}]}
+  ];
+  document.getElementById('cc-body').innerHTML=groups.map(function(g){
+    var cards=g.k.map(function(k){
+      var c=SC[k.s];
+      var mark=k.s==='good'?' · ✓':(k.s==='bad'?' · ✗ ต่ำกว่าเป้า':'');
+      var tg=k.tg?'<div class="cc-tgt" style="color:'+(k.s==='bad'?c:'inherit')+'">'+k.tg+mark+'</div>':'';
+      return '<div class="cc-kpi" style="border-left-color:'+c+'"><div class="cc-val" style="color:'+c+'">'+k.v+' <span class="cc-unit">'+k.u+'</span></div><div class="cc-lab">'+k.l+'</div>'+tg+'</div>';
+    }).join('');
+    return '<div class="cc-gt">'+g.t+'</div><div class="cc-grid">'+cards+'</div>';
+  }).join('');
 }
 
 function renderDashboard(s){
