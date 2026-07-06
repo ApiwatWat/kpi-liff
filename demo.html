@@ -1298,9 +1298,9 @@ body.has-demo-ribbon{padding-top:25px}
     <div class="sb-item" id="nav-ai" onclick="showPage(this.dataset.p)" data-p="ai">&#129504; AI Insight</div>
     <div class="sb-item" id="nav-ai-report" onclick="showPage(this.dataset.p)" data-p="ai-report">&#128209; AI Report</div>
     <div class="sb-section" style="margin-top:10px">&#9670; Cockpit &middot; 3 มิติ</div>
-    <a class="sb-item" id="nav-cockpit" href="<?= ScriptApp.getService().getUrl() ?>?view=cockpit" target="_blank" rel="noopener" style="display:none;text-decoration:none">&#129658; CEO Cockpit <span style="font-size:11px;opacity:.55;font-weight:400">(บริหาร)</span></a>
-    <div class="sb-item" id="nav-carecockpit" onclick="showToast('Care Cockpit (เชื่อมโยงคนไข้) — กำลังออกแบบให้ปลอด PDPA','info')" style="opacity:.5;cursor:default">&#129658; Care Cockpit <span style="font-size:11px;opacity:.55;font-weight:400">(ผู้ป่วย)</span> <span style="font-size:10px;opacity:.8">· เร็วๆ นี้</span></div>
-    <div class="sb-item" id="nav-qcockpit" onclick="showPage(this.dataset.p)" data-p="qcockpit">&#129658; Quality Cockpit <span style="font-size:11px;opacity:.55;font-weight:400">(คุณภาพ)</span></div>
+    <a class="sb-item" id="nav-cockpit" href="<?= ScriptApp.getService().getUrl() ?>?view=cockpit" target="_blank" rel="noopener" style="display:none;text-decoration:none;align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>CEO Cockpit</span><span style="font-size:10px;opacity:.5;font-weight:400">บริหาร</span></span></a>
+    <div class="sb-item" id="nav-carecockpit" onclick="showToast('Care Cockpit (เชื่อมโยงคนไข้) — กำลังออกแบบให้ปลอด PDPA','info')" style="opacity:.5;cursor:default;align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>Care Cockpit</span><span style="font-size:10px;opacity:.75;font-weight:400">ผู้ป่วย &middot; เร็วๆ นี้</span></span></div>
+    <div class="sb-item" id="nav-qcockpit" onclick="showPage(this.dataset.p)" data-p="qcockpit" style="align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>Quality Cockpit</span><span style="font-size:10px;opacity:.5;font-weight:400">คุณภาพ</span></span></div>
     <div class="sb-section" style="margin-top:10px">ฝ่าย HA</div>
     <div id="dept-nav"></div>
     <div class="sb-section" style="margin-top:10px">ระบบ</div>
