@@ -1294,11 +1294,13 @@ body.has-demo-ribbon{padding-top:25px}
     <div class="sb-section">ภาพรวม</div>
     <div class="sb-item active" id="nav-home" onclick="showPage(this.dataset.p)" data-p="home">&#128202; Dashboard</div>
     <div class="sb-item" id="nav-exec" onclick="showPage(this.dataset.p)" data-p="exec">&#127775; Executive Summary</div>
-    <a class="sb-item" id="nav-cockpit" href="<?= ScriptApp.getService().getUrl() ?>?view=cockpit" target="_blank" rel="noopener" style="display:none;text-decoration:none">&#129658; CEO Cockpit</a>
     <div class="sb-item" id="nav-byuser" onclick="showPage(this.dataset.p)" data-p="byuser">&#128100; KPI ของฉัน</div>
     <div class="sb-item" id="nav-ai" onclick="showPage(this.dataset.p)" data-p="ai">&#129504; AI Insight</div>
     <div class="sb-item" id="nav-ai-report" onclick="showPage(this.dataset.p)" data-p="ai-report">&#128209; AI Report</div>
-    <div class="sb-item" id="nav-qcockpit" onclick="showPage(this.dataset.p)" data-p="qcockpit">&#127919; Cockpit คุณภาพ</div>
+    <div class="sb-section" style="margin-top:10px">&#9670; Cockpit &middot; 3 มิติ</div>
+    <a class="sb-item" id="nav-cockpit" href="<?= ScriptApp.getService().getUrl() ?>?view=cockpit" target="_blank" rel="noopener" style="display:none;text-decoration:none">&#129658; CEO Cockpit</a>
+    <div class="sb-item" id="nav-carecockpit" onclick="showToast('Care Cockpit (เชื่อมโยงคนไข้) — กำลังออกแบบให้ปลอด PDPA','info')" style="opacity:.5;cursor:default">&#129658; Care Cockpit <span style="font-size:10px;opacity:.8">· เร็วๆ นี้</span></div>
+    <div class="sb-item" id="nav-qcockpit" onclick="showPage(this.dataset.p)" data-p="qcockpit">&#129658; Quality Cockpit</div>
     <div class="sb-section" style="margin-top:10px">ฝ่าย HA</div>
     <div id="dept-nav"></div>
     <div class="sb-section" style="margin-top:10px">ระบบ</div>
@@ -1679,7 +1681,7 @@ body.has-demo-ribbon{padding-top:25px}
         #page-qcockpit .qc-drow{display:grid;grid-template-columns:1fr 150px 120px;gap:8px;margin-top:10px}
         @media(max-width:820px){#page-qcockpit .qc-drow{grid-template-columns:1fr}}
       </style>
-      <div class="page-title">&#127919; Cockpit คุณภาพ <span style="font-size:13px;font-weight:400;color:rgba(125,211,252,.5)">Quality / Meeting</span></div>
+      <div class="page-title">&#129658; Quality Cockpit <span style="font-size:13px;font-weight:400;color:rgba(125,211,252,.5)">พัฒนาคุณภาพ · วาระประชุม</span></div>
       <div class="page-sub">เตรียมวาระประชุมอัตโนมัติ → บันทึกมติ → รวบหลักฐาน HA · <b>ช่วยที่ประชุม ไม่ใช่ฟอร์มให้กรอก</b> (ใช้ sentinel + ha_mapping + action_tracker เดิม)</div>
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin:18px 0 12px">
         <div style="font-weight:800;color:#c2410c;font-size:16px">📋 วาระประชุมคุณภาพ · ก.ค. 2569</div>
