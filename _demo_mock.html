@@ -208,6 +208,58 @@ body.has-demo-ribbon{padding-top:25px}
     return {ok:true,kpiId:kpiId,full:full,sarShort:sarShort,engine:'claude',generatedAt:new Date().toISOString(),fromCache:false};
   }
 
+  // ---- 3-cockpit sidebar panels (32/33/34_*.js) — aggregate KPI only, PDPA-safe, fake demo data ----
+  // getSystemVitals: renderSysVitals contract {launch:<epochMs>,kpiCount,deptCount,dataEntries,activeUsers30,totalUsers,totalEvents,lastUpdate,activity:[{t,who,act}]}
+  function systemVitals(){
+    var launch=new Date(now.getFullYear()-1,now.getMonth()-2,12).getTime();
+    return {launch:launch,kpiCount:KPIS.length,deptCount:DEPTS.length,dataEntries:1284,
+      activeUsers30:5,totalUsers:6,totalEvents:2730,
+      lastUpdate:now.getDate()+'/'+(now.getMonth()+1)+'/'+now.getFullYear()+' 09:14',
+      activity:[
+        {t:'2 นาที',who:'นพ.สมชาย (เดโม่)',act:'บันทึกค่า PCT-10'},
+        {t:'1 ชม.',who:'พว.สมศรี (เดโม่)',act:'บันทึกค่า PCT-11'},
+        {t:'3 ชม.',who:'จนท.ไอที (เดโม่)',act:'สร้างร่าง PDCA IC-4'},
+        {t:'เมื่อวาน',who:'พว.วิไล (เดโม่)',act:'บันทึกค่า IC-1'},
+        {t:'2 วัน',who:'พว.ปราณี (เดโม่)',act:'เพิ่มตัวชี้วัด RM-1'}
+      ]};
+  }
+  // getCareCockpit: renderCareCockpit contract [{t:<group>,k:[{l,v,u,tg,s:'good'|'warn'|'bad'}]}] — mirrors 33_care_cockpit good/warn(≤10%)/bad
+  function _ccStat(k,v){
+    var num=parseFloat(v),t=parseFloat(String(k.target).replace(/[^0-9.]/g,''));
+    if(isNaN(num)||isNaN(t))return 'good';
+    var dirUp=(k.direction==='↑'||k.direction==='up'),pass=dirUp?(num>=t):(num<=t);
+    if(pass)return 'good';
+    var relGap=t!==0?Math.abs((num-t)/t)*100:0;
+    return relGap<=10?'warn':'bad';
+  }
+  function _ccKpi(id){
+    var k=find(id);if(!k)return null;
+    var v=getLatest(k);if(v==='NA'||v==null)return null;
+    var dirUp=(k.direction==='↑'||k.direction==='up');
+    return {l:k.name,v:v,u:k.unit||'',tg:'เป้า '+(dirUp?'≥':'≤')+k.target,s:_ccStat(k,v)};
+  }
+  function careCockpit(){
+    var defs=[
+      {t:'🛡️ ความปลอดภัย & ผลลัพธ์',ids:['PCT-2','PCT-10','PCT-11','PCT-30']},
+      {t:'🚪 เข้าถึง & รอคอย',ids:['ER-2','PCT-12','LAB-2']},
+      {t:'🔄 ความต่อเนื่องการดูแล',ids:['PCT-19','PCT-20']}
+    ];
+    var groups=[];
+    defs.forEach(function(def){
+      var k=[];def.ids.forEach(function(id){var x=_ccKpi(id);if(x)k.push(x);});
+      if(k.length)groups.push({t:def.t,k:k});
+    });
+    return groups;
+  }
+  // getQualityAgenda: renderQualityCockpit contract {monthLabel,items:[{flag,type,kpi,spark:[20-100],ha,action,verdict,vc,kpiId}]}
+  function qualityAgenda(){
+    return {monthLabel:CUR,items:[
+      {flag:'เรื้อรัง 4 เดือน',type:'',kpi:'PCT-11 · ความดันโลหิตสูงคุมความดันได้ (<140/90)',spark:[70,58,44,30,26,20],ha:'III-4.3 ก',action:PREV+' — ทบทวน flow ติดตามความดันที่บ้าน + ปรับยา',verdict:'ยังไม่ดีขึ้น',vc:'#dc2626',kpiId:'PCT-11'},
+      {flag:'แดง 2 เดือน',type:'',kpi:'PCT-10 · ผู้ป่วยเบาหวานคุม HbA1c<7%',spark:[40,55,62,48,38,44],ha:'III-4.3 ข',action:PREV+' — เพิ่มการปรับยาเชิงรุกในกลุ่มคุมไม่ได้',verdict:'ดีขึ้น',vc:'#16a34a',kpiId:'PCT-10'},
+      {flag:'แย่ลง',type:'amber',kpi:'PCT-20 · อัตราการครองเตียง',spark:[55,62,72,64,50,42],ha:'—',action:'—',verdict:'—',vc:'#64748b',kpiId:'PCT-20'}
+    ]};
+  }
+
   // ---- the fake backend dispatch table ----
   var FAKE={
     bootstrapPayload:function(arg){return {ok:true,user:{role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,userId:'USR-004',kpis:['ALL'],haFillActive:false},depts:DEPTS,primaryDept:'PCT',kpis:kpisForDept('PCT')};},
@@ -236,6 +288,13 @@ body.has-demo-ribbon{padding-top:25px}
     getRevenueData:function(){return {ok:true,months:MONTHS.slice(12),revenue:[2.1,2.3,2.0,2.4,2.2,2.5,2.3,2.6,2.4,2.5,2.3,2.7].map(function(x){return x*1e6;})};},
     getSlideOutlineText:function(){return {ok:true,text:'(ตัวอย่างโหมดสาธิต)'};},
     getHeatmapStatsByDept:heatmapStats,
+    // 3-cockpit sidebar panels (32/33/34_*.js) + their write-backs
+    getSystemVitals:systemVitals,
+    getCareCockpit:careCockpit,
+    getQualityAgenda:qualityAgenda,
+    getSystemFeedback:function(){return {ok:true,items:[]};},
+    saveSystemFeedback:function(){return {ok:true};},
+    saveMeetingDecision:function(){return {ok:true};},
     // write ops — accept and echo ok so the UI behaves
     saveKPIValue:function(){return {ok:true};},
     saveKPIMeta:function(){return {ok:true};},

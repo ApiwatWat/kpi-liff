@@ -8,6 +8,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>KPI Monitor</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js" async></script>
 <style>
   #dept-content .kpi-table,#byuser-content .kpi-table{border-collapse:separate;border-spacing:0}
 #dept-content .kpi-table th:nth-child(1),#dept-content .kpi-table td:nth-child(1),#byuser-content .kpi-table th:nth-child(1),#byuser-content .kpi-table td:nth-child(1){position:sticky;left:0;z-index:2;background:#0f1d32;min-width:70px}
@@ -43,14 +45,14 @@ body{font-family:'Prompt',sans-serif;background:#0a1628;color:#e2e8f0;min-height
 .page{display:none}.page.active{display:block}
 .page-title{font-size:24px;font-weight:700;background:linear-gradient(135deg,#fff,#7dd3fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
 .page-sub{font-size:14px;color:rgba(125,211,252,.45);margin-bottom:22px}
-#login-screen{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 58px);width:100%;background:radial-gradient(ellipse at 30% 50%,rgba(14,165,233,.08),transparent 60%),radial-gradient(ellipse at 70% 30%,rgba(6,182,212,.06),transparent 50%),linear-gradient(135deg,#0a1628,#0d2137);transition:background .3s;flex-direction:column;gap:0;padding:20px}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 58px);width:100%;background:radial-gradient(ellipse at 30% 50%,rgba(14,165,233,.08),transparent 60%),radial-gradient(ellipse at 70% 30%,rgba(6,182,212,.06),transparent 50%),linear-gradient(135deg,#0a1628,#0d2137);transition:background .3s;flex-direction:column;gap:0;padding:92px 20px 28px;box-sizing:border-box}
 .login-wrap{display:flex;flex-direction:column;align-items:center;width:100%;max-width:480px}
-.login-logo{margin-bottom:24px}
-.login-logo img{width:160px;height:160px;border-radius:20px;box-shadow:0 8px 40px rgba(14,165,233,.2);transition:transform .3s}
+.login-logo{margin-bottom:14px}
+.login-logo img{width:118px;height:118px;border-radius:20px;box-shadow:0 8px 40px rgba(14,165,233,.2);transition:transform .3s}
 .login-logo img:hover{transform:scale(1.05)}
 .login-title{font-size:15px;font-weight:500;color:rgba(125,211,252,.5);margin-bottom:4px;letter-spacing:1px}
 .login-heading{font-size:32px;font-weight:700;margin-bottom:8px;background:linear-gradient(135deg,#fff,#7dd3fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.login-tagline{font-size:13px;color:rgba(125,211,252,.35);margin-bottom:28px;letter-spacing:.5px}
+.login-tagline{font-size:14px;color:rgba(125,211,252,.6);margin-bottom:18px;letter-spacing:.5px}
 .login-card{background:rgba(14,165,233,.06);backdrop-filter:blur(12px);border:1px solid rgba(14,165,233,.15);border-radius:20px;padding:36px 40px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
 .login-card h2{display:none}
 .login-card p{display:none}
@@ -69,6 +71,11 @@ body{font-family:'Prompt',sans-serif;background:#0a1628;color:#e2e8f0;min-height
 .btn-primary{width:100%;padding:13px;background:linear-gradient(135deg,#0ea5e9,#06b6d4);color:#fff;border:none;border-radius:10px;font-family:'Prompt',sans-serif;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(14,165,233,.35);transition:all .3s}
 .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 25px rgba(14,165,233,.45)}
 .btn-primary:disabled{background:rgba(14,165,233,.2);color:rgba(255,255,255,.4);cursor:not-allowed;transform:none;box-shadow:none}
+/* Group B login: readable divider + outline OTP button (theme-aware, no faint grey) */
+.login-or{text-align:center;font-size:15px;font-weight:700;color:#7dd3fc;margin:18px 0;letter-spacing:1px}
+.btn-otp{width:100%;padding:13px;margin-top:12px;background:transparent;border:2px solid #0ea5e9;border-radius:10px;font-family:'Prompt',sans-serif;font-size:15px;font-weight:700;color:#38bdf8;cursor:pointer;transition:all .3s}
+.btn-otp:hover{background:rgba(14,165,233,.12);transform:translateY(-2px)}
+.btn-otp:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .dual-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px}
 .month-card{background:rgba(14,165,233,.04);backdrop-filter:blur(8px);border:1px solid rgba(14,165,233,.1);border-radius:16px;padding:20px;transition:all .3s}
 .month-card:hover{background:rgba(14,165,233,.08);border-color:rgba(14,165,233,.2)}
@@ -670,6 +677,9 @@ body.light-mode .btn-save{background:linear-gradient(135deg,#C2410C,#D97706);col
 body.light-mode .btn-primary{background:linear-gradient(135deg,#C2410C,#D97706);box-shadow:0 4px 20px rgba(194,65,12,.35)}
 body.light-mode .btn-primary:hover{box-shadow:0 6px 25px rgba(194,65,12,.45)}
 body.light-mode .btn-primary:disabled{background:#F4D9BC;color:#6B4A2B;box-shadow:none}
+body.light-mode .login-or{color:#9A3412}
+body.light-mode .btn-otp{border-color:#C2410C;color:#C2410C}
+body.light-mode .btn-otp:hover{background:rgba(194,65,12,.08)}
 body.light-mode .badge{background:#FFEDD9;color:#9A3412;border:1px solid #EDB680}
 body.light-mode .modal-overlay{background:rgba(59,40,23,.5)}
 body.light-mode .modal{background:#FFF7F0;border:1px solid #EDB680;box-shadow:0 24px 80px rgba(59,40,23,.2)}
@@ -1076,6 +1086,58 @@ body.has-demo-ribbon{padding-top:25px}
     return {ok:true,kpiId:kpiId,full:full,sarShort:sarShort,engine:'claude',generatedAt:new Date().toISOString(),fromCache:false};
   }
 
+  // ---- 3-cockpit sidebar panels (32/33/34_*.js) — aggregate KPI only, PDPA-safe, fake demo data ----
+  // getSystemVitals: renderSysVitals contract {launch:<epochMs>,kpiCount,deptCount,dataEntries,activeUsers30,totalUsers,totalEvents,lastUpdate,activity:[{t,who,act}]}
+  function systemVitals(){
+    var launch=new Date(now.getFullYear()-1,now.getMonth()-2,12).getTime();
+    return {launch:launch,kpiCount:KPIS.length,deptCount:DEPTS.length,dataEntries:1284,
+      activeUsers30:5,totalUsers:6,totalEvents:2730,
+      lastUpdate:now.getDate()+'/'+(now.getMonth()+1)+'/'+now.getFullYear()+' 09:14',
+      activity:[
+        {t:'2 นาที',who:'นพ.สมชาย (เดโม่)',act:'บันทึกค่า PCT-10'},
+        {t:'1 ชม.',who:'พว.สมศรี (เดโม่)',act:'บันทึกค่า PCT-11'},
+        {t:'3 ชม.',who:'จนท.ไอที (เดโม่)',act:'สร้างร่าง PDCA IC-4'},
+        {t:'เมื่อวาน',who:'พว.วิไล (เดโม่)',act:'บันทึกค่า IC-1'},
+        {t:'2 วัน',who:'พว.ปราณี (เดโม่)',act:'เพิ่มตัวชี้วัด RM-1'}
+      ]};
+  }
+  // getCareCockpit: renderCareCockpit contract [{t:<group>,k:[{l,v,u,tg,s:'good'|'warn'|'bad'}]}] — mirrors 33_care_cockpit good/warn(≤10%)/bad
+  function _ccStat(k,v){
+    var num=parseFloat(v),t=parseFloat(String(k.target).replace(/[^0-9.]/g,''));
+    if(isNaN(num)||isNaN(t))return 'good';
+    var dirUp=(k.direction==='↑'||k.direction==='up'),pass=dirUp?(num>=t):(num<=t);
+    if(pass)return 'good';
+    var relGap=t!==0?Math.abs((num-t)/t)*100:0;
+    return relGap<=10?'warn':'bad';
+  }
+  function _ccKpi(id){
+    var k=find(id);if(!k)return null;
+    var v=getLatest(k);if(v==='NA'||v==null)return null;
+    var dirUp=(k.direction==='↑'||k.direction==='up');
+    return {l:k.name,v:v,u:k.unit||'',tg:'เป้า '+(dirUp?'≥':'≤')+k.target,s:_ccStat(k,v)};
+  }
+  function careCockpit(){
+    var defs=[
+      {t:'🛡️ ความปลอดภัย & ผลลัพธ์',ids:['PCT-2','PCT-10','PCT-11','PCT-30']},
+      {t:'🚪 เข้าถึง & รอคอย',ids:['ER-2','PCT-12','LAB-2']},
+      {t:'🔄 ความต่อเนื่องการดูแล',ids:['PCT-19','PCT-20']}
+    ];
+    var groups=[];
+    defs.forEach(function(def){
+      var k=[];def.ids.forEach(function(id){var x=_ccKpi(id);if(x)k.push(x);});
+      if(k.length)groups.push({t:def.t,k:k});
+    });
+    return groups;
+  }
+  // getQualityAgenda: renderQualityCockpit contract {monthLabel,items:[{flag,type,kpi,spark:[20-100],ha,action,verdict,vc,kpiId}]}
+  function qualityAgenda(){
+    return {monthLabel:CUR,items:[
+      {flag:'เรื้อรัง 4 เดือน',type:'',kpi:'PCT-11 · ความดันโลหิตสูงคุมความดันได้ (<140/90)',spark:[70,58,44,30,26,20],ha:'III-4.3 ก',action:PREV+' — ทบทวน flow ติดตามความดันที่บ้าน + ปรับยา',verdict:'ยังไม่ดีขึ้น',vc:'#dc2626',kpiId:'PCT-11'},
+      {flag:'แดง 2 เดือน',type:'',kpi:'PCT-10 · ผู้ป่วยเบาหวานคุม HbA1c<7%',spark:[40,55,62,48,38,44],ha:'III-4.3 ข',action:PREV+' — เพิ่มการปรับยาเชิงรุกในกลุ่มคุมไม่ได้',verdict:'ดีขึ้น',vc:'#16a34a',kpiId:'PCT-10'},
+      {flag:'แย่ลง',type:'amber',kpi:'PCT-20 · อัตราการครองเตียง',spark:[55,62,72,64,50,42],ha:'—',action:'—',verdict:'—',vc:'#64748b',kpiId:'PCT-20'}
+    ]};
+  }
+
   // ---- the fake backend dispatch table ----
   var FAKE={
     bootstrapPayload:function(arg){return {ok:true,user:{role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,userId:'USR-004',kpis:['ALL'],haFillActive:false},depts:DEPTS,primaryDept:'PCT',kpis:kpisForDept('PCT')};},
@@ -1104,6 +1166,13 @@ body.has-demo-ribbon{padding-top:25px}
     getRevenueData:function(){return {ok:true,months:MONTHS.slice(12),revenue:[2.1,2.3,2.0,2.4,2.2,2.5,2.3,2.6,2.4,2.5,2.3,2.7].map(function(x){return x*1e6;})};},
     getSlideOutlineText:function(){return {ok:true,text:'(ตัวอย่างโหมดสาธิต)'};},
     getHeatmapStatsByDept:heatmapStats,
+    // 3-cockpit sidebar panels (32/33/34_*.js) + their write-backs
+    getSystemVitals:systemVitals,
+    getCareCockpit:careCockpit,
+    getQualityAgenda:qualityAgenda,
+    getSystemFeedback:function(){return {ok:true,items:[]};},
+    saveSystemFeedback:function(){return {ok:true};},
+    saveMeetingDecision:function(){return {ok:true};},
     // write ops — accept and echo ok so the UI behaves
     saveKPIValue:function(){return {ok:true};},
     saveKPIMeta:function(){return {ok:true};},
@@ -1211,6 +1280,9 @@ body.has-demo-ribbon{padding-top:25px}
       setTimeout(function(){
         var nc=document.getElementById('nav-cockpit'); if(nc){nc.href='demo-cockpit.html';nc.style.display='';}
         var nm=document.getElementById('nav-military'); if(nm)nm.href='demo-military.html';
+        // JARVIS launcher (real app -> Tailscale URL) -> pre-recorded demo page (rebuild-safe)
+        var nj=document.querySelector('a[href*="tailed46e2"],a[href*="8444"]');
+        if(nj){nj.href='demo-jarvis.html';nj.removeAttribute('target');nj.removeAttribute('rel');nj.onclick=null;}
       },900);
     }catch(e){console.error('demo auto-login',e);}
   });
@@ -1274,8 +1346,17 @@ body.has-demo-ribbon{padding-top:25px}
     <div class="login-heading">KPI Monitor</div>
     <div class="login-tagline">ติดตามคุณภาพ &bull; ขับเคลื่อนด้วยข้อมูล &bull; เพื่อการพัฒนาที่ยั่งยืน</div>
     <div class="login-card">
-      <div class="inp"><label>EMAIL</label><input type="email" id="email-inp" placeholder="yourname@hospital.mil.th" onkeydown="if(event.keyCode==13)doLogin()"></div>
-      <button class="btn-primary" id="login-btn" onclick="doLogin()">&#8594; เข้าสู่ระบบ</button>
+      <!-- Google Sign-in ready (OAuth client set) — hidden until iframe origin registered -->
+      <div id="gsi-btn" style="display:none"></div>
+      <div class="login-or" style="display:none">&mdash; หรือ &mdash;</div>
+      <div class="inp"><label>EMAIL</label><input type="email" id="email-inp" placeholder="yourname@hospital.mil.th" onkeydown="if(event.keyCode==13)requestOtp()"></div>
+      <!-- email-only login hidden (Phase 2 force-OTP); doLogin still used internally after OTP/LINE verify -->
+      <button class="btn-primary" id="login-btn" onclick="doLogin()" style="display:none">&#8594; เข้าสู่ระบบ</button>
+      <button class="btn-primary" id="otp-req-btn" onclick="requestOtp()">&#128231; ส่งรหัส OTP เข้าอีเมล เพื่อเข้าสู่ระบบ</button>
+      <div id="otp-box" style="display:none;margin-top:12px">
+        <div class="inp"><label>รหัส 6 หลัก (OTP)</label><input type="tel" id="otp-inp" maxlength="6" inputmode="numeric" onkeydown="if(event.keyCode==13)verifyOtp()"></div>
+        <button class="btn-primary" id="otp-verify-btn" onclick="verifyOtp()">&#10004; ยืนยันรหัส</button>
+      </div>
       <div id="login-err" style="color:#fca5a5;font-size:13px;margin-top:12px"></div>
       <div class="login-footer">&#128274; กรุณากรอก Email ที่ลงทะเบียนไว้กับ IT Admin</div>
     </div>
@@ -1382,41 +1463,6 @@ body.has-demo-ribbon{padding-top:25px}
         </div>
       </div>
 
-      <!-- Revenue Section (ADMIN only) -->
-      <div id="exec-revenue-section" style="display:none">
-        <div style="font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:14px;display:flex;align-items:center;gap:8px">&#128176; ข้อมูลการเงิน <span style="font-size:10px;background:rgba(239,68,68,.15);color:#fca5a5;padding:2px 8px;border-radius:6px">ADMIN ONLY</span></div>
-        <div id="exec-rev-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px"></div>
-        <div class="exec-panel">
-          <div class="ep-title">&#128176; รายได้แยกตามประเภท (Stacked)</div>
-          <div class="ep-sub">ข้อมูลจาก HOSxP opitemrece · AutoSync ทุกเดือน</div>
-          <div style="position:relative;height:340px"><canvas id="exec-rev-stacked"></canvas></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px">
-          <div class="exec-panel">
-            <div class="ep-title">&#128200; รายได้รวมรายเดือน</div>
-            <div class="ep-sub">แนวโน้มรายได้ทั้งหมด</div>
-            <div style="position:relative;height:240px"><canvas id="exec-rev-total"></canvas></div>
-          </div>
-          <div class="exec-panel">
-            <div class="ep-title">&#128138; สัดส่วนรายได้ — เปรียบเทียบ 2 เดือน</div>
-            <div class="ep-sub" id="exec-rev-pie-label">-</div>
-            <div style="display:flex;gap:12px;align-items:flex-start">
-              <div style="flex:1;text-align:center">
-                <div id="exec-pie-prev-title" style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:4px">-</div>
-                <div style="position:relative;height:200px"><canvas id="exec-rev-pie-prev"></canvas></div>
-                <div id="exec-pie-prev-list" style="margin-top:6px"></div>
-              </div>
-              <div style="width:1px;background:rgba(14,165,233,.1);align-self:stretch;margin:20px 0"></div>
-              <div style="flex:1;text-align:center">
-                <div id="exec-pie-cur-title" style="font-size:12px;font-weight:700;color:#34d399;margin-bottom:4px">-</div>
-                <div style="position:relative;height:200px"><canvas id="exec-rev-pie-cur"></canvas></div>
-                <div id="exec-pie-cur-list" style="margin-top:6px"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Population Health (ASCVD/NCD) — ADMIN only, from ExecSummary tab (26 มิ.ย.69) -->
       <div id="exec-pophealth-section" style="display:none">
         <div style="font-size:18px;font-weight:800;color:#e2e8f0;margin-bottom:14px;margin-top:8px;display:flex;align-items:center;gap:8px">&#10084;&#65039; สุขภาพประชากร — ความเสี่ยงหัวใจ-หลอดเลือด (ASCVD)</div>
@@ -1444,14 +1490,14 @@ body.has-demo-ribbon{padding-top:25px}
   <div class="page-title">&#129504; AI Insight</div>
   <div class="page-sub">ถาม AI วิเคราะห์ข้อมูลโรงพยาบาลได้ทันที</div>
 
-  <!-- JARVIS voice assistant launcher (DEMO: opens the pre-recorded JARVIS demo page) -->
-  <a href="demo-jarvis.html"
-     style="display:flex;align-items:center;justify-content:space-between;gap:14px;text-decoration:none;cursor:pointer;background:linear-gradient(120deg,#06243a,#0d4a6b);color:#dff1fb;border-radius:14px;padding:14px 18px;margin:10px 0 16px;box-shadow:0 4px 16px rgba(8,40,64,.18);">
+  <!-- JARVIS voice assistant launcher (local cm1 via Tailscale; opens in new tab) -->
+  <a href="https://desktop-ijd8gmv.tailed46e2.ts.net:8444" target="_blank" rel="noopener"
+     style="display:flex;align-items:center;justify-content:space-between;gap:14px;text-decoration:none;background:linear-gradient(120deg,#06243a,#0d4a6b);color:#dff1fb;border-radius:14px;padding:14px 18px;margin:10px 0 16px;box-shadow:0 4px 16px rgba(8,40,64,.18);">
     <span style="display:flex;align-items:center;gap:13px;">
       <span style="font-size:26px;">&#127908;</span>
       <span>
         <span style="display:block;font-weight:700;font-size:16px;letter-spacing:.5px;">ถาม JARVIS ด้วยเสียง</span>
-        <span style="display:block;font-size:12.5px;color:#8fc6e0;margin-top:2px;">ผู้ช่วยเสียงถาม-ตอบ KPI &middot; ฟังเสียงตอบตัวอย่าง &mdash; <b style="color:#7fe6ff;">เดโม่เสียง JARVIS จริง</b></span>
+        <span style="display:block;font-size:12.5px;color:#8fc6e0;margin-top:2px;">ผู้ช่วยเสียงถาม-ตอบ KPI &middot; พูดถามได้เลย &mdash; <b style="color:#ffd27f;">ใช้ได้เฉพาะเครื่องที่ต่อ VPN Tailscale เท่านั้น</b></span>
       </span>
     </span>
     <span style="font-size:14px;color:#7fe6ff;white-space:nowrap;">เปิด &rsaquo;</span>
@@ -1640,7 +1686,7 @@ body.has-demo-ribbon{padding-top:25px}
       <div class="loading" id="audit-loading" style="display:none"><div class="spinner"></div><span>กำลังโหลด...</span></div>
       <div class="table-wrap"><table class="kpi-table" style="font-size:12px"><thead><tr><th style="width:90px">เวลา</th><th style="width:90px">Action</th><th style="width:140px">Email</th><th style="width:80px">KPI</th><th>รายละเอียด</th><th style="width:100px">ค่าเดิม</th><th style="width:100px">ค่าใหม่</th></tr></thead><tbody id="audit-tbody"><tr><td colspan="7" style="text-align:center;padding:40px;color:rgba(125,211,252,.35)">กำลังเตรียมโหลด...</td></tr></tbody></table></div>
     </div>
-    <!-- ===== มิติการใช้จริง / System Vital Signs (5 ก.ค.69) — mockup ===== -->
+    <!-- ===== มิติการใช้จริง / System Vital Signs (7 ก.ค.69, PHASE 1 wired to getSystemVitals) ===== -->
     <div class="page" id="page-sysvitals">
       <style>
         #page-sysvitals #sv-cards>div,#page-sysvitals .sv-panel{transition:background .3s}
@@ -1669,7 +1715,7 @@ body.has-demo-ribbon{padding-top:25px}
         </div>
       </div>
     </div>
-    <!-- ===== Care Cockpit / มุมคนไข้ (ด้าน 2, 7 ก.ค.69) — mockup, aggregate name-free ===== -->
+    <!-- ===== Care Cockpit / มุมคนไข้ (ด้าน 2, 7 ก.ค.69) — aggregate name-free ===== -->
     <div class="page" id="page-carecockpit">
       <style>
         #page-carecockpit .cc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px}
@@ -1685,7 +1731,7 @@ body.has-demo-ribbon{padding-top:25px}
       <div class="page-sub">โรงพยาบาลในสายตาคนไข้ — วัดประสบการณ์ + ผลลัพธ์แบบภาพรวม · <b style="color:#16a34a">ไม่มีชื่อคนไข้เลย (PDPA-safe)</b></div>
       <div id="cc-body"></div>
     </div>
-    <!-- ===== Cockpit คุณภาพ / Quality-Meeting (ด้าน 3, 6 ก.ค.69) — mockup ===== -->
+    <!-- ===== Cockpit คุณภาพ / Quality-Meeting (ด้าน 3, 7 ก.ค.69) ===== -->
     <div class="page" id="page-qcockpit">
       <style>
         #page-qcockpit .qc-item{border:1px solid rgba(14,165,233,.14);border-left:4px solid #dc2626;border-radius:12px;padding:14px 16px;margin-bottom:12px;background:rgba(14,165,233,.03)}
@@ -1702,9 +1748,9 @@ body.has-demo-ribbon{padding-top:25px}
         @media(max-width:820px){#page-qcockpit .qc-drow{grid-template-columns:1fr}}
       </style>
       <div class="page-title">&#129658; Quality Cockpit <span style="font-size:13px;font-weight:400;color:rgba(125,211,252,.5)">พัฒนาคุณภาพ · วาระประชุม</span></div>
-      <div class="page-sub">เตรียมวาระประชุมอัตโนมัติ → บันทึกมติ → รวบหลักฐาน HA · <b>ช่วยที่ประชุม ไม่ใช่ฟอร์มให้กรอก</b> (ใช้ sentinel + ha_mapping + action_tracker เดิม)</div>
+      <div class="page-sub">เตรียมวาระประชุมอัตโนมัติ → บันทึกมติ → รวบหลักฐาน HA · <b>ช่วยที่ประชุม ไม่ใช่ฟอร์มให้กรอก</b> (ใช้ KPI_Data + KPI_Master(ha_map) + Action_Plans เดิม)</div>
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin:18px 0 12px">
-        <div style="font-weight:800;color:#c2410c;font-size:16px">📋 วาระประชุมคุณภาพ · ก.ค. 2569</div>
+        <div style="font-weight:800;color:#c2410c;font-size:16px">📋 วาระประชุมคุณภาพ · <span id="qc-month-label"></span></div>
         <div style="font-size:12px;color:#94a3b8">เลือกอัตโนมัติจาก KPI ที่ <b style="color:#dc2626">แดง</b> / <b style="color:#d97706">แย่ลง</b> / เรื้อรัง</div>
       </div>
       <div id="qc-items"></div>
@@ -2286,7 +2332,7 @@ body.has-demo-ribbon{padding-top:25px}
 var DEPT_CFG = {'ทีมนำ':{color:'#3b82f6'},'TL':{color:'#3b82f6'},'NSO':{color:'#22c55e'},'PCT':{color:'#f59e0b'},'PTC':{color:'#8b5cf6'},'RM':{color:'#ec4899'},'HRD':{color:'#10b981'},'ENV':{color:'#3b82f6'},'IC':{color:'#f97316'},'IM':{color:'#06b6d4'},'HPH':{color:'#84cc16'},'การเงิน':{color:'#ef4444'},'FIN':{color:'#ef4444'}};
 function getDeptColor(dept){var key=dept?dept.split('-')[0]:'';if(DEPT_CFG[dept])return DEPT_CFG[dept].color;if(DEPT_CFG[key])return DEPT_CFG[key].color;return'#94a3b8';}
 
-var S={email:null,role:null,name:null,dept:null,depts:null,userId:null,kpis:null,chart:null,editCell:null,pendingGoal:{},pendingComment:{},editKpiId:null,kpiDefMap:{}};
+var S={email:null,sessionToken:null,role:null,name:null,dept:null,depts:null,userId:null,kpis:null,chart:null,editCell:null,pendingGoal:{},pendingComment:{},editKpiId:null,kpiDefMap:{}};
 var cdTimer=null;var S_editUserId=null;
 var DEPTS_LIST=['ทีมนำ','NSO','PCT','PTC','RM','HRD','ENV','IC','IM','HPH','การเงิน'];
 var MN=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -2393,6 +2439,7 @@ function applyTheme() {
 }
 
 applyTheme();
+try{ if(window.Chart){ var _lt=(document.body.className.indexOf('light-mode')>=0); Chart.defaults.color=_lt?'#475569':'#94a3b8'; Chart.defaults.borderColor=_lt?'rgba(100,116,139,.22)':'rgba(255,255,255,.06)'; } }catch(e){}
 
 document.getElementById('top-date').textContent=new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
 
@@ -2406,7 +2453,9 @@ function doLogin(){
     if(!payload||!payload.ok||!payload.user||payload.user.role==='GUEST'){
       document.getElementById('login-err').textContent=(payload&&payload.msg)?payload.msg:'ไม่พบ Email นี้ในระบบ';
       btn.disabled=false;btn.textContent='เข้าสู่ระบบ';
-      try{localStorage.removeItem('kpi_email');}catch(e){}
+      // keep kpi_email so the email box stays prefilled → user can re-request OTP
+      // in one tap when a 30-day token expires (Phase 2 re-OTP path). Clear only the token.
+      try{localStorage.removeItem('kpi_token');}catch(e){}S.sessionToken=null;
       return;
     }
     try{localStorage.setItem('kpi_email',email);}catch(e){}
@@ -2420,7 +2469,7 @@ function doLogin(){
     document.getElementById('home-sub').textContent='สวัสดีครับ '+info.name;
     if(info.role==='ADMIN')document.getElementById('btn-sheet').style.display='inline-block';
     if(info.role==='ADMIN'){var haNavEl=document.getElementById('nav-ha-std');if(haNavEl)haNavEl.style.display='';}
-    if(info.role==='ADMIN'){var ckNavEl=document.getElementById('nav-cockpit');if(ckNavEl){ckNavEl.style.display='';if(ckNavEl.href.indexOf('email=')<0)ckNavEl.href=ckNavEl.href+'&email='+encodeURIComponent(email);}}
+    if(info.role==='ADMIN'){var ckNavEl=document.getElementById('nav-cockpit');if(ckNavEl){ckNavEl.style.display='';if(ckNavEl.href.indexOf('email=')<0)ckNavEl.href=ckNavEl.href+'&email='+encodeURIComponent(email);if(S.sessionToken&&ckNavEl.href.indexOf('sessionToken=')<0)ckNavEl.href=ckNavEl.href+'&sessionToken='+encodeURIComponent(S.sessionToken);}}
 
     /* F7 Smart Suggest — show bell after login (23 พ.ค.69) */
     var bellEl=document.getElementById('bell-smart-suggest');if(bellEl)bellEl.style.display='flex';
@@ -2436,43 +2485,125 @@ function doLogin(){
   }).withFailureHandler(function(e){
     document.getElementById('login-err').textContent='Error: '+e.message;
     btn.disabled=false;btn.textContent='เข้าสู่ระบบ';
-  }).bootstrapPayload({email:email});
+  }).bootstrapPayload({email:email,sessionToken:S.sessionToken});
 }
 
-function tryAutoLogin(){try{var saved=localStorage.getItem('kpi_email');if(saved){var inp=document.getElementById('email-inp');if(inp)inp.value=saved;doLogin();}}catch(e){}}
+function tryAutoLogin(){try{var tk=localStorage.getItem('kpi_token');if(tk){S.sessionToken=tk;}var saved=localStorage.getItem('kpi_email');if(saved){var inp=document.getElementById('email-inp');if(inp)inp.value=saved;doLogin();}}catch(e){}}
 if(document.readyState!=='loading')tryAutoLogin();else document.addEventListener('DOMContentLoaded',tryAutoLogin);
+
+/* ── Group B: session-token login methods (Google / Email OTP) ── */
+function _afterVerify(payload){
+  if(!payload||!payload.ok||!payload.token||!payload.user){
+    document.getElementById('login-err').textContent=(payload&&payload.msg)?payload.msg:'เข้าสู่ระบบไม่สำเร็จ';
+    return;
+  }
+  S.sessionToken=payload.token;
+  try{localStorage.setItem('kpi_token',payload.token);}catch(e){}
+  /* reuse the existing email-login flow to bootstrap the dashboard */
+  var inp=document.getElementById('email-inp');
+  if(inp)inp.value=payload.user.email;
+  doLogin();
+}
+function handleGoogleCredential(resp){
+  document.getElementById('login-err').textContent='กำลังเข้าสู่ระบบด้วย Google...';
+  google.script.run.withSuccessHandler(_afterVerify).withFailureHandler(function(e){
+    document.getElementById('login-err').textContent='Google login error: '+(e&&e.message?e.message:e);
+  }).loginWithGoogle(resp.credential);
+}
+var _otpEmail='';
+function requestOtp(){
+  var email=document.getElementById('email-inp').value.trim();
+  if(!email){document.getElementById('login-err').textContent='กรุณากรอก Email ก่อนขอรหัส';return;}
+  var b=document.getElementById('otp-req-btn');b.disabled=true;b.textContent='กำลังส่ง...';
+  google.script.run.withSuccessHandler(function(r){
+    b.disabled=false;b.innerHTML='&#128231; ส่งรหัส OTP เข้าอีเมล เพื่อเข้าสู่ระบบ';
+    if(!r||!r.ok){document.getElementById('login-err').textContent=(r&&r.msg)?r.msg:'ส่งรหัสไม่สำเร็จ';return;}
+    _otpEmail=email;
+    document.getElementById('otp-box').style.display='block';
+    document.getElementById('login-err').textContent='ส่งรหัสไปที่อีเมลแล้ว — กรอกรหัส 6 หลัก (ถ้าไม่เจอ เช็คกล่อง Junk/สแปมด้วย)';
+    var oi=document.getElementById('otp-inp');if(oi)oi.focus();
+  }).withFailureHandler(function(e){
+    b.disabled=false;b.innerHTML='&#128231; ส่งรหัส OTP เข้าอีเมล เพื่อเข้าสู่ระบบ';
+    document.getElementById('login-err').textContent='Error: '+(e&&e.message?e.message:e);
+  }).otpRequest(email);
+}
+function verifyOtp(){
+  var email=_otpEmail||document.getElementById('email-inp').value.trim();
+  var code=document.getElementById('otp-inp').value.trim();
+  if(!code){document.getElementById('login-err').textContent='กรุณากรอกรหัส';return;}
+  var b=document.getElementById('otp-verify-btn');b.disabled=true;b.textContent='กำลังตรวจ...';
+  google.script.run.withSuccessHandler(function(p){
+    b.disabled=false;b.innerHTML='&#10004; ยืนยันรหัส';
+    _afterVerify(p);
+  }).withFailureHandler(function(e){
+    b.disabled=false;b.innerHTML='&#10004; ยืนยันรหัส';
+    document.getElementById('login-err').textContent='Error: '+(e&&e.message?e.message:e);
+  }).otpVerify(email,code);
+}
+var _gsiTries=0;
+function initGsi(){
+  if(true)return; /* Google Sign-in disabled until OAuth JS-origin registered (button hidden) */
+  try{console.log('[GIS] origin:',window.location.origin);}catch(e){}
+  if(!window.google||!google.accounts||!google.accounts.id){
+    if(_gsiTries++>15){try{document.getElementById('gsi-btn').innerHTML='<div style="font-size:13px;color:#0ea5e9;font-weight:600">Google Sign-in ไม่พร้อม — ใช้ OTP หรือ email ด้านล่าง</div>';}catch(e){}return;}
+    setTimeout(initGsi,400);return;
+  }
+  try{
+    google.accounts.id.initialize({client_id:'142414578233-573dncq82i51lj0ci5pr26k7rr56ilb4.apps.googleusercontent.com',callback:handleGoogleCredential});
+    google.accounts.id.renderButton(document.getElementById('gsi-btn'),{theme:'filled_blue',size:'large',text:'signin_with',locale:'th',width:260});
+  }catch(e){try{console.log('[GIS] error:',e,'origin:',window.location.origin);}catch(_){}}
+}
+if(document.readyState!=='loading')initGsi();else document.addEventListener('DOMContentLoaded',initGsi);
+
+/* ── Group B: seamless LINE auto-login when opened inside the LINE app (LIFF) ── */
+var _liffTries=0;
+function liffAutoLogin(){
+  if(!window.liff){ if(_liffTries++>20){return;} setTimeout(liffAutoLogin,300); return; }
+  try{
+    liff.init({liffId:'2009680870-loqsVGDv'}).then(function(){
+      if(!liff.isInClient()){ return; } /* only auto-login inside the LINE app; desktop skips */
+      var idt=null; try{ idt=liff.getIDToken(); }catch(e){}
+      if(!idt){ return; }
+      var le=document.getElementById('login-err'); if(le)le.textContent='กำลังเข้าสู่ระบบด้วย LINE...';
+      google.script.run.withSuccessHandler(function(p){
+        if(p&&p.ok&&p.token&&p.user){ _afterVerify(p); }
+        else if(le){ le.textContent=(p&&p.msg)?p.msg:'LINE login ไม่สำเร็จ — กรอก email/OTP ด้านล่าง'; }
+      }).withFailureHandler(function(e){ if(le)le.textContent='LINE error — กรอก email/OTP ด้านล่าง'; })
+        .loginWithLine(idt);
+    }).catch(function(e){});
+  }catch(e){}
+}
+if(document.readyState!=='loading')liffAutoLogin();else document.addEventListener('DOMContentLoaded',liffAutoLogin);
 
 function toggleLogoutMenu(){var menu=document.getElementById('logout-menu');if(menu.className.indexOf('open')>=0){menu.className=menu.className.replace(/\s*open/g,'');}else{document.getElementById('lm-name').textContent=S.name||'';document.getElementById('lm-email').textContent=S.email||'';document.getElementById('lm-role').textContent=(S.role||'')+' · '+(S.depts?S.depts.join(', '):S.dept||'');menu.className=(menu.className+' open').replace(/^\s+/,'');}}
 
-function doLogout(){var menu=document.getElementById('logout-menu');menu.className=menu.className.replace(/\s*open/g,'');if(!confirm('ออกจากระบบ?'))return;bcClear();try{localStorage.removeItem('kpi_email');}catch(e){}S.email=null;S.role=null;S.name=null;S.dept=null;S.depts=null;S.userId=null;S.kpis=null;var _bs=document.getElementById('btn-sheet');if(_bs)_bs.style.display='none';document.getElementById('user-pill-text').textContent='กรุณาเข้าสู่ระบบ';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';document.getElementById('email-inp').value='';document.getElementById('login-err').textContent='';var loginBtn=document.getElementById('login-btn');loginBtn.disabled=false;loginBtn.textContent='เข้าสู่ระบบ';}
+function doLogout(){var menu=document.getElementById('logout-menu');menu.className=menu.className.replace(/\s*open/g,'');if(!confirm('ออกจากระบบ?'))return;bcClear();try{localStorage.removeItem('kpi_email');}catch(e){}try{localStorage.removeItem('kpi_token');}catch(e){}S.sessionToken=null;S.email=null;S.role=null;S.name=null;S.dept=null;S.depts=null;S.userId=null;S.kpis=null;var _bs=document.getElementById('btn-sheet');if(_bs)_bs.style.display='none';document.getElementById('user-pill-text').textContent='กรุณาเข้าสู่ระบบ';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';document.getElementById('email-inp').value='';document.getElementById('login-err').textContent='';var loginBtn=document.getElementById('login-btn');loginBtn.disabled=false;loginBtn.textContent='เข้าสู่ระบบ';}
 
 function buildSidebar(depts){var html='';for(var i=0;i<depts.length;i++){var d=depts[i];html+='<div class="sb-item" id="nav-dept-'+d+'" data-dept="'+d+'" onclick="navToDept(this)"><span class="dept-dot" style="background:'+getDeptColor(d)+'"></span><span>'+d+'</span></div>';}document.getElementById('dept-nav').innerHTML=html;}
 
-function showPage(id){var menu=document.getElementById('logout-menu');menu.className=menu.className.replace(/\s*open/g,'');var pages=document.querySelectorAll('.page');for(var i=0;i<pages.length;i++){pages[i].classList.remove('active');}document.getElementById('page-'+id).classList.add('active');var navItems=document.querySelectorAll('.sb-item');for(var j=0;j<navItems.length;j++){navItems[j].classList.remove('active');}var nav=document.getElementById('nav-'+id);if(nav)nav.classList.add('active'); if(id==='home')loadDashboard();if(id==='byuser'){loadMyKPIs();ssAutoShowIfNeeded();}if(id==='users')loadUsers();if(id==='exec')loadExecSummary();if(id==='ai')aiInitPage();if(id==='ai-report')airepInit();if(id==='log')loadAuditLog();if(id==='sysvitals')loadSysVitals();if(id==='qcockpit')loadQualityCockpit();if(id==='carecockpit')loadCareCockpit();if(id==='ha-std')openHAStd();}
+function showPage(id){var menu=document.getElementById('logout-menu');menu.className=menu.className.replace(/\s*open/g,'');var pages=document.querySelectorAll('.page');for(var i=0;i<pages.length;i++){pages[i].classList.remove('active');}document.getElementById('page-'+id).classList.add('active');var navItems=document.querySelectorAll('.sb-item');for(var j=0;j<navItems.length;j++){navItems[j].classList.remove('active');}var nav=document.getElementById('nav-'+id);if(nav)nav.classList.add('active'); if(id==='home')loadDashboard();if(id==='byuser'){loadMyKPIs();ssAutoShowIfNeeded();}if(id==='users')loadUsers();if(id==='exec')loadExecSummary();if(id==='ai')aiInitPage();if(id==='ai-report')airepInit();if(id==='log')loadAuditLog();if(id==='sysvitals')loadSysVitals();if(id==='carecockpit')loadCareCockpit();if(id==='qcockpit')loadQualityCockpit();if(id==='ha-std')openHAStd();}
 
 function refreshPage(){if(!S.email)return;bcClear();showToast('กำลัง Clear Cache...','info');google.script.run.withSuccessHandler(function(){google.script.run.withSuccessHandler(function(info){if(info.role==='GUEST')return;S.role=info.role;S.name=info.name;S.dept=info.dept;S.depts=info.depts||[info.dept];S.kpis=info.kpis||[];S.haFillActive=!!info.haFillActive;document.getElementById('user-pill-text').textContent=info.name+' ('+info.role+')';if(info.role==='ADMIN')document.getElementById('btn-sheet').style.display='inline-block';loadDashboard();var activePage=document.querySelector('.page.active');if(!activePage)return;var id=activePage.id.replace('page-','');if(id==='dept'){var dept=document.getElementById('dept-title').textContent;if(dept)loadDept(dept);}else if(id==='byuser')loadMyKPIs();else if(id==='users')loadUsers();showToast('Refresh สำเร็จ','success');}).checkPermission(S.email);}).forceClearCacheAPI();
 }
 
-function loadDashboard(){google.script.run.withSuccessHandler(renderDashboard).getDashboardStats();loadYoY();loadHeatmap();}
+function loadDashboard(){google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(function(e){showToast('โหลด Dashboard ไม่สำเร็จ: '+((e&&e.message)?e.message:e)+' — ลอง refresh อีกครั้ง','error');}).getDashboardStats();loadYoY();loadHeatmap();}
 
-// ===== มิติการใช้จริง / System Vital Signs (mockup 5 ก.ค.69) =====
-// DEMO uses mock data mirroring REAL sources. Real backend later = one function
-// getSystemVitals(): age from MIN(Users.CreatedAt); kpiCount from KPI_Master rows;
-// dataEntries from Audit_Log action='WRITE_OK'; activeUsers from DISTINCT(email) in
-// Audit_Log last 30d; activity from getNotifications(). Feedback -> System_Feedback sheet.
+// ===== มิติการใช้จริง / System Vital Signs (7 ก.ค.69 — wired to getSystemVitals/saveSystemFeedback) =====
 function loadSysVitals(){
-  var aw=document.getElementById('sv-fb-admin-wrap'); if(aw) aw.style.display=''; // demo user = admin
+  var aw=document.getElementById('sv-fb-admin-wrap'); if(aw) aw.style.display=(S.role==='ADMIN')?'':'none';
   var ab=document.getElementById('sv-fb-admin'); if(ab) ab.innerHTML='';
-  var launch=new Date(2025,9,20).getTime(); // mock launch 20 ต.ค.2568
-  renderSysVitals({launch:launch,kpiCount:167,deptCount:11,dataEntries:4287,
-    activeUsers30:7,totalUsers:18,totalEvents:5140,lastUpdate:'วันนี้ 14:32',
-    activity:[
-      {t:'2 นาที',who:'พ.ต.อภิวัธน์',act:'บันทึก PCT-10 (DM A1c&lt;7%) = 48.4%'},
-      {t:'25 นาที',who:'ร.ท.หญิง บุญญิสา',act:'บันทึก IC-03 = 1.2‰'},
-      {t:'1 ชม.',who:'พรพงศ์',act:'ยืนยันค่า OOR ของ ER-05'},
-      {t:'3 ชม.',who:'ADMIN',act:'เพิ่ม User ใหม่ (ห้องบัตร)'},
-      {t:'เมื่อวาน',who:'ทพญ.ฟ้าใส',act:'บันทึก Dent-02 = 88%'}
-    ]});
+  google.script.run.withSuccessHandler(renderSysVitals).withFailureHandler(function(e){showToast('โหลดไม่สำเร็จ: '+e,'error');}).getSystemVitals(S.email);
+}
+function loadSystemFeedback(){
+  var box=document.getElementById('sv-fb-admin');
+  box.innerHTML='<div style="opacity:.6">กำลังโหลด...</div>';
+  google.script.run.withSuccessHandler(function(r){
+    if(!r||!r.ok){box.innerHTML='<div style="color:#dc2626">'+((r&&r.msg)||'โหลดไม่สำเร็จ')+'</div>';return;}
+    if(!r.items||!r.items.length){box.innerHTML='<div style="opacity:.6">ยังไม่มีข้อเสนอแนะ</div>';return;}
+    box.innerHTML='<div style="font-weight:700;color:#16a34a;margin-bottom:6px">รวม '+r.items.length+' รายการ</div>'+r.items.map(function(f){
+      return '<div style="padding:7px 0;border-bottom:1px dashed rgba(34,197,94,.2)"><div>'+escHtml(f.text)+'</div><div style="opacity:.55;font-size:11px;margin-top:2px">'+escHtml(f.email)+' &middot; '+escHtml(f.ts)+'</div></div>';
+    }).join('');
+  }).withFailureHandler(function(e){box.innerHTML='<div style="color:#dc2626">โหลดไม่สำเร็จ: '+e+'</div>';}).getSystemFeedback(S.email);
 }
 function _svAge(ms){var d=Math.floor((Date.now()-ms)/86400000);return Math.floor(d/30)+' เดือน '+(d%30)+' วัน';}
 function _svCard(icon,big,label,sub,color){return '<div style="border:1px solid rgba(14,165,233,.14);background:rgba(14,165,233,.05);border-radius:14px;padding:16px 12px;text-align:center"><div style="font-size:22px">'+icon+'</div><div style="font-size:22px;font-weight:800;color:'+(color||'#0ea5e9')+';margin-top:4px;line-height:1.1">'+big+'</div><div style="font-size:12px;color:#0ea5e9;margin-top:4px;font-weight:600">'+label+'</div><div style="font-size:10px;color:rgba(148,163,184,.85);margin-top:2px">'+sub+'</div></div>';}
@@ -2485,100 +2616,104 @@ function renderSysVitals(d){
     _svCard('&#128101;',d.activeUsers30+' คน','Active 30 วัน','ทั้งหมด '+d.totalUsers+' คน')+
     _svCard('&#128336;',d.lastUpdate,'อัปเดตล่าสุด',d.totalEvents.toLocaleString()+' events','#d97706');
   document.getElementById('sv-activity').innerHTML=d.activity.map(function(a){
-    return '<div style="padding:5px 0;border-bottom:1px dashed rgba(14,165,233,.12)"><span style="color:#0ea5e9;font-weight:600">'+a.who+'</span> '+a.act+' <span style="opacity:.5;font-size:11px">· '+a.t+'</span></div>';
+    return '<div style="padding:5px 0;border-bottom:1px dashed rgba(14,165,233,.12)"><span style="color:#0ea5e9;font-weight:600">'+escHtml(a.who)+'</span> '+escHtml(a.act)+' <span style="opacity:.5;font-size:11px">· '+a.t+'</span></div>';
   }).join('');
 }
 function submitSysFeedback(){
   var el=document.getElementById('sv-fb-text');var t=(el.value||'').trim();
   if(!t){showToast('พิมพ์ข้อเสนอแนะก่อนครับ','info');return;}
-  var list=document.getElementById('sv-fb-list');
-  list.innerHTML='<div style="padding:6px 0;border-top:1px dashed rgba(34,197,94,.25)">&#9989; '+t.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'+list.innerHTML;
-  el.value='';showToast('ขอบคุณครับ ส่งข้อเสนอแนะแล้ว (เดโม)','success');
+  google.script.run.withSuccessHandler(function(r){
+    if(!r||!r.ok){showToast('ส่งไม่สำเร็จ: '+((r&&r.msg)||''),'error');return;}
+    var list=document.getElementById('sv-fb-list');
+    list.innerHTML='<div style="padding:6px 0;border-top:1px dashed rgba(34,197,94,.25)">&#9989; '+escHtml(t)+'</div>'+list.innerHTML;
+    el.value='';showToast('ขอบคุณครับ ส่งข้อเสนอแนะแล้ว','success');
+  }).withFailureHandler(function(e){showToast('ส่งไม่สำเร็จ: '+e,'error');}).saveSystemFeedback(t, S.email);
 }
-function loadSystemFeedback(){ // DEMO mock — จริงเรียก getSystemFeedback(S.email) admin-only
-  var items=[
-    {text:'อยากให้เพิ่มกราฟแนวโน้ม 12 เดือนในหน้า Dashboard',email:'nurse.pct@rpk',ts:'7/7/2569 01:20'},
-    {text:'ปุ่มส่งออก Excel กดแล้วช้า บางทีค้าง',email:'admin.im@rpk',ts:'6/7/2569 15:40'},
-    {text:'อยากได้แจ้งเตือน LINE ตอน KPI ตก',email:'head.ic@rpk',ts:'5/7/2569 09:05'}
-  ];
-  var box=document.getElementById('sv-fb-admin');
-  box.innerHTML='<div style="font-weight:700;color:#16a34a;margin-bottom:6px">รวม '+items.length+' รายการ</div>'+items.map(function(f){
-    return '<div style="padding:7px 0;border-bottom:1px dashed rgba(34,197,94,.2)"><div>'+f.text+'</div><div style="opacity:.55;font-size:11px;margin-top:2px">'+f.email+' &middot; '+f.ts+'</div></div>';
+
+// ===== Care Cockpit / มุมคนไข้ (ด้าน 2, 7 ก.ค.69 — wired to getCareCockpit) =====
+function loadCareCockpit(){
+  document.getElementById('cc-body').innerHTML='<div style="padding:30px;text-align:center;color:#64748b">กำลังโหลด...</div>';
+  google.script.run.withSuccessHandler(renderCareCockpit).withFailureHandler(function(e){showToast('โหลดไม่สำเร็จ: '+e,'error');}).getCareCockpit(S.email);
+}
+function renderCareCockpit(groups){
+  var SC={good:'#16a34a',warn:'#d97706',bad:'#dc2626'};
+  if(!groups||!groups.length){document.getElementById('cc-body').innerHTML='<div style="padding:30px;text-align:center;color:#64748b">ยังไม่มี KPI ในมุมนี้</div>';return;}
+  document.getElementById('cc-body').innerHTML=groups.map(function(g){
+    var cards=g.k.map(function(k){
+      var c=SC[k.s]||SC.good;
+      var mark=k.s==='good'?' · ✓':(k.s==='bad'?' · ✗ ต่ำกว่าเป้า':'');
+      var tg=k.tg?'<div class="cc-tgt" style="color:'+(k.s==='bad'?c:'inherit')+'">'+escHtml(k.tg)+mark+'</div>':'';
+      return '<div class="cc-kpi" style="border-left-color:'+c+'"><div class="cc-val" style="color:'+c+'">'+escHtml(k.v)+' <span class="cc-unit">'+escHtml(k.u)+'</span></div><div class="cc-lab">'+escHtml(k.l)+'</div>'+tg+'</div>';
+    }).join('');
+    return '<div class="cc-gt">'+escHtml(g.t)+'</div><div class="cc-grid">'+cards+'</div>';
   }).join('');
 }
 
-// ===== Cockpit คุณภาพ / Quality-Meeting (ด้าน 3, mockup 6 ก.ค.69) =====
-// DEMO mock. Real backend: sentinel(เลือก KPI แดง/แย่ลง/เรื้อรัง) + ha_mapping(SAR)
-// + action_tracker(มติ->action+followup) — orchestrate เป็น getQualityAgenda()/saveMeetingDecision()
+// ===== Quality Cockpit / วาระประชุมคุณภาพ (ด้าน 3, 7 ก.ค.69 — wired to getQualityAgenda/saveMeetingDecision) =====
+var _qcAgenda=[];
 function loadQualityCockpit(){
-  var agenda=[
-    {flag:'แดง 2 เดือน',type:'',kpi:'PCT-56 · Rate admit HT complication',spark:[40,55,50,70,85,100],
-     ha:'III-2',action:'พ.ค. — ปรับ standing order',verdict:'ยังไม่ดีขึ้น',vc:'#dc2626'},
-    {flag:'แย่ลง',type:'amber',kpi:'IC-03 · อัตราติดเชื้อในโรงพยาบาล',spark:[30,35,30,45,55,65],
-     ha:'III-4',action:'—',verdict:'มีหลักฐาน SAR พร้อม export',vc:'#0284c7'},
-    {flag:'เรื้อรัง 4 เดือน',type:'',kpi:'PCT-10 · DM คุม A1c<7%',spark:[52,50,49,48,48,48],
-     ha:'III-2',action:'มี.ค. — คลินิก DM เข้มข้น',verdict:'ทรงตัว (ยังต่ำกว่าเป้า)',vc:'#d97706'}
-  ];
-  document.getElementById('qc-items').innerHTML=agenda.map(function(a,i){
-    var spark=a.spark.map(function(h){return '<i style="height:'+h+'%"></i>';}).join('');
+  document.getElementById('qc-items').innerHTML='<div style="padding:30px;text-align:center;color:#64748b">กำลังโหลด...</div>';
+  document.getElementById('qc-saved').innerHTML='';
+  google.script.run.withSuccessHandler(renderQualityCockpit).withFailureHandler(function(e){showToast('โหลดไม่สำเร็จ: '+e,'error');}).getQualityAgenda(S.email);
+}
+function renderQualityCockpit(d){
+  var ml=document.getElementById('qc-month-label'); if(ml) ml.textContent=(d&&d.monthLabel)||'';
+  _qcAgenda=(d&&d.items)||[];
+  if(!_qcAgenda.length){document.getElementById('qc-items').innerHTML='<div style="padding:30px;text-align:center;color:#64748b">ไม่มี KPI ที่ต้องหยิบเข้าวาระตอนนี้</div>';return;}
+  document.getElementById('qc-items').innerHTML=_qcAgenda.map(function(a,i){
+    var spark=(a.spark||[]).map(function(h){return '<i style="height:'+h+'%"></i>';}).join('');
     return '<div class="qc-item'+(a.type?' '+a.type:'')+'">'+
       '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
-        '<span class="qc-flag'+(a.type?' '+a.type:'')+'">'+a.flag+'</span>'+
-        '<span style="font-weight:700;font-size:14.5px;flex:1;min-width:190px">'+a.kpi+'</span>'+
+        '<span class="qc-flag'+(a.type?' '+a.type:'')+'">'+escHtml(a.flag)+'</span>'+
+        '<span style="font-weight:700;font-size:14.5px;flex:1;min-width:190px">'+escHtml(a.kpi)+'</span>'+
         '<span class="qc-spark">'+spark+'</span></div>'+
       '<div style="display:flex;gap:16px;flex-wrap:wrap;margin:9px 0 4px;font-size:12.5px;color:#94a3b8">'+
-        '<span>มาตรฐาน HA: <span class="qc-chip">'+a.ha+'</span></span>'+
-        '<span>action ล่าสุด: <b style="color:inherit">'+a.action+'</b></span>'+
-        '<span>ผล: <b style="color:'+a.vc+'">'+a.verdict+'</b></span></div>'+
+        '<span>มาตรฐาน HA: <span class="qc-chip">'+escHtml(a.ha)+'</span></span>'+
+        '<span>action ล่าสุด: <b style="color:inherit">'+escHtml(a.action)+'</b></span>'+
+        '<span>ผล: <b style="color:'+a.vc+'">'+escHtml(a.verdict)+'</b></span></div>'+
       '<div class="qc-drow">'+
         '<input class="qc-in" id="qc-m'+i+'" placeholder="มติที่ประชุม เช่น ทบทวน flow ER + อบรมพยาบาล">'+
-        '<input class="qc-in" placeholder="ผู้รับผิดชอบ">'+
-        '<input class="qc-in" placeholder="ทบทวน (เดือน)"></div></div>';
+        '<input class="qc-in" id="qc-o'+i+'" placeholder="ผู้รับผิดชอบ">'+
+        '<input class="qc-in" id="qc-r'+i+'" placeholder="ทบทวน (เดือน)"></div></div>';
   }).join('');
   document.getElementById('qc-saved').innerHTML='';
 }
 function qcSaveMeeting(){
-  var n=0;for(var i=0;i<3;i++){var el=document.getElementById('qc-m'+i);if(el&&el.value.trim())n++;}
-  if(!n){showToast('พิมพ์มติอย่างน้อย 1 เรื่องก่อนครับ','info');return;}
-  showToast('บันทึกมติ '+n+' เรื่อง → สร้าง Action_Plan + ร่าง SAR อัตโนมัติ (เดโม)','success');
-  document.getElementById('qc-saved').innerHTML='&#9989; บันทึกแล้ว '+n+' มติ → เข้า action_tracker + แนบหลักฐาน HA (ในระบบจริงจะ push เตือน LINE ตามกำหนดทบทวน)';
+  var rows=[];
+  for(var i=0;i<_qcAgenda.length;i++){
+    var mEl=document.getElementById('qc-m'+i);
+    var decision=mEl?mEl.value.trim():'';
+    if(!decision)continue;
+    rows.push({
+      kpiId:_qcAgenda[i].kpiId,
+      decision:decision,
+      owner:(document.getElementById('qc-o'+i)||{}).value||'',
+      reviewMonth:(document.getElementById('qc-r'+i)||{}).value||''
+    });
+  }
+  if(!rows.length){showToast('พิมพ์มติอย่างน้อย 1 เรื่องก่อนครับ','info');return;}
+  showToast('กำลังบันทึก '+rows.length+' มติ...','');
+  var done=0,fail=0;
+  rows.forEach(function(row){
+    google.script.run.withSuccessHandler(function(r){
+      done++;
+      if(!r||!r.ok)fail++;
+      if(done===rows.length)_qcFinishSave(rows.length,fail);
+    }).withFailureHandler(function(){
+      done++;fail++;
+      if(done===rows.length)_qcFinishSave(rows.length,fail);
+    }).saveMeetingDecision(row.kpiId,row.decision,row.owner,row.reviewMonth,S.email);
+  });
 }
-
-// ===== Care Cockpit / มุมคนไข้ (ด้าน 2, mockup 7 ก.ค.69) — aggregate ล้วน ไม่มีชื่อคนไข้ =====
-// DEMO mock. ของจริง = ดึง KPI ฝั่งคนไข้ที่มีอยู่แล้ว (waiting/satisfaction/revisit/readmit/
-// control%/no-show) จาก KPI_Data — ไม่ต้องแตะข้อมูลราย HN เลย
-function loadCareCockpit(){
-  var SC={good:'#16a34a',warn:'#d97706',bad:'#dc2626'};
-  var groups=[
-    {t:'🚪 เข้าถึง & รอคอย',k:[
-      {l:'เวลารอ OPD เฉลี่ย',v:'18',u:'นาที',tg:'เป้า <30',s:'good'},
-      {l:'เวลารอ ER ถึงพบแพทย์',v:'8',u:'นาที',tg:'เป้า <10',s:'good'},
-      {l:'เวลารอ refer ออก',v:'45',u:'นาที',tg:'เป้า <60',s:'good'},
-      {l:'คิวนัดล่วงหน้าเฉลี่ย',v:'12',u:'วัน',tg:'',s:'good'}]},
-    {t:'😊 ประสบการณ์ & พึงพอใจ',k:[
-      {l:'ความพึงพอใจรวม',v:'92',u:'%',tg:'เป้า >85',s:'good'},
-      {l:'ข้อร้องเรียน (เดือนนี้)',v:'2',u:'เรื่อง',tg:'',s:'warn'},
-      {l:'ข้อชมเชย',v:'8',u:'เรื่อง',tg:'',s:'good'},
-      {l:'อัตราตอบแบบสอบถาม',v:'68',u:'%',tg:'',s:'warn'}]},
-    {t:'🛡️ ความปลอดภัย & ผลลัพธ์',k:[
-      {l:'Re-visit ER ≤48 ชม.',v:'0.36',u:'%',tg:'เป้า <1',s:'good'},
-      {l:'Re-admit ≤28 วัน',v:'2.1',u:'%',tg:'เป้า <5',s:'good'},
-      {l:'DM คุม A1c<7%',v:'48',u:'%',tg:'เป้า 60',s:'bad'},
-      {l:'HT คุม BP <140/90',v:'55',u:'%',tg:'เป้า 70',s:'bad'}]},
-    {t:'🔄 ความต่อเนื่องการดูแล',k:[
-      {l:'อัตราขาดนัด',v:'8.5',u:'%',tg:'เป้า <10',s:'good'},
-      {l:'หลุด follow-up (เรื้อรัง)',v:'6',u:'%',tg:'',s:'warn'},
-      {l:'refer กลับมารักษาต่อ',v:'78',u:'%',tg:'',s:'good'}]}
-  ];
-  document.getElementById('cc-body').innerHTML=groups.map(function(g){
-    var cards=g.k.map(function(k){
-      var c=SC[k.s];
-      var mark=k.s==='good'?' · ✓':(k.s==='bad'?' · ✗ ต่ำกว่าเป้า':'');
-      var tg=k.tg?'<div class="cc-tgt" style="color:'+(k.s==='bad'?c:'inherit')+'">'+k.tg+mark+'</div>':'';
-      return '<div class="cc-kpi" style="border-left-color:'+c+'"><div class="cc-val" style="color:'+c+'">'+k.v+' <span class="cc-unit">'+k.u+'</span></div><div class="cc-lab">'+k.l+'</div>'+tg+'</div>';
-    }).join('');
-    return '<div class="cc-gt">'+g.t+'</div><div class="cc-grid">'+cards+'</div>';
-  }).join('');
+function _qcFinishSave(total,fail){
+  if(fail===0){
+    showToast('บันทึกมติ '+total+' เรื่อง → เข้า Action_Plans แล้ว','success');
+    document.getElementById('qc-saved').innerHTML='&#9989; บันทึกแล้ว '+total+' มติ → เข้า action tracker + แนบหลักฐาน HA (SAR)';
+  }else{
+    showToast('บันทึกสำเร็จ '+(total-fail)+'/'+total+' มติ (ล้มเหลว '+fail+')','error');
+    document.getElementById('qc-saved').innerHTML='&#9888;&#65039; บันทึกสำเร็จ '+(total-fail)+'/'+total+' มติ';
+  }
+  loadQualityCockpit();
 }
 
 function renderDashboard(s){
@@ -2912,11 +3047,6 @@ var html='<div style="margin-bottom:12px"><div class="chart-kpi-name">'+escHtml(
 if(!hasAnyData){html+='<div class="no-chart" style="padding:40px;text-align:center">&#128202; ยังไม่มีข้อมูลสำหรับกราฟ<br><span style="font-size:12px;color:rgba(125,211,252,.3)">กรุณากรอกข้อมูลอย่างน้อย 1 เดือน</span></div>';panel.innerHTML=html;if(S.chart){S.chart.destroy();S.chart=null;}return;}
 html+='<div class="chart-container"><canvas id="chart-canvas"></canvas></div>';panel.innerHTML=html;if(S.chart){S.chart.destroy();S.chart=null;}var datasets=[{label:kpi.name,data:vals,borderColor:color,backgroundColor:color+'22',borderWidth:2.5,fill:true,tension:0.35,spanGaps:true,pointRadius:5,pointHoverRadius:7,pointBackgroundColor:vals.map(function(v,i){if(v===null)return'transparent';var g=dynGoals[i];if(g===null)return color;if(kpi.direction==='up'||kpi.direction==='↑')return v>=g?'#27ae60':'#e74c3c';if(kpi.direction==='down'||kpi.direction==='↓')return v<=g?'#27ae60':'#e74c3c';return color;})}];if(hasGoal)datasets.push({label:'เป้าหมาย',data:dynGoals,borderColor:'#f4a61d',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false});S.chart=new Chart(document.getElementById('chart-canvas').getContext('2d'),{type:'line',data:{labels:months,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{family:'Sarabun',size:12},boxWidth:20}},tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+(ctx.parsed.y!==null?ctx.parsed.y+' '+(kpi.unit||''):'NA');}}}},scales:{x:{ticks:{font:{family:'Sarabun',size:10},maxRotation:45},grid:{color:'#eee'}},y:{ticks:{font:{family:'Sarabun',size:11}},grid:{color:'#eee'},beginAtZero:false}}}});}
 
-function startEdit(cell,kpiId,month,curVal){if(S.editCell)cancelEdit();S.editCell=cell;cell.setAttribute('data-prev',curVal||'');var v=(curVal==='NA'||curVal===''||curVal===null||curVal===undefined)?'':curVal;var html='<input type="number" step="any" value="'+v+'" id="edit-inp" style="width:70px;padding:3px 6px;border:1.5px solid #1e90d4;border-radius:4px;font-size:12px;outline:none">';html+='<button onclick="commitEdit()" style="background:#17b89a;color:#fff;border:none;border-radius:4px;padding:3px 7px;font-size:11px;font-weight:600;cursor:pointer;margin-left:2px">&#10003;</button>';html+='<button onclick="cancelEdit()" style="background:none;border:1px solid #dde3ec;border-radius:4px;padding:3px 5px;font-size:11px;cursor:pointer;margin-left:2px">&#10005;</button>';cell.innerHTML=html;var inp=document.getElementById('edit-inp');if(inp){inp.focus();inp.onkeydown=function(e){if(e.keyCode===13)commitEdit();if(e.keyCode===27)cancelEdit();};}cell.setAttribute('data-kpiid',kpiId);cell.setAttribute('data-month',month);}
-function commitEdit(){var cell=S.editCell;if(!cell)return;var inp=document.getElementById('edit-inp');var val=inp?inp.value.trim():'';var kpiId=cell.getAttribute('data-kpiid');var month=cell.getAttribute('data-month');cell.innerHTML='<span style="color:#888;font-size:11px">กำลังบันทึก...</span>';S.editCell=null;_doSaveKPI(kpiId,month,val,cell,false);}
-
-function _doSaveKPI(kpiId,month,val,cell,force){var valToSend=val===''?'NA':parseFloat(val);if(!force&&val!==''&&!isNaN(valToSend)){var _info=(S.kpiDefMap&&S.kpiDefMap[kpiId])||null;if(!checkRangeOK(_info,valToSend)){var prev=cell.getAttribute('data-prev')||'';cell.innerHTML=(prev===''||prev==='NA')?'<span style="color:#c8d0db">NA</span>':prev;showToast('ยกเลิก','info');return;}var _oor=false;if(_info&&(_info.valMin!==null||_info.valMax!==null)){var _lo=_info.valMin,_hi=_info.valMax;if((_lo!==null&&valToSend<_lo)||(_hi!==null&&valToSend>_hi))_oor=true;}google.script.run.withSuccessHandler(function(r){if(r&&r.needs_confirm){var msg='ค่านี้เพิ่งถูกยืนยันผ่าน LINE เมื่อ '+r.hours_since+' ชม.ที่แล้ว\n(เวลา '+r.prev_at+' โดย '+(r.prev_by||'ผู้ใช้')+')\n\nค่าเดิม: '+r.old_value+'\nค่าใหม่: '+r.new_value+'\n\nต้องการเขียนทับหรือไม่?';if(confirm(msg)){cell.innerHTML='<span style="color:#888;font-size:11px">กำลังบันทึก...</span>';_doSaveKPI(kpiId,month,val,cell,true);}else{cell.innerHTML=r.old_value!==undefined&&r.old_value!==''?r.old_value:'<span style="color:#c8d0db">NA</span>';showToast('ยกเลิกการแก้ไข','info');}return;}cell.innerHTML=val===''?'<span style="color:#c8d0db">NA</span>':val;if(r&&r.ok){bcClear();showToast('บันทึก '+kpiId+' = '+(val||'NA')+' สำเร็จ','success');}else{showToast('Error: '+(r&&r.msg?r.msg:'unknown'),'error');}}).saveKPIValue(kpiId,month,valToSend,S.email,force,_oor);}else{var _oor2=false;google.script.run.withSuccessHandler(function(r){if(r&&r.needs_confirm){var msg='ค่านี้เพิ่งถูกยืนยันผ่าน LINE เมื่อ '+r.hours_since+' ชม.ที่แล้ว\n(เวลา '+r.prev_at+' โดย '+(r.prev_by||'ผู้ใช้')+')\n\nค่าเดิม: '+r.old_value+'\nค่าใหม่: '+r.new_value+'\n\nต้องการเขียนทับหรือไม่?';if(confirm(msg)){cell.innerHTML='<span style="color:#888;font-size:11px">กำลังบันทึก...</span>';_doSaveKPI(kpiId,month,val,cell,true);}else{cell.innerHTML=r.old_value!==undefined&&r.old_value!==''?r.old_value:'<span style="color:#c8d0db">NA</span>';showToast('ยกเลิกการแก้ไข','info');}return;}cell.innerHTML=val===''?'<span style="color:#c8d0db">NA</span>':val;if(r&&r.ok){bcClear();showToast('บันทึก '+kpiId+' = '+(val||'NA')+' สำเร็จ','success');}else{showToast('Error: '+(r&&r.msg?r.msg:'unknown'),'error');}}).saveKPIValue(kpiId,month,valToSend,S.email,force,_oor2);}}
-function cancelEdit(){var cell=S.editCell;if(!cell)return;var prev=cell.getAttribute('data-prev')||'';cell.innerHTML=(prev===''||prev==='NA')?'<span style="color:#c8d0db">NA</span>':prev;S.editCell=null;}
 
   // ★ v9.15: Modal-based edit handlers (1 พ.ค. 2569 — replaces inline startEdit/commitEdit)
   var EKM_STATE = { kpiId: null, month: null, prevVal: null };
@@ -2969,7 +3099,7 @@ function cancelEdit(){var cell=S.editCell;if(!cell)return;var prev=cell.getAttri
         return v + (d ? ' (' + d + ')' : '');
       }).join(' → ');
       document.getElementById('ekm-history').textContent = line;
-    }).getCellHistory(kpiId, month);
+    }).getCellHistory(kpiId, month, S.sessionToken, S.email);
   }
 
   function closeEditModal() {
@@ -3111,7 +3241,7 @@ function cancelEdit(){var cell=S.editCell;if(!cell)return;var prev=cell.getAttri
           loadDept(curDept.textContent);
         }
       }
-      var myKPIPage = document.getElementById('page-my');
+      var myKPIPage = document.getElementById('page-byuser');
       if (myKPIPage && myKPIPage.classList.contains('active') && typeof loadMyKPIs === 'function') {
         loadMyKPIs();
       }
@@ -3137,7 +3267,7 @@ function cancelEdit(){var cell=S.editCell;if(!cell)return;var prev=cell.getAttri
       } else {
         showToast('Error: ' + (r && r.msg ? r.msg : 'unknown'), 'error');
       }
-    }).revertKPICellAPI(kpi, month, S.email);
+    }).revertKPICellAPI(kpi, month, S.email, S.sessionToken);
   }
 
 function openComment(btn,kpiId,month){S.pendingComment={kpiId:kpiId,month:month};document.getElementById('modal-comment-info').textContent=kpiId+' เดือน '+month;document.getElementById('c-text').value='';openModal('modal-comment');}
@@ -3205,7 +3335,11 @@ document.getElementById('f-customid').value = 'กำลังโหลด...';
       google.script.run.withSuccessHandler(function(r) {
         if (r && r.ok) {
           document.getElementById('f-customid').value = r.nextId;
+        } else {
+          document.getElementById('f-customid').value = '';
         }
+      }).withFailureHandler(function(e) {
+        document.getElementById('f-customid').value = '';
       }).getNextKpiId(dept);
   document.getElementById('f-dtype-wrap').style.display = 'block';
   document.getElementById('f-start-wrap').style.display = 'block';
@@ -3288,6 +3422,7 @@ function submitKPI() {
   if (!startMonth) { showToast('กรุณาเลือกเดือนเริ่มต้น', 'error'); return; }
   var dept = document.getElementById('btn-add-kpi').getAttribute('data-dept');
   var customId = document.getElementById('f-customid').value.trim();
+  if (customId === 'กำลังโหลด...') { showToast('กำลังโหลดรหัส KPI กรุณารอสักครู่', 'error'); return; }
   google.script.run.withSuccessHandler(function(r) {
     if (r.ok) { bcClear(); showToast('เพิ่ม KPI สำเร็จ: ' + r.newId, 'success'); closeModal('modal-kpi'); if (dept) loadDept(dept); }
     else showToast('Error: ' + r.msg, 'error');
@@ -3541,8 +3676,8 @@ function buildDeptSelect(selectedVal){var container=document.getElementById('u-d
 
 function openAddUser(){S_editUserId=null;document.getElementById('modal-user-title').textContent='เพิ่ม User ใหม่';document.getElementById('u-name').value='';document.getElementById('u-email').value='';document.getElementById('u-position').value='';document.getElementById('u-role').value='USER';document.getElementById('u-status').value='Active';document.getElementById('u-kpis').value='';buildDeptSelect('');openModal('modal-user');}
 function openEditUser(userId){google.script.run.withSuccessHandler(function(users){var u=null;users.forEach(function(x){if(x.userId===userId)u=x;});if(!u){showToast('ไม่พบ user','error');return;}S_editUserId=userId;document.getElementById('modal-user-title').textContent='แก้ไข '+u.name;document.getElementById('u-name').value=u.name||'';document.getElementById('u-email').value=u.email||'';document.getElementById('u-position').value=u.position||'';document.getElementById('u-role').value=u.role||'USER';document.getElementById('u-status').value=u.status||'Active';document.getElementById('u-kpis').value=u.kpis||'';buildDeptSelect(u.dept||'');openModal('modal-user');}).getUsers(S.email);}
-function submitUser(){var name=document.getElementById('u-name').value.trim();var email=document.getElementById('u-email').value.trim();var position=document.getElementById('u-position').value.trim();var role=document.getElementById('u-role').value;var status=document.getElementById('u-status').value;var kpis=document.getElementById('u-kpis').value.trim();var deptChecks=document.querySelectorAll('[name="u-dept-cb"]:checked');var dept=Array.prototype.map.call(deptChecks,function(cb){return cb.value;}).join(',');if(!name){showToast('กรุณากรอกชื่อ','error');return;}if(!email){showToast('กรุณากรอก Email','error');return;}if(!dept){showToast('กรุณาเลือกอย่างน้อย 1 ฝ่าย','error');return;}if(S_editUserId){google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('แก้ไข user สำเร็จ','success');closeModal('modal-user');loadUsers();}else showToast('Error: '+r.msg,'error');}).editUser(S_editUserId,name,email,dept,position,role,kpis,status,S.email);}else{google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('เพิ่ม user สำเร็จ ('+r.newId+')','success');closeModal('modal-user');loadUsers();}else showToast('Error: '+r.msg,'error');}).addUser(name,email,dept,position,role,kpis,S.email);}}
-function confirmDeleteUser(userId,name){if(!confirm('ปิดการใช้งาน '+name+'?'))return;google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('ปิดการใช้งาน '+name+' สำเร็จ','success');loadUsers();}else showToast('Error: '+r.msg,'error');}).deleteUser(userId,S.email);}
+function submitUser(){var name=document.getElementById('u-name').value.trim();var email=document.getElementById('u-email').value.trim();var position=document.getElementById('u-position').value.trim();var role=document.getElementById('u-role').value;var status=document.getElementById('u-status').value;var kpis=document.getElementById('u-kpis').value.trim();var deptChecks=document.querySelectorAll('[name="u-dept-cb"]:checked');var dept=Array.prototype.map.call(deptChecks,function(cb){return cb.value;}).join(',');if(!name){showToast('กรุณากรอกชื่อ','error');return;}if(!email){showToast('กรุณากรอก Email','error');return;}if(!dept){showToast('กรุณาเลือกอย่างน้อย 1 ฝ่าย','error');return;}if(S_editUserId){google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('แก้ไข user สำเร็จ','success');closeModal('modal-user');loadUsers();}else showToast('Error: '+r.msg,'error');}).editUser(S_editUserId,name,email,dept,position,role,kpis,status,S.email,S.sessionToken);}else{google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('เพิ่ม user สำเร็จ ('+r.newId+')','success');closeModal('modal-user');loadUsers();}else showToast('Error: '+r.msg,'error');}).addUser(name,email,dept,position,role,kpis,S.email,S.sessionToken);}}
+function confirmDeleteUser(userId,name){if(!confirm('ปิดการใช้งาน '+name+'?'))return;google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('ปิดการใช้งาน '+name+' สำเร็จ','success');loadUsers();}else showToast('Error: '+r.msg,'error');}).deleteUser(userId,S.email,S.sessionToken);}
 
 function getLatestVal(kpi){if(!kpi.values)return'NA';for(var i=kpi.values.length-1;i>=0;i--){var v=kpi.values[i];if(v!==null&&v!==''&&v!=='NA')return v;}return'NA';}
 function evalSt(info,val){if(val===null||val===undefined||val===''||val==='NA')return'na';var num=parseFloat(val);if(isNaN(num))return'na';var t=parseFloat((info.target||'').toString().replace(/[^0-9.]/g,''));if(isNaN(t))return'na';var dir=info.direction||'';if(dir==='↑'||dir==='up')return num>=t?'hit':'miss';if(dir==='↓'||dir==='down')return num<=t?'hit':'miss';return'na';}
@@ -3652,7 +3787,7 @@ function bulkConfirm() {
       btn.disabled = false; btn.textContent = '✓ นำเข้า';
       document.getElementById('bulk-preview-err').textContent = 'เกิดข้อผิดพลาด: ' + (e.message || e);
     })
-    .bulkImportKPIsFromRows(_bulkRows_, S.email);
+    .bulkImportKPIsFromRows(_bulkRows_, S.email, S.sessionToken);
 }
 function showToast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(function(){t.className='toast';},3000);}
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');}
@@ -4007,13 +4142,13 @@ function loadAuditLog() {
       var detail = (e.detail || '').toString();
       if (detail.length > 120) detail = detail.substring(0, 120) + '…';
       html += '<tr>'
-        + '<td style="font-size:11px;color:rgba(125,211,252,.6);white-space:nowrap">' + escHtml(e.time || '') + '</td>'
+        + '<td style="font-size:11px;color:#334155;font-weight:500;white-space:nowrap">' + escHtml(e.time || '') + '</td>'
         + '<td><span style="background:' + actColor + '22;color:' + actColor + ';padding:2px 7px;border-radius:8px;font-size:10px;font-weight:600;white-space:nowrap">' + escHtml(e.action || '') + '</span></td>'
-        + '<td style="font-size:11px;color:#94a3b8">' + escHtml((e.email || '').split('@')[0]) + '</td>'
-        + '<td style="font-family:monospace;font-size:11px;color:#7dd3fc">' + escHtml(e.kpiId || '—') + '</td>'
-        + '<td style="font-size:11px">' + escHtml(detail) + '</td>'
-        + '<td style="font-size:11px;color:#94a3b8">' + escHtml(String(e.oldVal || '—').substring(0, 30)) + '</td>'
-        + '<td style="font-size:11px;color:#e2e8f0;font-weight:600">' + escHtml(String(e.newVal || '—').substring(0, 30)) + '</td>'
+        + '<td style="font-size:11px;color:#64748b">' + escHtml((e.email || '').split('@')[0]) + '</td>'
+        + '<td style="font-family:monospace;font-size:11px;color:#0369a1">' + escHtml(e.kpiId || '—') + '</td>'
+        + '<td style="font-size:11px;color:#475569">' + escHtml(detail) + '</td>'
+        + '<td style="font-size:11px;color:#64748b">' + escHtml(String(e.oldVal || '—').substring(0, 30)) + '</td>'
+        + '<td style="font-size:11px;color:#1e293b;font-weight:600">' + escHtml(String(e.newVal || '—').substring(0, 30)) + '</td>'
         + '</tr>';
     });
     document.getElementById('audit-tbody').innerHTML = html;
@@ -4437,9 +4572,22 @@ function aiAskServer(question, actionKey) {
   aiAddUserMsg(question);
   aiAddLoadingMsg();
   aiSetButtonsDisabled(true);
- 
+
+  // Client-side watchdog: if google.script.run's callback is ever lost (dropped
+  // iframe RPC / long stall), reset the UI instead of bricking the AI page forever.
+  var _aiDone = false;
+  var _aiTimer = setTimeout(function () {
+    if (_aiDone) return;
+    _aiDone = true;
+    aiRemoveLoadingMsg();
+    _aiBusy = false;
+    aiSetButtonsDisabled(false);
+    aiAddAIMsg('⚠️ AI ไม่ตอบกลับใน 2 นาที — การเชื่อมต่ออาจหลุด ลองถามใหม่อีกครั้ง');
+  }, 120000);
+
   google.script.run
     .withSuccessHandler(function(r) {
+      if (_aiDone) return; _aiDone = true; clearTimeout(_aiTimer);
       aiRemoveLoadingMsg();
       _aiBusy = false;
       aiSetButtonsDisabled(false);
@@ -4461,12 +4609,13 @@ function aiAskServer(question, actionKey) {
       }
     })
     .withFailureHandler(function(e) {
+      if (_aiDone) return; _aiDone = true; clearTimeout(_aiTimer);
       aiRemoveLoadingMsg();
       _aiBusy = false;
       aiSetButtonsDisabled(false);
       aiAddAIMsg('⚠️ Error: ' + (e.message || 'ไม่ทราบสาเหตุ'));
     })
-    .askAI(question, S.email, actionKey);
+    .askAI(question, S.email, actionKey, S.sessionToken);
 }
  
 function aiHideEmpty() {
@@ -4736,19 +4885,20 @@ function renderExecPopHealth(r) {
 
   // ---- 2) ปัจจัยเสี่ยงในกลุ่มเสี่ยงสูง (prevalence: กี่คน/กี่% ของ n_high) ----
   var facs = r.factors || [], fmax = 1;
+  var ax = _axC();
   for (i = 0; i < facs.length; i++) { if (facs[i].n > fmax) fmax = facs[i].n; }
   var fcols = ['#d64545', '#e8833a', '#14b8a6', '#9333ea', '#64748b'], fHtml = '';
   for (i = 0; i < facs.length; i++) {
     var ft = facs[i], w = Math.round(ft.n / fmax * 100);
     fHtml += '<div style="display:grid;grid-template-columns:210px 1fr 150px;gap:14px;align-items:center;margin:11px 0;font-size:14.5px">'
-      + '<div style="font-weight:700;color:#e2e8f0">' + escHtml(ft.name) + '</div>'
+      + '<div style="font-weight:700;color:' + ax.tick + '">' + escHtml(ft.name) + '</div>'
       + '<div style="height:18px;background:rgba(148,163,184,.12);border-radius:5px;overflow:hidden"><i style="display:block;height:100%;width:' + w + '%;background:' + (fcols[i] || '#64748b') + '"></i></div>'
-      + '<div style="color:#cbd5e1;text-align:right"><b style="color:#e2e8f0;font-size:16px">' + ft.n + '</b> คน <span style="color:#94a3b8">(' + ft.pct + '%)</span></div></div>';
+      + '<div style="color:' + ax.sub + ';text-align:right"><b style="color:' + ax.tick + ';font-size:16px">' + ft.n + '</b> คน <span style="color:' + ax.sub + '">(' + ft.pct + '%)</span></div></div>';
   }
   html += '<div class="exec-panel" style="margin-top:14px;border-left:4px solid #d64545">'
     + '<div class="ep-title" style="font-size:16px">&#127919; ปัจจัยเสี่ยงในกลุ่มเสี่ยงสูง (' + r.n_high + ' คน)</div>'
     + '<div class="ep-sub" style="font-size:13px">ในผู้ป่วยเสี่ยงสูง ' + r.n_high + ' คน มีปัจจัยเสี่ยงแต่ละอย่างกี่คน (เรียงมาก→น้อย)</div>' + fHtml
-    + '<div style="font-size:13.5px;color:#e2e8f0;background:rgba(214,69,69,.12);border-radius:8px;padding:10px 13px;margin-top:8px">&#128161; <b>เบาหวานเด่นสุด</b> — ผู้ป่วย DM เป็นกลุ่มเสี่ยงสูง ' + r.dm_high_pct + '% (ไม่ DM แค่ ' + r.nondm_high_pct + '%) → คุมเบาหวานดี = ลดเสี่ยงหัวใจ-หลอดเลือดได้มากที่สุด</div></div>';
+    + '<div style="font-size:13.5px;color:' + ax.tick + ';background:rgba(214,69,69,.12);border-radius:8px;padding:10px 13px;margin-top:8px">&#128161; <b>เบาหวานเด่นสุด</b> — ผู้ป่วย DM เป็นกลุ่มเสี่ยงสูง ' + r.dm_high_pct + '% (ไม่ DM แค่ ' + r.nondm_high_pct + '%) → คุมเบาหวานดี = ลดเสี่ยงหัวใจ-หลอดเลือดได้มากที่สุด</div></div>';
 
   var dd = document.getElementById('exec-data-date');
   if (dd) dd.textContent = r.generatedAt ? ('ข้อมูลรวบรวมล่าสุด ' + r.generatedAt) : '';
@@ -4756,10 +4906,21 @@ function renderExecPopHealth(r) {
   renderExecPopChart(r.history);   // build chart AFTER innerHTML (canvas must exist)
 }
 
+// theme-aware chart axis/label colors (dark default / light-mode ส้ม) — คืนสี + set Chart.defaults ให้กราฟที่ไม่ override
+function _axC() {
+  var lt = (document.body.className.indexOf('light-mode') >= 0);
+  var c = lt
+    ? { tick: '#334155', sub: '#475569', grid: 'rgba(100,116,139,.22)', legend: '#334155' }
+    : { tick: '#e2e8f0', sub: '#94a3b8', grid: 'rgba(255,255,255,.06)', legend: '#cbd5e1' };
+  if (window.Chart) { Chart.defaults.color = c.sub; Chart.defaults.borderColor = c.grid; }
+  return c;
+}
+
 function renderExecPopChart(hist) {
   var cv = document.getElementById('exec-pop-history');
   if (!cv || !window.Chart || !hist || !hist.length) return;
   if (_execCharts['pop-history']) { _execCharts['pop-history'].destroy(); }
+  var ax = _axC();
   var labels = [], aLo = [], aMid = [], aHi = [], mLo = [], mMid = [], mHi = [], i;
   for (i = 0; i < hist.length; i++) {
     var h = hist[i];
@@ -4777,12 +4938,12 @@ function renderExecPopChart(hist) {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { display: true, position: 'top', labels: { font: { family: 'Prompt', size: 11 }, color: '#cbd5e1', boxWidth: 12, padding: 7 } },
+        legend: { display: true, position: 'top', labels: { font: { family: 'Prompt', size: 11 }, color: ax.legend, boxWidth: 12, padding: 7 } },
         tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y + ' คน'; } } }
       },
       scales: {
-        x: { stacked: false, ticks: { font: { family: 'Prompt', size: 13 }, color: '#e2e8f0' }, grid: { display: false } },
-        y: { stacked: false, ticks: { font: { family: 'Prompt', size: 11 }, color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,.05)' }, title: { display: true, text: 'จำนวนคน', font: { family: 'Prompt', size: 11 }, color: '#94a3b8' } }
+        x: { stacked: false, ticks: { font: { family: 'Prompt', size: 13 }, color: ax.tick }, grid: { display: false } },
+        y: { stacked: false, ticks: { font: { family: 'Prompt', size: 11 }, color: ax.sub }, grid: { color: ax.grid }, title: { display: true, text: 'จำนวนคน', font: { family: 'Prompt', size: 11 }, color: ax.sub } }
       }
     }
   });
@@ -4865,205 +5026,6 @@ function renderExecCMI(imKpis) {
   document.getElementById('ex-cmi').textContent = (vCMI !== 'NA' ? vCMI : 'NA');
 }
 
-function renderExecFinance(finKpis) {
-  google.script.run.withSuccessHandler(function(revData) {
-    if (!revData || !revData.data || revData.data.length === 0) {
-      document.getElementById('exec-rev-cards').innerHTML = '<div style="color:rgba(125,211,252,.35);padding:20px;text-align:center">ไม่พบข้อมูลรายได้ — กรุณารัน sync_revenue.py --backfill</div>';
-      return;
-    }
-    var MN_ORDER = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-    revData.data.sort(function(a, b) {
-      var pa = a.month.split(' ');
-      var pb = b.month.split(' ');
-      var ya = parseInt(pa[1]) || 0;
-      var yb = parseInt(pb[1]) || 0;
-      if (ya !== yb) return ya - yb;
-      return MN_ORDER.indexOf(pa[0]) - MN_ORDER.indexOf(pb[0]);
-    });
-    revData.months = revData.data.map(function(d) { return d.month; });
-    renderRevenueCards(revData);
-    renderRevenueStacked(revData);
-    renderRevenueTotalLine(revData);
-    renderRevenuePie(revData);
-  }).getRevenueData();
-}
-
-var REV_COLORS = {
-  'ยา': '#3b82f6',
-  'Lab': '#10b981',
-  'X-ray': '#f59e0b',
-  'เวชภัณฑ์ไม่ใช่ยา': '#94a3b8',
-  'หัตถการ': '#8b5cf6',
-  'กายภาพบำบัด': '#06b6d4',
-  'นวด/ฝังเข็ม': '#ef4444',
-  'อื่นๆ': '#f97316'
-};
-
-function renderRevenueCards(revData) {
-  var latest = revData.data[revData.data.length - 1];
-  var prev = revData.data.length > 1 ? revData.data[revData.data.length - 2] : null;
-  var total = latest.values['รวม'] || 0;
-  var prevTotal = prev ? (prev.values['รวม'] || 0) : 0;
-  var delta = prevTotal > 0 ? ((total - prevTotal) / prevTotal * 100).toFixed(1) : '—';
-
-  var drugTotal = (latest.values['ยา'] || 0);
-  var drugPct = total > 0 ? (drugTotal / total * 100).toFixed(0) : 0;
-
-  var cards = [
-    { icon: '&#128176;', val: (total / 1000000).toFixed(2) + 'M', label: 'รายได้รวม', sub: latest.month, color: '#34d399' },
-    { icon: '&#128200;', val: (delta !== '—' ? (delta > 0 ? '+' : '') + delta + '%' : '—'), label: 'เทียบเดือนก่อน', sub: prev ? prev.month : '', color: parseFloat(delta) >= 0 ? '#34d399' : '#f87171' },
-    { icon: '&#128138;', val: drugPct + '%', label: 'สัดส่วนยา', sub: 'จากรายได้ทั้งหมด', color: '#3b82f6' },
-    { icon: '&#129656;', val: (latest.values['Lab'] / 1000).toFixed(0) + 'K', label: 'รายได้ Lab', sub: latest.month, color: '#10b981' }
-  ];
-
-  var html = '';
-  for (var i = 0; i < cards.length; i++) {
-    var c = cards[i];
-    html += '<div class="exec-card" style="border-color:rgba(245,158,11,.12);background:rgba(245,158,11,.02)">';
-    html += '<div class="ec-icon">' + c.icon + '</div>';
-    html += '<div class="ec-val" style="color:' + c.color + ';font-size:22px">' + c.val + '</div>';
-    html += '<div class="ec-label">' + c.label + '</div>';
-    html += '<div class="ec-sub">' + c.sub + '</div></div>';
-  }
-  document.getElementById('exec-rev-cards').innerHTML = html;
-}
-
-function renderRevenueStacked(revData) {
-  if (_execCharts['rev-stacked']) { _execCharts['rev-stacked'].destroy(); }
-  var labels = [];
-  for (var i = 0; i < revData.data.length; i++) {
-    var ml = revData.data[i].month;
-    labels.push(ml.split(' ')[0] + ml.split(' ')[1].slice(-2));
-  }
-
-  var datasets = [];
-  for (var g = 0; g < revData.groups.length; g++) {
-    var gname = revData.groups[g];
-    var gdata = [];
-    for (var j = 0; j < revData.data.length; j++) {
-      gdata.push(Math.round((revData.data[j].values[gname] || 0) / 1000));
-    }
-    datasets.push({
-      label: gname,
-      data: gdata,
-      backgroundColor: REV_COLORS[gname] || '#64748b',
-      borderWidth: 0,
-      borderRadius: g === revData.groups.length - 1 ? 3 : 0
-    });
-  }
-
-  _execCharts['rev-stacked'] = new Chart(document.getElementById('exec-rev-stacked').getContext('2d'), {
-    type: 'bar',
-    data: { labels: labels, datasets: datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: true, position: 'top', labels: { font: { family: 'Prompt', size: 10 }, boxWidth: 12, padding: 10 } },
-        tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + ' พัน฿'; } } }
-      },
-      scales: {
-        x: { stacked: true, ticks: { font: { family: 'Prompt', size: 9 }, maxRotation: 45 }, grid: { display: false } },
-        y: { stacked: true, ticks: { font: { family: 'Prompt', size: 10 }, callback: function(v) { return v.toLocaleString(); } }, grid: { color: 'rgba(255,255,255,.05)' }, title: { display: true, text: 'พัน฿', font: { family: 'Prompt', size: 10 }, color: 'rgba(125,211,252,.4)' } }
-      }
-    }
-  });
-}
-
-function renderRevenueTotalLine(revData) {
-  if (_execCharts['rev-total']) { _execCharts['rev-total'].destroy(); }
-  var labels = [];
-  var totals = [];
-  for (var i = 0; i < revData.data.length; i++) {
-    var ml = revData.data[i].month;
-    labels.push(ml.split(' ')[0] + ml.split(' ')[1].slice(-2));
-    totals.push(Math.round((revData.data[i].values['รวม'] || 0) / 1000));
-  }
-
-  _execCharts['rev-total'] = new Chart(document.getElementById('exec-rev-total').getContext('2d'), {
-    type: 'line',
-    data: { labels: labels, datasets: [{
-      label: 'รายได้รวม (พัน฿)', data: totals,
-      borderColor: '#34d399', backgroundColor: '#34d39918',
-      borderWidth: 2.5, fill: true, tension: 0.35,
-      pointRadius: 4, pointBackgroundColor: '#34d399'
-    }]},
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y.toLocaleString() + ' พัน฿'; } } } },
-      scales: {
-        x: { ticks: { font: { family: 'Prompt', size: 9 }, maxRotation: 45 }, grid: { display: false } },
-        y: { ticks: { font: { family: 'Prompt', size: 10 }, callback: function(v) { return v.toLocaleString(); } }, grid: { color: 'rgba(255,255,255,.05)' } }
-      }
-    }
-  });
-}
-
-function renderRevenuePie(revData) {
-  if (_execCharts['rev-pie-prev']) { _execCharts['rev-pie-prev'].destroy(); }
-  if (_execCharts['rev-pie-cur']) { _execCharts['rev-pie-cur'].destroy(); }
-
-  var cur = revData.data[revData.data.length - 1];
-  var prev = revData.data.length > 1 ? revData.data[revData.data.length - 2] : null;
-
-  document.getElementById('exec-rev-pie-label').textContent = prev ? prev.month + ' vs ' + cur.month : cur.month;
-  document.getElementById('exec-pie-cur-title').textContent = cur.month + ' (ปัจจุบัน)';
-  document.getElementById('exec-pie-prev-title').textContent = prev ? prev.month + ' (ก่อนหน้า)' : '—';
-
-  function buildPieData(monthData) {
-    var labels = []; var values = []; var colors = []; var total = 0;
-    for (var g = 0; g < revData.groups.length; g++) {
-      var gname = revData.groups[g];
-      var v = monthData.values[gname] || 0;
-      total += v;
-      if (v > 0) { labels.push(gname); values.push(Math.round(v / 1000)); colors.push(REV_COLORS[gname] || '#64748b'); }
-    }
-    return { labels: labels, values: values, colors: colors, total: total };
-  }
-
-  function buildPercentList(pd, containerId) {
-    var html = '';
-    var total = 0;
-    for (var i = 0; i < pd.values.length; i++) total += pd.values[i];
-    for (var j = 0; j < pd.labels.length; j++) {
-      var pct = total > 0 ? Math.round(pd.values[j] / total * 100) : 0;
-      if (pct < 1) continue;
-      html += '<div style="display:flex;align-items:center;gap:5px;justify-content:center;margin:2px 0">';
-      html += '<span style="width:8px;height:8px;border-radius:2px;background:' + pd.colors[j] + ';display:inline-block"></span>';
-      html += '<span style="font-size:10px;color:rgba(125,211,252,.5)">' + pd.labels[j] + '</span>';
-      html += '<span style="font-size:11px;font-weight:700;color:#e2e8f0">' + pct + '%</span>';
-      html += '</div>';
-    }
-    document.getElementById(containerId).innerHTML = html;
-  }
-
-  function createDoughnut(canvasId, key, pd) {
-    _execCharts[key] = new Chart(document.getElementById(canvasId).getContext('2d'), {
-      type: 'doughnut',
-      data: { labels: pd.labels, datasets: [{ data: pd.values, backgroundColor: pd.colors, borderWidth: 0, hoverOffset: 6 }] },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: function(ctx) { var t = ctx.dataset.data.reduce(function(a,b){return a+b;},0); return ctx.label + ': ' + ctx.parsed.toLocaleString() + ' พัน฿ (' + Math.round(ctx.parsed/t*100) + '%)'; } } }
-        },
-        cutout: '58%'
-      }
-    });
-  }
-
-  // Current month
-  var curPD = buildPieData(cur);
-  createDoughnut('exec-rev-pie-cur', 'rev-pie-cur', curPD);
-  buildPercentList(curPD, 'exec-pie-cur-list');
-
-  // Previous month
-  if (prev) {
-    var prevPD = buildPieData(prev);
-    createDoughnut('exec-rev-pie-prev', 'rev-pie-prev', prevPD);
-    buildPercentList(prevPD, 'exec-pie-prev-list');
-  }
-}
-
 function renderExecChart(canvasId, key, labels, datasets, targetVal) {
   var canvas = document.getElementById(canvasId);
   if (!canvas) return;
@@ -5085,6 +5047,7 @@ function renderExecChart(canvasId, key, labels, datasets, targetVal) {
     chartDS.push({ label: 'เป้าหมาย', data: tLine, borderColor: '#f4a61d', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false });
   }
 
+  var ax = _axC();
   _execCharts[key] = new Chart(canvas.getContext('2d'), {
     type: 'line',
     data: { labels: labels, datasets: chartDS },
@@ -5094,8 +5057,8 @@ function renderExecChart(canvasId, key, labels, datasets, targetVal) {
         legend: { display: true, position: 'top', labels: { font: { family: 'Prompt', size: 11 }, boxWidth: 16 } }
       },
       scales: {
-        x: { ticks: { font: { family: 'Prompt', size: 10 }, maxRotation: 45 }, grid: { color: 'rgba(255,255,255,.05)' } },
-        y: { ticks: { font: { family: 'Prompt', size: 11 } }, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: false }
+        x: { ticks: { font: { family: 'Prompt', size: 10 }, maxRotation: 45 }, grid: { color: ax.grid } },
+        y: { ticks: { font: { family: 'Prompt', size: 11 } }, grid: { color: ax.grid }, beginAtZero: false }
       }
     }
   });

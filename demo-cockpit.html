@@ -73,11 +73,23 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
 <script>
 /* demo mock for CEOCockpit.html — fake getCEOCockpit (ทุก section), no backend / no admin gate */
 (function(){
+  // "ข้อมูลล่าสุด" stamp — computed at load time so the demo never shows a stale date.
+  var _TMON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var _dn=new Date(), GEN=_dn.getDate()+' '+_TMON[_dn.getMonth()]+' (เดโม่)';
+  // Action Lists (29_action_lists.js) + Closed-loop (26_closed_loop.js) demo data.
+  // FAKE aggregate counts only — no patient data (PDPA). counts_at/last built at call time.
+  var alCounts={missed_14_31:38,missed_32_90:57,a1c_gt9:24};
+  var clOwners=[{email:'somchai@demo',name:'นพ.สมชาย (เดโม่)'},{email:'somsri@demo',name:'พว.สมศรี (เดโม่)'}];
   function mk(data){
     var succ=null;
     var api={withSuccessHandler:function(c){succ=c;return api;},withFailureHandler:function(){return api;},
       getCEOCockpit:function(){setTimeout(function(){if(succ)succ(data);},140);return api;},
-      cockpitNudge:function(){setTimeout(function(){if(succ)succ({ok:true});},120);return api;}};
+      cockpitNudge:function(){setTimeout(function(){if(succ)succ({ok:true});},120);return api;},
+      actionListCounts:function(){setTimeout(function(){if(succ)succ({ok:true,counts:alCounts,counts_at:new Date().toISOString(),last:{missed_14_31:{at:new Date(Date.now()-7200000).toISOString(),by:'admin@demo',count:35,test_mode:false}}});},130);return api;},
+      actionListSend:function(a){var c=(a&&alCounts[a.list])||0;setTimeout(function(){if(succ)succ({ok:true,count:c,test_mode:true});},900);return api;},
+      clListOwners:function(){setTimeout(function(){if(succ)succ({ok:true,owners:clOwners});},120);return api;},
+      cockpitAssign:function(){setTimeout(function(){if(succ)succ({ok:true});},700);return api;},
+      clCardStatus:function(){setTimeout(function(){if(succ)succ({ok:true,statuses:{}});},110);return api;}};
     return new Proxy(api,{get:function(t,p){if(p in t)return t[p];return function(){setTimeout(function(){if(succ)succ(null);},60);return api;};}});
   }
   function mo(base){var a=[];for(var i=0;i<12;i++){a.push(Math.round((base+(i%5)*0.12+(i>7?0.2:0))*1e6));}return a;}
@@ -100,17 +112,17 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
           {label:'หลอดเลือดสมอง',hn:71,risk:'high',badge:'🔴'},{label:'ต่อมลูกหมาก/BPH',hn:58,risk:'mid',badge:'🟡'},
           {label:'หัวใจขาดเลือด',hn:47,risk:'high',badge:'🔴'},{label:'กระดูกหักแขนขา',hn:23,risk:'low',badge:'🟢'},
           {label:'ต้อกระจก',hn:17,risk:'low',badge:'🟢'},{label:'มะเร็ง',hn:13,risk:'high',badge:'🔴'}]},
-    generatedAt:'27 มิ.ย. (เดโม่)'};
+    generatedAt:GEN};
   var money={status:'ok',method:'regression + BH-FDR',window:'20 เดือน',n_months:20,n_kpis:188,revenue_source:'opitemrece.sum_price',total_revenue_last_month:2700000,
     revenue_sources:{drug:16000000,lab:4000000,xray:2500000,other:3600000},
     drivers:[{kpi_id:'PCT-10',kpi_name:'DM คุมได้ HbA1c<7%',dept:'NCD',sign:'+',impact_thb:120000,q_value:0.02,confidence:'ปานกลาง',interpretation:'',exec_interpretation:'ถ้าคุม DM ดีขึ้น → รายได้สัมพันธ์ +~120k/เดือน (สมมุติฐาน · เดโม่)'}],
-    caveat:'โหมดสาธิต — ตัวเลขจำลองเพื่อนำเสนอ',generatedAt:'27 มิ.ย. (เดโม่)'};
-  var drugEvents={status:'ok',formularySize:206,generatedAt:'27 มิ.ย. (เดโม่)',events:[
+    caveat:'โหมดสาธิต — ตัวเลขจำลองเพื่อนำเสนอ',generatedAt:GEN};
+  var drugEvents={status:'ok',formularySize:206,generatedAt:GEN,events:[
     {date:'2026-06-27',type:'out',name:'Manidipine 20 mg. (KERDICA)',detail:'เคยจ่าย 388 ครั้ง/5 เดือน แล้วหยุด (น่าจะขาดสต็อก)'},
     {date:'2026-06-27',type:'out',name:'NPH insulin 100 IU/ml (WINSULIN)',detail:'เคยจ่าย 18 ครั้ง/4 เดือน แล้วหยุด (น่าจะขาดสต็อก)'},
     {date:'2026-06-27',type:'out',name:'Furosemide inj.(Lasix)',detail:'เคยจ่าย 12 ครั้ง/4 เดือน แล้วหยุด (น่าจะขาดสต็อก)'},
     {date:'2026-06-20',type:'new',name:'Amlodipine 10 mg',detail:'เพิ่ม/เปิดใช้ในบัญชียา'}]};
-  var data={ok:true,hospital:'รพ.ค่ายเขตอุดมศักดิ์ มทบ.44 (เดโม่)',cockpit:cockpit,money:money,drugEvents:drugEvents,generatedAt:'27 มิ.ย. (เดโม่)'};
+  var data={ok:true,hospital:'รพ.ค่ายเขตอุดมศักดิ์ มทบ.44 (เดโม่)',cockpit:cockpit,money:money,drugEvents:drugEvents,generatedAt:GEN};
   window.google={script:{get run(){return mk(data);},host:{close:function(){},setHeight:function(){}}}};
 })();
 </script>
@@ -131,6 +143,16 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
     <input type="range" min="1" max="4" value="2" step="1" id="fz" oninput="setFz(this.value)" title="ลากปรับขนาด">
     <span id="fzlab">ปกติ</span></div>
 
+  <!-- Action Lists (29_action_lists.js, 11 ก.ค.69) — ปุ่มส่งรายชื่อผู้ป่วยเชิงรุก
+       PDPA: การ์ดนี้เห็นแค่ "จำนวน" — รายชื่อจริงวิ่ง cm2 → LINE ตรง ไม่ผ่าน Google -->
+  <div id="al-card" style="display:none;background:#fff;border:1px solid #e3e9ee;border-radius:14px;padding:16px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(16,40,60,.10)">
+    <div style="font-weight:800;font-size:17px;color:#0f3d5c;margin-bottom:4px">📞 ติดตามผู้ป่วย (Action Lists)</div>
+    <div style="font-size:12.5px;color:#6b7c89;margin-bottom:10px">กดปุ่มเพื่อส่งรายชื่อเข้า LINE ผู้รับผิดชอบ — รายชื่อไม่ผ่านระบบออนไลน์ของ Google · ขาดนัดควรกดอย่างน้อยทุก 2 สัปดาห์</div>
+    <div id="al-rows"></div>
+    <div id="al-status" style="font-size:13px;color:#14708e;margin-top:8px;min-height:18px"></div>
+    <div id="al-last" style="font-size:12px;color:#6b7c89;margin-top:2px"></div>
+  </div>
+
   <div id="body"><div class="loading">⏳ กำลังโหลด…</div></div>
 
   <div class="foot">KPI Monitor · CEO Cockpit (LIVE) · Action + KPI = ค่าจริงจาก HOSxP (read-only) · การเงินจาก opitemrece · <span id="genstamp"></span></div>
@@ -147,20 +169,44 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
     try{localStorage.setItem('kpi_fz',v);}catch(e){} }
   (function(){ try{var s=localStorage.getItem('kpi_fz'); if(s){document.getElementById('fz').value=s; setFz(s);}}catch(e){} })();
 
-  window._actData = []; window._ckEmail = '';
+  window._actData = []; window._ckEmail = ''; window._clOwners = []; window._clPending = null; window._clStatus = {};
   function _doNudge(area, detail, btn){
     if(!window._ckEmail){ alert('⚠️ ไม่พบอีเมลผู้ใช้ — เปิดหน้านี้ผ่านเมนู KPI Monitor'); return; }
     if(!(window.google&&google.script&&google.script.run)){ alert('เปิดหน้านี้ผ่าน KPI Monitor'); return; }
-    var orig = btn?btn.textContent:'';
-    if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังส่ง LINE...'; }
+    _clOpen(area, detail, btn);
+  }
+  function _clOpen(area, detail, btn){
+    var keepBtn = (btn !== undefined) ? btn : (window._clPending && window._clPending.btn);
+    window._clPending = { area: area, detail: detail, btn: keepBtn };
+    document.getElementById('cl-area').textContent = area;
+    document.getElementById('cl-status').textContent = '';
+    var box = document.getElementById('cl-owners');
+    if(!window._clOwners.length){ box.innerHTML = '<div class="cl-muted">กำลังโหลดรายชื่อ... (ถ้านานให้รีโหลดหน้า)</div>'; }
+    else { box.innerHTML = window._clOwners.map(function(o,idx){ return '<button class="cl-own" onclick="_clAssignIdx('+idx+')">'+esc(o.name)+'</button>'; }).join(''); }
+    document.getElementById('cl-modal').style.display = 'flex';
+  }
+  function _clAssignIdx(idx){
+    var o = window._clOwners[idx]; if(!o || !window._clPending) return;
+    var st = document.getElementById('cl-status'); st.textContent = '⏳ ส่ง LINE ให้ '+o.name+'...';
     google.script.run
       .withSuccessHandler(function(r){
-        if(r&&r.ok){ if(btn){btn.textContent='✅ ส่ง LINE แล้ว';} }
-        else { if(btn){btn.disabled=false;btn.textContent=orig;} alert('⚠️ '+((r&&r.msg)||'ส่งไม่สำเร็จ')); }
+        if(r&&r.ok){
+          var nm=(r.assignee||o.name);
+          st.textContent = '✅ มอบหมายให้ '+nm+' แล้ว — รอกดรับทราบ';
+          if(window._clPending){ window._clStatus[window._clPending.area]={state:'assigned',assignee:nm}; _clSetBtn(window._clPending.btn,'assigned',nm); }
+          setTimeout(_clClose, 1600);
+        }
+        else { st.textContent = '⚠️ '+((r&&r.msg)||'ส่งไม่สำเร็จ'); }
       })
-      .withFailureHandler(function(e){ if(btn){btn.disabled=false;btn.textContent=orig;} alert('⚠️ '+((e&&e.message)||e)); })
-      .cockpitNudge({email:window._ckEmail, area:area, detail:detail});
+      .withFailureHandler(function(e){ st.textContent = '⚠️ '+((e&&e.message)||e); })
+      .cockpitAssign({email:window._ckEmail, sessionToken:window._ckToken||'', area:window._clPending.area, detail:window._clPending.detail, assignee:o.email});
   }
+  function _clClose(){ document.getElementById('cl-modal').style.display='none'; }
+  // สถานะปุ่มการ์ด (persistence + reflect ack)
+  function _clBtnLabel(s){ return {assigned:'✅ แจ้งแล้ว',ack:'👍 รับทราบแล้ว',doing:'🔧 กำลังทำ',done:'✔️ เสร็จแล้ว'}[s]||'✅ แจ้งแล้ว'; }
+  function _clSetBtn(b,state,assignee){ if(!b) return; b.textContent=_clBtnLabel(state)+(assignee?' · '+assignee:''); b.style.opacity='0.85'; }
+  function _clApplyStatuses(){ var bs=document.querySelectorAll('[data-clarea]'); for(var i=0;i<bs.length;i++){ var s=window._clStatus[bs[i].getAttribute('data-clarea')]; if(s) _clSetBtn(bs[i],s.state,s.assignee); } }
+  function _clLoadStatus(){ if(!(window.google&&google.script&&google.script.run)) return; google.script.run.withSuccessHandler(function(r){ if(r&&r.statuses){ window._clStatus=r.statuses; _clApplyStatuses(); } }).withFailureHandler(function(){}).clCardStatus(); }
   function nudge(i, btn){ var d=window._actData[i]||{}; _doNudge(d.area||'', d.detail||'', btn); }
 
   var HA5 = [
@@ -191,7 +237,7 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
     var h=items.map(function(it,i){ return '<div class="act '+it.sev+'"><div class="ico">'+it.ico+'</div>'
       +'<div class="ttl">'+it.ttl+'</div><div class="big">'+it.big+' <span>คน</span></div>'
       +'<div class="sub">'+esc(it.sub)+'</div>'
-      +'<button class="btn" onclick="nudge('+i+',this)">📤 มอบหมาย → '+esc(it.dept)+' ทาง LINE</button></div>'; }).join('');
+      +'<button class="btn" data-clarea="'+esc(window._actData[i].area)+'" onclick="nudge('+i+',this)">📤 มอบหมาย → '+esc(it.dept)+' ทาง LINE</button></div>'; }).join('');
     return section('⚡ 3 เรื่องที่ต้องสั่งการวันนี้','ค่าจริง','<div class="actions">'+h+'</div>');
   }
 
@@ -293,7 +339,7 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
     var h=HA5.map(function(c,i){ return '<div class="scard"><span class="std">'+esc(c.std)+'</span>'
       +'<div class="nm">'+esc(c.nm)+'</div><div class="ev">'+esc(c.ev)+'</div>'
       +'<div class="owner">ผู้รับผิดชอบ: <b>'+esc(c.owner)+'</b></div>'
-      +'<button class="add" onclick="nudgeHa('+i+',this)">📤 แจ้ง '+esc(c.dept)+' ทาง LINE</button></div>'; }).join('');
+      +'<button class="add" data-clarea="'+esc('[HA ฉบับ5] '+(c.nm||''))+'" onclick="nudgeHa('+i+',this)">📤 แจ้ง '+esc(c.dept)+' ทาง LINE</button></div>'; }).join('');
     return section('🧠 KPI ที่ "ควรมี" แต่ยังไม่ได้ track','ตามมาตรฐาน HA ฉบับที่ 5 · สรพ.','<div class="sug">'+h+'</div>');
   }
   function nudgeHa(i, btn){ var c=HA5[i]||{}; _doNudge('[HA ฉบับ5] '+(c.nm||''), 'ยังไม่ได้ track KPI นี้ · '+(c.ev||'')+' · มอบหมาย → '+(c.dept||''), btn); }
@@ -372,13 +418,127 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
     try{var _ckM=location.search.match(/[?&]email=([^&]+)/);if(_ckM)_ckEmail=decodeURIComponent(_ckM[1]);}catch(e){}
     if(!_ckEmail){try{_ckEmail=localStorage.getItem('kpi_email')||'';}catch(e){}}
     window._ckEmail = _ckEmail;
+    // strict-mode fix (11 ก.ค.69): ทุก call ภายในหน้านี้ต้องส่ง sessionToken —
+    // email เฉยๆ ถูก reject ตั้งแต่ flip AUTH_COMPAT_MODE=strict (10 ก.ค.69) ทำให้ body หาย
+    var _ckToken='';
+    try{var _ckT=location.search.match(/[?&]sessionToken=([^&]+)/);if(_ckT)_ckToken=decodeURIComponent(_ckT[1]);}catch(e){}
+    if(!_ckToken){try{_ckToken=localStorage.getItem('kpi_token')||'';}catch(e){}}
+    window._ckToken = _ckToken;
     google.script.run
-      .withSuccessHandler(render)
+      .withSuccessHandler(function(d){ render(d); _clApplyStatuses(); })
       .withFailureHandler(function(e){ document.getElementById('body').innerHTML='<div class="loading">เกิดข้อผิดพลาด: '+esc(e.message)+'</div>'; })
-      .getCEOCockpit({email:_ckEmail});
+      .getCEOCockpit({email:_ckEmail, sessionToken:_ckToken});
+    google.script.run.withSuccessHandler(function(r){ if(r&&r.owners){ window._clOwners=r.owners; var m=document.getElementById('cl-modal'); if(m&&m.style.display==='flex'&&window._clPending){ _clOpen(window._clPending.area, window._clPending.detail); } } }).withFailureHandler(function(){ var b=document.getElementById('cl-owners'); if(b&&!window._clOwners.length) b.innerHTML='<div class="cl-muted">โหลดรายชื่อไม่สำเร็จ — รีโหลดหน้า</div>'; }).clListOwners();
+    _clLoadStatus();
+    setInterval(_clLoadStatus, 30000);
   } else {
     document.getElementById('body').innerHTML='<div class="loading">เปิดหน้านี้ผ่าน KPI Monitor (?view=cockpit)</div>';
   }
+
+  // ── Action Lists card (29_action_lists.js, 11 ก.ค.69) ─────────────────────
+  // PDPA: การ์ดโชว์เฉพาะจำนวน — รายชื่อจริงส่งจากเครื่องใน รพ. เข้า LINE ตรง
+  (function(){
+    if(!(window.google && google.script && google.script.run)) return;
+    var _alToken='';
+    try{var m=location.search.match(/[?&]sessionToken=([^&]+)/);if(m)_alToken=decodeURIComponent(m[1]);}catch(e){}
+    if(!_alToken){try{_alToken=localStorage.getItem('kpi_token')||'';}catch(e){}}
+    var _alEmail='';
+    try{var m2=location.search.match(/[?&]email=([^&]+)/);if(m2)_alEmail=decodeURIComponent(m2[1]);}catch(e){}
+    if(!_alEmail){try{_alEmail=localStorage.getItem('kpi_email')||'';}catch(e){}}
+    var AL_DEFS=[
+      {key:'missed_14_31', label:'ขาดนัด 14–31 วัน',  btn:'📤 ส่งรายชื่อให้ OPD'},
+      {key:'missed_32_90', label:'ขาดนัด 31–90 วัน',  btn:'📤 ส่งรายชื่อให้ OPD'},
+      {key:'a1c_gt9',      label:'DM A1C เกิน 9',     btn:'📤 ส่งทีมเยี่ยมบ้าน'}
+    ];
+    function _alFmtAt(iso){
+      try{var d=new Date(iso);if(isNaN(d.getTime()))return '';
+        return d.getDate()+' '+['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][d.getMonth()]+' '
+          +('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+      }catch(e){return '';}
+    }
+    window._alSend=function(key,label,btn){
+      if(!confirm('ยืนยันส่งรายชื่อ "'+label+'" เข้า LINE ผู้รับผิดชอบ?')) return;
+      btn.disabled=true; var old=btn.textContent; btn.textContent='⏳ กำลังส่ง... (อาจใช้ ~10-30 วิ)';
+      var st=document.getElementById('al-status'); st.textContent='';
+      google.script.run.withSuccessHandler(function(r){
+        btn.disabled=false; btn.textContent=old;
+        if(r && r.ok){
+          var t='✅ ส่งแล้ว '+(r.count||0)+' ราย'+(r.test_mode?' (โหมดทดสอบ → ส่งให้ผู้ดูแล)':'')
+            +(r.note==='no_group'?' (ยังไม่ตั้งกลุ่ม OPD — ส่งให้ผู้ดูแลแทน)':'');
+          // step-model fix (Opus#2+Fable#2): ส่งถึงไม่ครบทุกผู้รับ = ต้องเตือน ไม่ใช่ ✅ เฉยๆ
+          if(r.targets_total && r.targets_ok < r.targets_total){
+            t='⚠️ ส่งถึงผู้รับ '+r.targets_ok+'/'+r.targets_total+' ราย — อีกส่วนส่งไม่สำเร็จ แจ้ง IT ('+(r.partial_error||'')+')';
+          }
+          if(r.missing_names && r.missing_names.length){
+            t+=' · ⚠️ ไม่พบ LINE ID: '+r.missing_names.join(', ')+' (คนนี้ไม่ได้รับรายชื่อ)';
+          }
+          st.textContent=t;
+          _alRefresh();
+        } else { st.textContent='⚠️ '+((r&&r.msg)||'ส่งไม่สำเร็จ'); }
+      }).withFailureHandler(function(e){
+        btn.disabled=false; btn.textContent=old;
+        st.textContent='⚠️ '+((e&&e.message)||e);
+      }).actionListSend({list:key, sessionToken:_alToken, email:_alEmail});
+    };
+    function _alRender(r){
+      var rows=document.getElementById('al-rows'); if(!rows) return;
+      var h='';
+      for(var i=0;i<AL_DEFS.length;i++){
+        var d=AL_DEFS[i];
+        var c=(r.counts&&r.counts[d.key]!=null)?r.counts[d.key]:'—';
+        h+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:'+(i?'1px solid #eef2f5':'0')+'">'
+          +'<span style="min-width:170px;font-size:14.5px">'+d.label+': <b style="font-size:16px;color:#0f3d5c">'+c+'</b> คน</span>'
+          +'<button onclick="_alSend(\''+d.key+'\',\''+d.label+'\',this)" style="background:linear-gradient(135deg,#0f3d5c,#14708e);color:#fff;border:0;border-radius:9px;padding:7px 14px;font-size:13.5px;cursor:pointer;font-family:inherit">'+d.btn+'</button>'
+          +'</div>';
+      }
+      rows.innerHTML=h;
+      var lastEl=document.getElementById('al-last');
+      var parts=[];
+      if(r.last){
+        for(var j=0;j<AL_DEFS.length;j++){
+          var L=r.last[AL_DEFS[j].key];
+          if(L&&L.at) parts.push(AL_DEFS[j].label+': ส่งล่าสุด '+_alFmtAt(L.at)+' ('+(L.count||0)+' ราย'+(L.test_mode?' ทดสอบ':'')+')');
+        }
+      }
+      if(r.counts_at) parts.push('ตัวเลขอัปเดต '+_alFmtAt(r.counts_at));
+      lastEl.textContent=parts.join(' · ');
+      document.getElementById('al-card').style.display='block';
+    }
+    function _alRefresh(){
+      google.script.run.withSuccessHandler(function(r){
+        if(r && r.ok){ _alRender(r); return; }
+        // step-model fix (Opus#5+Fable#4): agent ล่ม/ยังไม่ push = โชว์การ์ดพร้อมเหตุผล
+        // (หายเงียบ = ดูเหมือนฟีเจอร์พัง) — ยกเว้นไม่ใช่ admin/ไม่มีสิทธิ์ → ซ่อนตามเดิม
+        var m=(r&&r.msg)||'';
+        if(m && m.indexOf('Admin')<0 && m.indexOf('token')<0 && m.indexOf('สิทธิ')<0){
+          _alRender({counts:{}, counts_at:'', last:{}});
+          document.getElementById('al-status').textContent='⚠️ '+m;
+        }
+      }).withFailureHandler(function(){}).actionListCounts({sessionToken:_alToken, email:_alEmail});
+    }
+    _alRefresh();
+  })();
 </script>
+<style>
+  .cl-ov{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,20,35,.66);z-index:9999;align-items:center;justify-content:center;padding:18px}
+  .cl-card{background:#fff;border-radius:16px;max-width:380px;width:100%;padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.3)}
+  .cl-h{font-weight:700;font-size:17px;color:#1B3A5B;margin-bottom:6px}
+  .cl-area{font-size:13px;color:#556;background:#f1f5f9;border-radius:8px;padding:8px 10px;margin-bottom:12px}
+  .cl-list{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}
+  .cl-own{text-align:left;padding:11px 14px;border:1px solid #d8e0ea;border-radius:10px;background:#fff;font-size:15px;color:#1B3A5B;cursor:pointer}
+  .cl-own:hover{background:#eef4fb;border-color:#1B7A3A}
+  .cl-muted{color:#889;padding:8px;font-size:13px}
+  .cl-status{font-size:13px;color:#1B7A3A;margin-top:10px;min-height:18px}
+  .cl-x{margin-top:12px;width:100%;padding:9px;border:none;border-radius:9px;background:#eceff3;color:#445;font-size:14px;cursor:pointer}
+</style>
+<div id="cl-modal" class="cl-ov" onclick="if(event.target===this)_clClose()">
+  <div class="cl-card">
+    <div class="cl-h">📤 มอบหมายให้ใคร?</div>
+    <div class="cl-area" id="cl-area"></div>
+    <div class="cl-list" id="cl-owners"></div>
+    <div class="cl-status" id="cl-status"></div>
+    <button class="cl-x" onclick="_clClose()">ปิด</button>
+  </div>
+</div>
 </body>
 </html>
