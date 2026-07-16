@@ -1,5 +1,5 @@
 <script>
-/* demo mock for CEOCockpit.html — fake getCEOCockpit (ทุก section), no backend / no admin gate */
+/* demo mock for CEOCockpit.html — fake getCEOCockpit + getRevenueDashboard + getEclaimDashboard (ครบ 3 แท็บ), no backend / no admin gate */
 (function(){
   // "ข้อมูลล่าสุด" stamp — computed at load time so the demo never shows a stale date.
   var _TMON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -17,11 +17,81 @@
       actionListSend:function(a){var c=(a&&alCounts[a.list])||0;setTimeout(function(){if(succ)succ({ok:true,count:c,test_mode:true});},900);return api;},
       clListOwners:function(){setTimeout(function(){if(succ)succ({ok:true,owners:clOwners});},120);return api;},
       cockpitAssign:function(){setTimeout(function(){if(succ)succ({ok:true});},700);return api;},
-      clCardStatus:function(){setTimeout(function(){if(succ)succ({ok:true,statuses:{}});},110);return api;}};
+      clCardStatus:function(){setTimeout(function(){if(succ)succ({ok:true,statuses:{}});},110);return api;},
+      getRevenueDashboard:function(){setTimeout(function(){if(succ)succ(revData);},260);return api;},
+      getEclaimDashboard:function(){setTimeout(function(){if(succ)succ(eclData);},260);return api;}};
     return new Proxy(api,{get:function(t,p){if(p in t)return t[p];return function(){setTimeout(function(){if(succ)succ(null);},60);return api;};}});
   }
   function mo(base){var a=[];for(var i=0;i<12;i++){a.push(Math.round((base+(i%5)*0.12+(i>7?0.2:0))*1e6));}return a;}
   var revMonthly={'2565':mo(2.0),'2566':mo(2.1),'2567':mo(2.15),'2568':mo(2.2),'2569':mo(2.25)};
+  // ===== Tab 💰 รายรับ (getRevenueDashboard) + Tab 📤 ส่งข้อมูล 16 แฟ้ม (getEclaimDashboard) =====
+  // FAKE finance/e-claim aggregates only — no patient data (PDPA). Shapes ตาม CEOCockpit.html (17 ก.ค.69).
+  function _sum(a){var s=0,i;for(i=0;i<a.length;i++)s+=a[i];return s;}
+  var _rightsDef=[
+    {name:'เบิกได้ (ราชการ)',color:'#1c8bad',share:0.795},
+    {name:'ชำระเอง (เงินสด)',color:'#7c5cff',share:0.082},
+    {name:'บัตรทอง (UC)',color:'#0F9D58',share:0.069},
+    {name:'อปท. (ท้องถิ่น)',color:'#d0870a',share:0.042},
+    {name:'ประกันสังคม',color:'#c0748a',share:0.009},
+    {name:'พ.ร.บ. (อุบัติเหตุ)',color:'#94a3b8',share:0.003}];
+  var revData=(function(){
+    var fys=['2563','2564','2565','2566','2567','2568','2569'];
+    var monthlyBilled={},monthlyPaid={},spsochMonthly={},annual=[],billedByFy={},i,j;
+    for(i=0;i<fys.length;i++){
+      var fy=fys[i], nMo=(fy==='2569')?9:12, mb=[],mp=[],sp=[];
+      for(j=0;j<12;j++){
+        var on=j<nMo;
+        mb.push(on?Math.round((1.9+i*0.055+(j%5)*0.075+(j>7?0.1:0))*1e6):0);
+        mp.push(on?Math.round(mb[j]*(0.94+(j%4)*0.02)):0);
+        sp.push(on?Math.round((0.138+i*0.003+(j%4)*0.011)*1e6):0);
+      }
+      monthlyBilled[fy]=mb;monthlyPaid[fy]=mp;spsochMonthly[fy]=sp;
+      var b=_sum(mb);billedByFy[fy]=b;
+      annual.push({fy:fy,billed:b,paid:_sum(mp),note:nMo===12?'เต็มปี':'9 เดือน (ต.ค.–มิ.ย.) ยังไม่จบปี'});
+    }
+    // e-Claim finance tab lookups spsochMonthly by CE year of latestYm (e.g. '2026')
+    spsochMonthly[String(new Date().getFullYear())]=spsochMonthly['2569'];
+    var rights=[];
+    for(i=0;i<_rightsDef.length;i++){ var r=_rightsDef[i],byFy={};
+      for(j=0;j<fys.length;j++){ byFy[fys[j]]=Math.round(billedByFy[fys[j]]*r.share); }
+      rights.push({name:r.name,color:r.color,byFy:byFy}); }
+    var anukraoh=[],aFys=['2561','2562','2563','2564','2565','2566','2567','2568','2569'];
+    for(i=0;i<aFys.length;i++){ var s9=Math.round((0.82+i*0.06)*1e6),g9=Math.round((0.31+i*0.032)*1e6);
+      if(aFys[i]==='2569'){s9=Math.round(s9*0.74);g9=Math.round(g9*0.74);}
+      anukraoh.push({fy:aFys[i],soldier:s9,general:g9,total:s9+g9,note:aFys[i]==='2569'?'9 เดือน':''}); }
+    var uc=[],uFys=['2566','2567','2568','2569'];
+    for(i=0;i<uFys.length;i++){ var un=(uFys[i]==='2569')?9:12,em=[],rm=[];
+      for(j=0;j<12;j++){ em.push(j<un?Math.round((0.124+(j%4)*0.011)*1e6):0); rm.push(j<un?Math.round((0.147+(j%3)*0.009)*1e6):0); }
+      uc.push({fy:uFys[i],type:'ค่าบริการที่ใช้ (รายจ่ายที่ รพ.ใช้จริง)',total:_sum(em),months:em});
+      uc.push({fy:uFys[i],type:'สปสช. จ่ายจริง (รายได้ รพ.)',total:_sum(rm),months:rm}); }
+    return {ok:true,updatedAt:new Date().toISOString(),annual:annual,anukraoh:anukraoh,uc:uc,rights:rights,
+      monthlyBilled:monthlyBilled,monthlyPaid:monthlyPaid,spsochMonthly:spsochMonthly};
+  })();
+  var eclData=(function(){
+    var monthly=[],now=new Date(),i;
+    for(i=11;i>=0;i--){
+      var d0=new Date(now.getFullYear(),now.getMonth()-1-i,1),idx=11-i;
+      var ym=d0.getFullYear()+'-'+('0'+(d0.getMonth()+1)).slice(-2);
+      monthly.push({ym:ym,billed:Math.round((1.28+(idx%5)*0.045)*1e6),eclaimVisits:1400+(idx%5)*26,
+        opdVisits:2450+(idx%5)*48,noPdx:Math.max(18,52-(idx*2)%18),drugLines:8800+(idx%6)*95,noUsage:Math.max(560,760-idx*9)});
+    }
+    var last=monthly[monthly.length-1],latestYm=last.ym;
+    var quality=[
+      {check:'วินิจฉัยหลัก (Pdx) ครบ',passPct:Math.round((1-last.noPdx/last.opdVisits)*1000)/10,flag:last.noPdx,denom:last.opdVisits,status:'ok'},
+      {check:'เลขบัตรประชาชน (CID) ครบ',passPct:99.6,flag:10,denom:last.opdVisits,status:'ok'},
+      {check:'สิทธิรักษา (pttype) ระบุครบ',passPct:100,flag:0,denom:last.opdVisits,status:'ok'},
+      {check:'ยามีวิธีใช้ (R24)',passPct:Math.round((1-last.noUsage/last.drugLines)*1000)/10,flag:last.noUsage,denom:last.drugLines,status:'warn'},
+      {check:'ยามีรหัสมาตรฐาน',passPct:71.4,flag:59,denom:206,status:'bad'}];
+    var rights=[];
+    for(i=0;i<_rightsDef.length;i++){ rights.push({name:_rightsDef[i].name,color:_rightsDef[i].color,billed:Math.round(last.billed*_rightsDef[i].share)}); }
+    var statement=[
+      {rightName:'อปท. (ท้องถิ่น)',visitType:'OP',ym:latestYm,chargeHosxp:98500,submitted:91200,paid:89400,disallowed:1800,approvalPct:98.2,passed:108,failed:2,total:110},
+      {rightName:'บัตรทอง (UC)',visitType:'IP',ym:latestYm,chargeHosxp:212000,submitted:187500,paid:180900,disallowed:6600,approvalPct:95.6,passed:43,failed:2,total:45}];
+    return {ok:true,updatedAt:new Date().toISOString(),latestYm:latestYm,
+      meta:{composite:96.8,ccodePreventablePct:65,pttypeEligible:18},
+      drugs:{noAdp:59,totalDrugs:206,drugsUsed:59,drugBilled:262000},
+      quality:quality,monthly:monthly,rights:rights,statement:statement};
+  })();
   var cockpit={status:'ok',
     actions:{dm_overdue:50,dm_total:539,nostatin:27,high_total:383,af_gap:20,af_total:78,af_cov:74},
     money:{rev_total:26100000,rev_opd:18000000,rev_ipd:8100000,cmi:0.53,cmi_n:115,cmi_coded:61,

@@ -3446,21 +3446,67 @@ function loadMyKPIs(){
   document.getElementById('my-dash').style.display='none';
   document.getElementById('byuser-sub').textContent='KPI ของ '+S.name;
 
-  // ★ เรียก getMyDashboardStats เพื่อแสดง mini dashboard
-  google.script.run.withSuccessHandler(function(stats){
-    renderMyDashboard(stats);
-  }).withFailureHandler(function(e){
-    // ถ้า function ยังไม่ deploy → ข้ามไป ไม่ error
-  }).getMyDashboardStats(S.email);
-
-  // ★ เรียก getKPIsByUser เพื่อแสดงตาราง (เหมือนเดิม)
+  // ★ 14 ก.ค.69: summary cards + dept breakdown คำนวณจาก getKPIsByUser (ชุดข้อมูลเดียวกับตาราง)
+  // ด้วย evalSt(ค่าล่าสุด) — เลขบนตรงกับตารางเป๊ะเสมอ. เดิมใช้ getMyDashboardStats ที่คิดสถานะจาก
+  // "เดือนปัจจุบัน" + filter startMonth → ไม่ตรง (ตาราง=8 บรรลุหลายตัว แต่ card=7/บรรลุ0/รอกรอก6).
   google.script.run.withSuccessHandler(function(kpis){
     window._userKPIs=kpis;
+    renderMyDashFromKPIs(kpis);
     renderTable(kpis,'user',S.dept);
   }).withFailureHandler(function(e){
     document.getElementById('byuser-load').style.display='none';
     showToast('โหลดข้อมูลล้มเหลว','error');
   }).getKPIsByUser(S.userId);
+}
+
+// Summary cards + dept breakdown จากชุด KPI เดียวกับตาราง (getLatestVal + evalSt = logic เดียวกัน)
+function renderMyDashFromKPIs(kpis){
+  if(!kpis || !kpis.length){ document.getElementById('my-dash').style.display='none'; return; }
+  document.getElementById('my-dash').style.display='block';
+  var now=new Date();
+  var curLabel=MN[now.getMonth()]+' '+(now.getFullYear()+543);
+  var tot=0,hit=0,miss=0,na=0,byDept={};
+  for(var i=0;i<kpis.length;i++){
+    var kpi=kpis[i];
+    var latestVal=getLatestVal(kpi);
+    var months=kpi.months||[]; var goals=kpi.monthGoals||[];
+    var gi=months.indexOf(curLabel);
+    var curGoal=(gi>=0 && goals[gi]!=null && goals[gi]!=='') ? goals[gi] : (kpi.target||'');
+    var st=evalSt({target:curGoal,direction:kpi.direction},latestVal);
+    tot++;
+    var d=kpi.dept||'(ไม่ระบุ)';
+    if(!byDept[d]) byDept[d]={total:0,hit:0,miss:0,na:0};
+    byDept[d].total++;
+    if(st==='hit'){hit++;byDept[d].hit++;}
+    else if(st==='miss'){miss++;byDept[d].miss++;}
+    else {na++;byDept[d].na++;}
+  }
+  document.getElementById('my-total').textContent=tot;
+  document.getElementById('my-hit').textContent=hit;
+  document.getElementById('my-miss').textContent=miss;
+  document.getElementById('my-na').textContent=na;
+  document.getElementById('my-month-label').textContent=curLabel;
+  var pct=function(n){return tot>0?Math.round(n/tot*100):0;};
+  document.getElementById('my-hit-pct').textContent=pct(hit)+'%';
+  document.getElementById('my-miss-pct').textContent=pct(miss)+'%';
+  document.getElementById('my-na-pct').textContent=pct(na)+'%';
+  var tbody='',hasDept=false,dks=Object.keys(byDept).sort();
+  for(var j=0;j<dks.length;j++){
+    var dd=dks[j], ds=byDept[dd]; if(ds.total===0) continue; hasDept=true;
+    var dpct=ds.total>0?Math.round(ds.hit/ds.total*100):0;
+    var statusPill = dpct>=80 ? '<span class="pill hit">ดี '+dpct+'%</span>'
+      : dpct>=50 ? '<span class="pill" style="background:rgba(251,191,36,.12);color:#fbbf24">พอใช้ '+dpct+'%</span>'
+      : '<span class="pill miss">ต้องปรับปรุง '+dpct+'%</span>';
+    tbody+='<tr data-dept="'+dd+'" onclick="navToDeptRow(this)" style="cursor:pointer">'
+      +'<td><span style="color:'+getDeptColor(dd)+';font-weight:600">'+dd+'</span></td>'
+      +'<td style="text-align:center;font-weight:600">'+ds.total+'</td>'
+      +'<td style="text-align:center;color:#34d399;font-weight:600">'+ds.hit+'</td>'
+      +'<td style="text-align:center;color:#f87171;font-weight:600">'+ds.miss+'</td>'
+      +'<td style="text-align:center;color:#fbbf24;font-weight:600">'+ds.na+'</td>'
+      +'<td style="text-align:center">'+statusPill+'</td></tr>';
+  }
+  document.getElementById('my-dept-wrap').style.display=hasDept?'block':'none';
+  if(hasDept) document.getElementById('my-dept-tbody').innerHTML=tbody;
 }
 
 function renderMyDashboard(stats){
@@ -3668,14 +3714,14 @@ function submitActionPlan(){
 
 function exportDept(){var dept=document.getElementById('btn-export-dept').getAttribute('data-dept')||document.getElementById('btn-add-kpi').getAttribute('data-dept');if(!dept){showToast('กรุณาเลือกฝ่ายก่อน','error');return;}var btn=document.getElementById('btn-export-dept');btn.disabled=true;btn.textContent='กำลังสร้าง...';showToast('กำลังสร้างไฟล์ Excel...','');google.script.run.withSuccessHandler(function(r){btn.disabled=false;btn.innerHTML='&#11015; Export Excel';if(r.ok){var d=document.createElement('div');d.style.cssText='position:fixed;bottom:24px;right:24px;background:#1a7a45;color:#fff;border-radius:12px;padding:16px 20px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25);max-width:320px;font-family:Sarabun,sans-serif;font-size:13px';d.innerHTML='<div style="font-weight:700;margin-bottom:8px">ไฟล์พร้อมแล้ว!</div><div><a href="'+r.url+'" target="_blank" style="background:#fff;color:#1a7a45;text-decoration:none;padding:7px 16px;border-radius:7px;font-weight:700;display:inline-block">Download</a> <button onclick="this.parentNode.parentNode.remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:7px 12px;border-radius:7px;cursor:pointer;margin-left:8px">X</button></div>';document.body.appendChild(d);setTimeout(function(){if(d.parentNode)d.remove();},60000);}else showToast('Error: '+r.msg,'error');}).withFailureHandler(function(e){btn.disabled=false;btn.innerHTML='&#11015; Export Excel';showToast('Error: '+e.message,'error');}).exportKPIToExcel(dept,S.email);}
 
-function loadUsers(){if(!S.email){showToast('กรุณาเข้าสู่ระบบก่อน','error');return;}document.getElementById('users-load').style.display='flex';document.getElementById('users-tbody').innerHTML='';document.getElementById('users-sub').textContent=S.role==='ADMIN'?'ผู้ใช้ทุกฝ่าย':'ฝ่าย '+(S.depts?S.depts.join(', '):S.dept);google.script.run.withSuccessHandler(renderUsers).withFailureHandler(function(e){showToast('Error: '+e.message,'error');}).getUsers(S.email);}
+function loadUsers(){if(!S.email){showToast('กรุณาเข้าสู่ระบบก่อน','error');return;}document.getElementById('users-load').style.display='flex';document.getElementById('users-tbody').innerHTML='';document.getElementById('users-sub').textContent=S.role==='ADMIN'?'ผู้ใช้ทุกฝ่าย':'ฝ่าย '+(S.depts?S.depts.join(', '):S.dept);google.script.run.withSuccessHandler(renderUsers).withFailureHandler(function(e){showToast('Error: '+e.message,'error');}).getUsers(S.email, S.sessionToken);}
 
 function renderUsers(users){document.getElementById('users-load').style.display='none';if(!users||!Array.isArray(users)){document.getElementById('users-tbody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:#6b7c93">ไม่พบข้อมูล</td></tr>';return;}var roleColors={ADMIN:'#e74c3c',USER:'#1e90d4',VIEWER:'#6b7c93'};var html='';users.forEach(function(u){if(!u||!u.userId)return;var canEdit=S.role==='ADMIN'||(S.depts&&S.depts.indexOf(u.dept)>=0&&u.role!=='ADMIN');var statusBadge=u.status==='Active'?'<span style="background:#dcf5e9;color:#1a7a45;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">Active</span>':'<span style="background:#f0f2f5;color:#8a9ab5;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">Inactive</span>';var rc=roleColors[u.role]||'#6b7c93';var roleBadge='<span style="background:'+rc+'22;color:'+rc+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">'+escHtml(u.role)+'</span>';var editBtn=canEdit?'<button class="btn btn-edit" style="padding:3px 7px;font-size:11px" onclick="openEditUser(\''+escJs(u.userId)+'\')">&#9998;</button> <button class="btn btn-del" style="padding:3px 7px;font-size:11px" onclick="confirmDeleteUser(\''+escJs(u.userId)+'\',\''+escJs(u.name)+'\')">&#10005;</button>':'<span style="font-size:11px;color:#c8d0db">—</span>';html+='<tr><td style="font-size:11px;color:#6b7c93">'+escHtml(u.userId)+'</td><td style="font-weight:500">'+escHtml(u.name)+'</td><td style="font-size:12px;color:#6b7c93">'+escHtml(u.email||'—')+'</td><td><span style="color:'+getDeptColor(u.dept)+';font-weight:600">'+escHtml(u.dept||'—')+'</span></td><td style="font-size:12px">'+escHtml(u.position||'—')+'</td><td>'+roleBadge+'</td><td>'+statusBadge+'</td><td>'+editBtn+'</td></tr>';});document.getElementById('users-tbody').innerHTML=html||'<tr><td colspan="8" style="text-align:center;padding:40px;color:#6b7c93">ไม่พบข้อมูล</td></tr>';}
 
 function buildDeptSelect(selectedVal){var container=document.getElementById('u-dept-checks');container.innerHTML='';var depts=S.role==='ADMIN'?DEPTS_LIST:(S.depts||[S.dept]);var selected=selectedVal?selectedVal.split(',').map(function(d){return d.trim();}):(S.depts||[S.dept]);depts.forEach(function(d){var lbl=document.createElement('label');lbl.style.cssText='display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:4px 8px;border-radius:6px;border:1px solid #dde3ec;background:#fff';var cb=document.createElement('input');cb.type='checkbox';cb.value=d;cb.name='u-dept-cb';if(selected.indexOf(d)>=0)cb.checked=true;lbl.appendChild(cb);lbl.appendChild(document.createTextNode(d));container.appendChild(lbl);});if(S.role!=='ADMIN'){var adminOpt=document.getElementById('u-role').querySelector('[value="ADMIN"]');if(adminOpt)adminOpt.style.display='none';}}
 
 function openAddUser(){S_editUserId=null;document.getElementById('modal-user-title').textContent='เพิ่ม User ใหม่';document.getElementById('u-name').value='';document.getElementById('u-email').value='';document.getElementById('u-position').value='';document.getElementById('u-role').value='USER';document.getElementById('u-status').value='Active';document.getElementById('u-kpis').value='';buildDeptSelect('');openModal('modal-user');}
-function openEditUser(userId){google.script.run.withSuccessHandler(function(users){var u=null;users.forEach(function(x){if(x.userId===userId)u=x;});if(!u){showToast('ไม่พบ user','error');return;}S_editUserId=userId;document.getElementById('modal-user-title').textContent='แก้ไข '+u.name;document.getElementById('u-name').value=u.name||'';document.getElementById('u-email').value=u.email||'';document.getElementById('u-position').value=u.position||'';document.getElementById('u-role').value=u.role||'USER';document.getElementById('u-status').value=u.status||'Active';document.getElementById('u-kpis').value=u.kpis||'';buildDeptSelect(u.dept||'');openModal('modal-user');}).getUsers(S.email);}
+function openEditUser(userId){google.script.run.withSuccessHandler(function(users){var u=null;users.forEach(function(x){if(x.userId===userId)u=x;});if(!u){showToast('ไม่พบ user','error');return;}S_editUserId=userId;document.getElementById('modal-user-title').textContent='แก้ไข '+u.name;document.getElementById('u-name').value=u.name||'';document.getElementById('u-email').value=u.email||'';document.getElementById('u-position').value=u.position||'';document.getElementById('u-role').value=u.role||'USER';document.getElementById('u-status').value=u.status||'Active';document.getElementById('u-kpis').value=u.kpis||'';buildDeptSelect(u.dept||'');openModal('modal-user');}).getUsers(S.email, S.sessionToken);}
 function submitUser(){var name=document.getElementById('u-name').value.trim();var email=document.getElementById('u-email').value.trim();var position=document.getElementById('u-position').value.trim();var role=document.getElementById('u-role').value;var status=document.getElementById('u-status').value;var kpis=document.getElementById('u-kpis').value.trim();var deptChecks=document.querySelectorAll('[name="u-dept-cb"]:checked');var dept=Array.prototype.map.call(deptChecks,function(cb){return cb.value;}).join(',');if(!name){showToast('กรุณากรอกชื่อ','error');return;}if(!email){showToast('กรุณากรอก Email','error');return;}if(!dept){showToast('กรุณาเลือกอย่างน้อย 1 ฝ่าย','error');return;}if(S_editUserId){google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('แก้ไข user สำเร็จ','success');closeModal('modal-user');loadUsers();}else showToast('Error: '+r.msg,'error');}).editUser(S_editUserId,name,email,dept,position,role,kpis,status,S.email,S.sessionToken);}else{google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('เพิ่ม user สำเร็จ ('+r.newId+')','success');closeModal('modal-user');loadUsers();}else showToast('Error: '+r.msg,'error');}).addUser(name,email,dept,position,role,kpis,S.email,S.sessionToken);}}
 function confirmDeleteUser(userId,name){if(!confirm('ปิดการใช้งาน '+name+'?'))return;google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('ปิดการใช้งาน '+name+' สำเร็จ','success');loadUsers();}else showToast('Error: '+r.msg,'error');}).deleteUser(userId,S.email,S.sessionToken);}
 

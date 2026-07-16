@@ -8,70 +8,146 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-:root{ --navy:#0f3d5c; --teal:#14708e; --ink:#1c2b36; --muted:#6b7c89; --line:#e3e9ee; --bg:#eef2f5; --card:#fff;
-  --green:#1f9d55; --amber:#cc8400; --red:#d64545; --shadow:0 1px 3px rgba(16,40,60,.10); }
-*{box-sizing:border-box;margin:0;padding:0} html,body{color-scheme:light}
-body{font-family:'Sarabun',Tahoma,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1280px;margin:0 auto;padding:0 20px 60px}
-header{background:linear-gradient(135deg,var(--navy),var(--teal));color:#fff;padding:15px 0;box-shadow:var(--shadow)}
-.hd{max-width:1280px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.logo{font-size:21px;font-weight:800} .logo small{font-weight:500;opacity:.85;font-size:13px;display:block}
-.hd .spacer{flex:1} .hd .meta{text-align:right;font-size:13px;opacity:.92}
-.badge-admin{background:#ffd86b;color:#5b4300;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
-.badge{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
-.accessbar{background:#fff;border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:8px;margin-top:16px;padding:9px 14px;font-size:12.5px;color:#5a4a1f;display:flex;gap:16px;flex-wrap:wrap}
+:root{ --navy:#0f3d5c; --teal:#1c8bad; --teal-deep:#14708e; --ink:#152430; --ink-2:#3d5464;
+  --muted:#6a8090; --line:#dfe7ec; --line-soft:#eaf0f3; --bg:#eef2f5; --bg-2:#e7edf1; --card:#fff; --card-2:#f6fafb;
+  --green:#1f9d55; --amber:#d0870a; --red:#e0433f; --violet:#7c5cff;
+  --green-bg:#e7f6ee; --amber-bg:#fdf3e0; --red-bg:#fdeceb;
+  --glass:rgba(255,255,255,.62); --glass-brd:rgba(255,255,255,.72);
+  --shadow-sm:0 1px 2px rgba(16,40,60,.06),0 1px 3px rgba(16,40,60,.09);
+  --shadow-md:0 2px 6px rgba(16,40,60,.07),0 8px 24px rgba(16,40,60,.10);
+  --shadow-lg:0 4px 12px rgba(16,40,60,.09),0 18px 48px rgba(16,40,60,.16);
+  --grad:linear-gradient(135deg,#0f3d5c,#1c8bad); }
+/* ===== แถบบน 2 แท็บ (exec | รายรับ) + Revenue Dashboard ===== */
+.toptabs{display:flex;gap:4px;margin:14px 0 0;padding:0 2px}
+.ttab{border:1px solid var(--line);border-bottom:none;background:var(--card-2);color:var(--ink-2);font:inherit;font-weight:700;font-size:14px;padding:10px 20px;border-radius:12px 12px 0 0;cursor:pointer;box-shadow:var(--shadow-sm)}
+.ttab.active{background:var(--card);color:var(--teal-deep);box-shadow:0 -2px 8px rgba(16,40,60,.06);position:relative;top:1px}
+#tab-exec,#tab-revenue{border-top:2px solid var(--teal);border-radius:0 12px 12px 12px;padding-top:8px}
+.rev-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:8px 4px 4px}
+.rev-title{font-size:18px;font-weight:800;color:var(--navy)} .rev-title small{font-weight:500;color:var(--muted);font-size:12.5px}
+.rev-refresh{border:1px solid var(--line);background:var(--card);color:var(--teal-deep);font:inherit;font-weight:700;font-size:13px;padding:7px 14px;border-radius:20px;cursor:pointer;box-shadow:var(--shadow-sm)}
+.rev-updated{font-size:12px;color:var(--green);margin-left:8px}
+.rev-subtabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 4px}
+.rsub{border:1px solid var(--line);background:var(--card-2);color:var(--ink-2);font:inherit;font-weight:600;font-size:13.5px;padding:7px 16px;border-radius:20px;cursor:pointer}
+.rsub.active{background:var(--grad);color:#fff;border-color:transparent}
+.rev-years{display:flex;gap:5px;flex-wrap:wrap;margin:6px 4px 12px;align-items:center}
+.rev-years .ylab{font-size:13px;color:var(--muted);margin-right:4px}
+.rev-years button{border:1px solid var(--line);background:var(--card);color:var(--ink-2);font:inherit;font-size:13px;padding:5px 12px;border-radius:16px;cursor:pointer}
+.rev-years button.active{background:var(--navy);color:#fff;border-color:transparent;font-weight:700}
+.rev-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:4px}
+@media(max-width:760px){.rev-kpis{grid-template-columns:repeat(2,1fr)}}
+.rev-kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--teal);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm)}
+.rev-kpi .k-lab{font-size:12.5px;color:var(--muted)} .rev-kpi .k-val{font-size:26px;font-weight:800;color:var(--ink);margin:2px 0} .rev-kpi .k-sub{font-size:12px;color:var(--ink-2)}
+.rev-kpi .k-chip{display:inline-block;font-size:11.5px;font-weight:700;padding:1px 8px;border-radius:10px;margin-top:4px;background:var(--green-bg);color:var(--green)}
+.rev-kpi .k-chip.down{background:var(--red-bg);color:var(--red)} .rev-kpi .k-chip.warn{background:var(--amber-bg);color:var(--amber)}
+.rev-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 4px}
+@media(max-width:760px){.rev-grid{grid-template-columns:1fr}}
+.rev-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm)}
+.rev-card .c-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:8px}
+.rev-card canvas{max-height:280px}
+.rev-rights{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+@media(max-width:760px){.rev-rights{grid-template-columns:1fr 1fr}}
+.rev-rt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:9px;background:var(--card-2)}
+.rev-rt .dot{width:11px;height:11px;border-radius:3px;flex:0 0 auto} .rev-rt .nm{flex:1;font-size:12px;color:var(--ink-2)} .rev-rt .vl{font-size:12.5px;font-weight:700;color:var(--ink)}
+.rev-rcards{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:8px}
+@media(max-width:980px){.rev-rcards{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:560px){.rev-rcards{grid-template-columns:repeat(2,1fr)}}
+.rev-rcard{background:var(--card-2);border:1px solid var(--line-soft);border-radius:10px;padding:9px 10px}
+.rev-rcard .rc-nm{font-size:11px;color:var(--muted);line-height:1.25;min-height:28px}
+.rev-rcard .rc-val{font-size:17px;font-weight:800;color:var(--ink);margin:1px 0;letter-spacing:-.01em}
+.rev-rcard .rc-pct{font-size:11.5px;color:var(--ink-2);font-weight:600}
+.rev-rcard .rc-bar{height:4px;border-radius:3px;background:var(--line);margin-top:5px;overflow:hidden} .rev-rcard .rc-bar i{display:block;height:100%;border-radius:3px}
+.rev-tablewrap{overflow-x:auto;margin:12px 4px} table.rev-table{border-collapse:collapse;width:100%;font-size:12.5px;background:var(--card)}
+table.rev-table th{background:var(--bg-2);color:var(--navy);font-weight:700;padding:7px 9px;text-align:right;border:1px solid var(--line)}
+table.rev-table th:first-child,table.rev-table td:first-child{text-align:left}
+table.rev-table td{padding:6px 9px;border:1px solid var(--line-soft);text-align:right;color:var(--ink-2)}
+.rev-badge{font-size:11px;font-weight:700;padding:1px 8px;border-radius:9px} .rev-badge.ok{background:var(--green-bg);color:var(--green)} .rev-badge.near{background:var(--amber-bg);color:var(--amber)}
+/* ===== Tab 3 e-Claim ===== */
+.ecl-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);background:var(--card);border:1px solid var(--line-soft);border-radius:10px;padding:8px 13px;margin:0 4px 12px}
+.ecldot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.ecl-src{position:absolute;top:11px;right:11px;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px}
+.ecl-src.db{background:var(--green-bg);color:var(--green)} .ecl-src.rep{background:var(--amber-bg);color:var(--amber)} .ecl-src.fin{background:#e3f1f5;color:var(--teal-deep)}
+.rev-kpi{position:relative}
+.ecl-chk{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px} .ecl-chk:last-child{border:0}
+.ecl-chk .nm{flex:1} .ecl-chk .vl{font-weight:700;font-variant-numeric:tabular-nums}
+.ecl-chk .pill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:11px}
+.pill-ok{background:var(--green-bg);color:var(--green)} .pill-warn{background:var(--amber-bg);color:var(--amber)} .pill-bad{background:var(--red-bg);color:var(--red)}
+.ecl-pending{background:var(--amber-bg);border:1px dashed color-mix(in srgb,var(--amber) 50%,transparent);border-radius:12px;padding:14px 16px;color:var(--amber);font-size:13px;margin:12px 4px} .ecl-pending b{color:var(--ink)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:radial-gradient(1100px 560px at 82% -220px,color-mix(in srgb,var(--teal) 12%,transparent),transparent 60%),var(--bg);
+  color:var(--ink);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;padding-bottom:56px}
+.wrap{max-width:1280px;margin:0 auto;padding:0 20px}
+b{font-weight:700}
+header{position:sticky;top:0;z-index:50;background:var(--glass);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border-bottom:1px solid var(--glass-brd)}
+.hd{max-width:1280px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{font-size:17px;font-weight:800;letter-spacing:-.01em;color:var(--ink)} .logo small{font-weight:500;color:var(--muted);font-size:12px;display:block;letter-spacing:.01em}
+.spacer{flex:1} .meta{text-align:right;font-size:12px;color:var(--ink-2);line-height:1.35} .meta b{color:var(--ink);font-weight:700}
+.badge-admin{background:var(--amber-bg);color:var(--amber);font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);white-space:nowrap}
+.badge{background:var(--green-bg);color:var(--green);font-size:11px;font-weight:600;padding:4px 11px;border-radius:20px;border:1px solid color-mix(in srgb,var(--green) 30%,transparent);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2.4s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 55%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.accessbar{background:var(--card);border:1px solid var(--line-soft);border-left:3px solid var(--amber);border-radius:11px;margin-top:16px;padding:9px 14px;font-size:12px;color:var(--ink-2);display:flex;gap:16px;flex-wrap:wrap}
 .accessbar b{color:var(--ink)}
-.fontctl{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:12.5px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 14px;width:fit-content}
+.fontctl{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:12px;color:var(--muted);background:var(--card);border:1px solid var(--line-soft);border-radius:11px;padding:7px 14px;width:fit-content}
 .fontctl input[type=range]{width:150px;accent-color:var(--teal);cursor:pointer}
 .fontctl #fzlab{font-weight:700;color:var(--navy);min-width:54px}
-.sec{margin-top:30px} .sec-h{display:flex;align-items:center;gap:11px;margin-bottom:14px}
-.sec-h h2{font-size:20px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:9px}
-.sec-h h2::before{content:"";width:6px;height:22px;background:var(--teal);border-radius:3px}
-.sec-h .tag{font-size:11.5px;color:var(--muted);font-weight:500;background:#fff;border:1px solid var(--line);padding:2px 8px;border-radius:20px}
-.sec-h .ln{flex:1;height:1px;background:var(--line)}
-.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.act{background:var(--card);border-radius:12px;padding:17px 18px;box-shadow:var(--shadow);border-left:5px solid var(--red)}
+.sec{margin-top:32px}
+.sec-h{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.sec-h h2{font-size:19px;font-weight:750;letter-spacing:-.014em;color:var(--ink);display:flex;align-items:center;gap:9px}
+.sec-h h2::before{content:"";width:5px;height:21px;background:var(--grad);border-radius:3px}
+.sec-h .tag{font-size:11px;color:var(--muted);font-weight:550;background:var(--card);border:1px solid var(--line);padding:3px 10px;border-radius:20px;white-space:nowrap}
+.sec-h .ln{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.rise{opacity:0;transform:translateY(15px) scale(.986);transition:opacity .6s cubic-bezier(.22,.68,.24,1),transform .6s cubic-bezier(.22,.68,.24,1)}
+.rise.in{opacity:1;transform:none}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+.act{position:relative;background:var(--card);border-radius:16px;padding:17px 18px 15px;box-shadow:var(--shadow-md);border:1px solid var(--line-soft);overflow:hidden;transition:transform .28s cubic-bezier(.22,.68,.24,1),box-shadow .28s;border-left:4px solid var(--red)}
+.act:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
 .act.amber{border-left-color:var(--amber)}
-.act .ico{font-size:23px} .act .ttl{font-weight:700;font-size:15.5px;margin:4px 0 3px}
-.act .big{font-size:34px;font-weight:800;color:var(--navy);line-height:1} .act .big span{font-size:15px;font-weight:600;color:var(--muted)}
-.act .sub{font-size:13px;color:var(--muted);margin:4px 0 12px}
-.act .btn{display:inline-block;background:var(--navy);color:#fff;font-size:13px;font-weight:600;padding:7px 14px;border-radius:7px;border:0;cursor:pointer}
-.money{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
-.stat{background:var(--card);border-radius:11px;padding:15px 16px;box-shadow:var(--shadow)}
-.stat.dim{opacity:.58}
-.stat .lab{font-size:12.5px;color:var(--muted)} .stat .val{font-size:24px;font-weight:800;margin-top:3px} .stat .val small{font-size:14px;font-weight:600}
-.pending-tag{font-size:11px;color:var(--amber);font-weight:700}
-.panel{background:var(--card);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
-.rsrc{margin:10px 0}
-.rsrc .top{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:3px}
-.rsrc .bar{height:13px;background:#eef1f5;border-radius:6px;overflow:hidden} .rsrc .bar i{display:block;height:100%}
+.act .ico{width:33px;height:33px;border-radius:10px;display:grid;place-items:center;font-size:17px;background:var(--red-bg);color:var(--red)}
+.act.amber .ico{background:var(--amber-bg);color:var(--amber)}
+.act .ttl{font-weight:650;font-size:14.5px;margin:8px 0 2px;letter-spacing:-.006em}
+.act .big{font-size:36px;font-weight:800;color:var(--ink);line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:-.02em} .act .big span{font-size:15px;font-weight:600;color:var(--muted)}
+.act .sub{font-size:12px;color:var(--ink-2);margin:3px 0 12px;line-height:1.45}
+.act .btn{display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:#fff;font-size:12px;font-weight:600;padding:8px 14px;border-radius:9px;border:0;cursor:pointer;font-family:inherit;transition:transform .1s ease,filter .2s}
+.act .btn:hover{filter:brightness(1.12)} .act .btn:active{transform:scale(.96)}
+.money{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.stat{background:var(--card);border-radius:14px;padding:14px 15px;box-shadow:var(--shadow-sm);border:1px solid var(--line-soft);transition:transform .28s cubic-bezier(.22,.68,.24,1)}
+.stat:hover{transform:translateY(-2px)} .stat.dim{opacity:.6}
+.stat .lab{font-size:11.5px;color:var(--muted);font-weight:550} .stat .val{font-size:22px;font-weight:780;margin-top:5px;letter-spacing:-.02em;font-variant-numeric:tabular-nums} .stat .val small{font-size:12px;font-weight:600;color:var(--muted)}
+.pending-tag{font-size:10.5px;color:var(--amber);font-weight:700;background:var(--amber-bg);padding:1px 6px;border-radius:6px}
+.panel{background:var(--card);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow-md);border:1px solid var(--line-soft)}
+.rsrc{margin:9px 0}
+.rsrc .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.rsrc .bar{height:11px;background:var(--line-soft);border-radius:6px;overflow:hidden} .rsrc .bar i{display:block;height:100%;border-radius:6px}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
-thead th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:9px 12px;border-bottom:2px solid var(--line)}
-tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-child td{border-bottom:0}
-.kn{font-weight:600} .vs{font-variant-numeric:tabular-nums}
-.mini{height:6px;border-radius:4px;background:#edf1f3;overflow:hidden;min-width:90px} .mini i{display:block;height:100%;border-radius:4px}
-.st{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12.5px}
-.dot{width:9px;height:9px;border-radius:50%;display:inline-block} .dot.g{background:var(--green)} .dot.a{background:var(--amber)}
+thead th{text-align:left;font-size:10.5px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:0 12px 10px;border-bottom:1px solid var(--line)}
+tbody td{padding:11px 12px;border-bottom:1px solid var(--line-soft)} tbody tr:last-child td{border-bottom:0} tbody tr{transition:background .18s} tbody tr:hover{background:var(--card-2)}
+.kn{font-weight:600} .vs{font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.mini{height:7px;border-radius:5px;background:var(--line-soft);overflow:hidden;min-width:100px} .mini i{display:block;height:100%;border-radius:5px}
+.st{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px} .dot{width:8px;height:8px;border-radius:50%;display:inline-block} .dot.g{background:var(--green)} .dot.a{background:var(--amber)}
 .note2{color:var(--muted);font-size:12px}
-.mrow{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #f1f3f6} .mrow:last-child{border-bottom:0}
-.mn{font-weight:700;font-size:14px} .md{font-size:11px;color:var(--muted);margin-top:2px} .mi{font-size:12.5px;margin-top:4px;line-height:1.55;white-space:pre-line}
-.mv{white-space:nowrap;font-weight:800;font-size:15px;text-align:right} .mv.up{color:var(--green)} .mv.dn{color:var(--red)}
-.cav{margin-top:12px;font-size:12px;color:var(--amber);background:#fffbeb;border-radius:10px;padding:8px 10px}
-.sug{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.scard{background:var(--card);border-radius:12px;padding:15px 17px;box-shadow:var(--shadow);border-top:4px solid var(--teal)}
-.scard .std{font-size:11px;font-weight:700;color:var(--teal);background:#e6f1f5;display:inline-block;padding:2px 9px;border-radius:20px;margin-bottom:8px}
-.scard .nm{font-weight:700;font-size:15px;margin-bottom:5px} .scard .ev{font-size:13px;color:#33444f;margin-bottom:6px}
-.scard .owner{font-size:11.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-bottom:10px} .scard .owner b{color:var(--ink)}
-.scard .add{background:#fff;color:var(--teal);border:1.5px solid var(--teal);font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:7px;cursor:pointer}
-.pending{background:#fff8e6;border:1px dashed #e7cf86;border-radius:10px;padding:14px 16px;color:#8a6d1f;font-size:13.5px} .pending b{color:var(--ink)}
+.mrow{display:flex;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--line-soft)} .mrow:last-child{border-bottom:0}
+.mn{font-weight:650;font-size:14px;letter-spacing:-.006em} .md{font-size:11px;color:var(--muted);margin-top:2px} .mi{font-size:12px;margin-top:5px;line-height:1.55;white-space:pre-line;color:var(--ink-2)}
+.mv{white-space:nowrap;font-weight:800;font-size:15.5px;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:-.01em} .mv.up{color:var(--green)} .mv.dn{color:var(--red)}
+.cav{margin-top:11px;font-size:11.5px;color:var(--amber);background:var(--amber-bg);border-radius:10px;padding:8px 11px;line-height:1.5}
+.sug{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+.scard{background:var(--card);border-radius:16px;padding:16px 17px;box-shadow:var(--shadow-sm);border:1px solid var(--line-soft);border-top:3px solid var(--teal);transition:transform .28s cubic-bezier(.22,.68,.24,1),box-shadow .28s}
+.scard:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.scard .std{font-size:10px;font-weight:700;color:var(--teal-deep);background:color-mix(in srgb,var(--teal) 15%,transparent);display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:9px;letter-spacing:.02em}
+.scard .nm{font-weight:650;font-size:14px;margin-bottom:5px;letter-spacing:-.006em} .scard .ev{font-size:12px;color:var(--ink-2);line-height:1.5}
+.scard .owner{font-size:11px;color:var(--muted);border-top:1px dashed var(--line);padding-top:9px;margin:10px 0 9px} .scard .owner b{color:var(--ink-2)}
+.scard .add{background:var(--card);color:var(--teal-deep);border:1.5px solid var(--teal);font-size:12px;font-weight:600;padding:7px 12px;border-radius:9px;cursor:pointer;font-family:inherit;transition:all .18s}
+.scard .add:hover{background:color-mix(in srgb,var(--teal) 12%,transparent)} .scard .add:active{transform:scale(.96)}
+.pending{background:var(--amber-bg);border:1px dashed color-mix(in srgb,var(--amber) 45%,transparent);border-radius:12px;padding:14px 16px;color:var(--amber);font-size:13px} .pending b{color:var(--ink)}
 .loading{text-align:center;color:var(--muted);padding:60px}
-.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
+.foot{text-align:center;color:var(--muted);font-size:11.5px;margin-top:36px;line-height:1.6}
 @media(max-width:980px){.actions,.sug{grid-template-columns:1fr}.money{grid-template-columns:1fr 1fr}}
+@media(prefers-reduced-motion:reduce){.rise{transition:opacity .3s ease}.rise.in{transform:none}.act,.stat,.scard{transition:none}.act:hover,.stat:hover,.scard:hover{transform:none}.badge::before{animation:none}}
 </style>
 </head>
 <body>
 <script>
-/* demo mock for CEOCockpit.html — fake getCEOCockpit (ทุก section), no backend / no admin gate */
+/* demo mock for CEOCockpit.html — fake getCEOCockpit + getRevenueDashboard + getEclaimDashboard (ครบ 3 แท็บ), no backend / no admin gate */
 (function(){
   // "ข้อมูลล่าสุด" stamp — computed at load time so the demo never shows a stale date.
   var _TMON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -89,11 +165,81 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
       actionListSend:function(a){var c=(a&&alCounts[a.list])||0;setTimeout(function(){if(succ)succ({ok:true,count:c,test_mode:true});},900);return api;},
       clListOwners:function(){setTimeout(function(){if(succ)succ({ok:true,owners:clOwners});},120);return api;},
       cockpitAssign:function(){setTimeout(function(){if(succ)succ({ok:true});},700);return api;},
-      clCardStatus:function(){setTimeout(function(){if(succ)succ({ok:true,statuses:{}});},110);return api;}};
+      clCardStatus:function(){setTimeout(function(){if(succ)succ({ok:true,statuses:{}});},110);return api;},
+      getRevenueDashboard:function(){setTimeout(function(){if(succ)succ(revData);},260);return api;},
+      getEclaimDashboard:function(){setTimeout(function(){if(succ)succ(eclData);},260);return api;}};
     return new Proxy(api,{get:function(t,p){if(p in t)return t[p];return function(){setTimeout(function(){if(succ)succ(null);},60);return api;};}});
   }
   function mo(base){var a=[];for(var i=0;i<12;i++){a.push(Math.round((base+(i%5)*0.12+(i>7?0.2:0))*1e6));}return a;}
   var revMonthly={'2565':mo(2.0),'2566':mo(2.1),'2567':mo(2.15),'2568':mo(2.2),'2569':mo(2.25)};
+  // ===== Tab 💰 รายรับ (getRevenueDashboard) + Tab 📤 ส่งข้อมูล 16 แฟ้ม (getEclaimDashboard) =====
+  // FAKE finance/e-claim aggregates only — no patient data (PDPA). Shapes ตาม CEOCockpit.html (17 ก.ค.69).
+  function _sum(a){var s=0,i;for(i=0;i<a.length;i++)s+=a[i];return s;}
+  var _rightsDef=[
+    {name:'เบิกได้ (ราชการ)',color:'#1c8bad',share:0.795},
+    {name:'ชำระเอง (เงินสด)',color:'#7c5cff',share:0.082},
+    {name:'บัตรทอง (UC)',color:'#0F9D58',share:0.069},
+    {name:'อปท. (ท้องถิ่น)',color:'#d0870a',share:0.042},
+    {name:'ประกันสังคม',color:'#c0748a',share:0.009},
+    {name:'พ.ร.บ. (อุบัติเหตุ)',color:'#94a3b8',share:0.003}];
+  var revData=(function(){
+    var fys=['2563','2564','2565','2566','2567','2568','2569'];
+    var monthlyBilled={},monthlyPaid={},spsochMonthly={},annual=[],billedByFy={},i,j;
+    for(i=0;i<fys.length;i++){
+      var fy=fys[i], nMo=(fy==='2569')?9:12, mb=[],mp=[],sp=[];
+      for(j=0;j<12;j++){
+        var on=j<nMo;
+        mb.push(on?Math.round((1.9+i*0.055+(j%5)*0.075+(j>7?0.1:0))*1e6):0);
+        mp.push(on?Math.round(mb[j]*(0.94+(j%4)*0.02)):0);
+        sp.push(on?Math.round((0.138+i*0.003+(j%4)*0.011)*1e6):0);
+      }
+      monthlyBilled[fy]=mb;monthlyPaid[fy]=mp;spsochMonthly[fy]=sp;
+      var b=_sum(mb);billedByFy[fy]=b;
+      annual.push({fy:fy,billed:b,paid:_sum(mp),note:nMo===12?'เต็มปี':'9 เดือน (ต.ค.–มิ.ย.) ยังไม่จบปี'});
+    }
+    // e-Claim finance tab lookups spsochMonthly by CE year of latestYm (e.g. '2026')
+    spsochMonthly[String(new Date().getFullYear())]=spsochMonthly['2569'];
+    var rights=[];
+    for(i=0;i<_rightsDef.length;i++){ var r=_rightsDef[i],byFy={};
+      for(j=0;j<fys.length;j++){ byFy[fys[j]]=Math.round(billedByFy[fys[j]]*r.share); }
+      rights.push({name:r.name,color:r.color,byFy:byFy}); }
+    var anukraoh=[],aFys=['2561','2562','2563','2564','2565','2566','2567','2568','2569'];
+    for(i=0;i<aFys.length;i++){ var s9=Math.round((0.82+i*0.06)*1e6),g9=Math.round((0.31+i*0.032)*1e6);
+      if(aFys[i]==='2569'){s9=Math.round(s9*0.74);g9=Math.round(g9*0.74);}
+      anukraoh.push({fy:aFys[i],soldier:s9,general:g9,total:s9+g9,note:aFys[i]==='2569'?'9 เดือน':''}); }
+    var uc=[],uFys=['2566','2567','2568','2569'];
+    for(i=0;i<uFys.length;i++){ var un=(uFys[i]==='2569')?9:12,em=[],rm=[];
+      for(j=0;j<12;j++){ em.push(j<un?Math.round((0.124+(j%4)*0.011)*1e6):0); rm.push(j<un?Math.round((0.147+(j%3)*0.009)*1e6):0); }
+      uc.push({fy:uFys[i],type:'ค่าบริการที่ใช้ (รายจ่ายที่ รพ.ใช้จริง)',total:_sum(em),months:em});
+      uc.push({fy:uFys[i],type:'สปสช. จ่ายจริง (รายได้ รพ.)',total:_sum(rm),months:rm}); }
+    return {ok:true,updatedAt:new Date().toISOString(),annual:annual,anukraoh:anukraoh,uc:uc,rights:rights,
+      monthlyBilled:monthlyBilled,monthlyPaid:monthlyPaid,spsochMonthly:spsochMonthly};
+  })();
+  var eclData=(function(){
+    var monthly=[],now=new Date(),i;
+    for(i=11;i>=0;i--){
+      var d0=new Date(now.getFullYear(),now.getMonth()-1-i,1),idx=11-i;
+      var ym=d0.getFullYear()+'-'+('0'+(d0.getMonth()+1)).slice(-2);
+      monthly.push({ym:ym,billed:Math.round((1.28+(idx%5)*0.045)*1e6),eclaimVisits:1400+(idx%5)*26,
+        opdVisits:2450+(idx%5)*48,noPdx:Math.max(18,52-(idx*2)%18),drugLines:8800+(idx%6)*95,noUsage:Math.max(560,760-idx*9)});
+    }
+    var last=monthly[monthly.length-1],latestYm=last.ym;
+    var quality=[
+      {check:'วินิจฉัยหลัก (Pdx) ครบ',passPct:Math.round((1-last.noPdx/last.opdVisits)*1000)/10,flag:last.noPdx,denom:last.opdVisits,status:'ok'},
+      {check:'เลขบัตรประชาชน (CID) ครบ',passPct:99.6,flag:10,denom:last.opdVisits,status:'ok'},
+      {check:'สิทธิรักษา (pttype) ระบุครบ',passPct:100,flag:0,denom:last.opdVisits,status:'ok'},
+      {check:'ยามีวิธีใช้ (R24)',passPct:Math.round((1-last.noUsage/last.drugLines)*1000)/10,flag:last.noUsage,denom:last.drugLines,status:'warn'},
+      {check:'ยามีรหัสมาตรฐาน',passPct:71.4,flag:59,denom:206,status:'bad'}];
+    var rights=[];
+    for(i=0;i<_rightsDef.length;i++){ rights.push({name:_rightsDef[i].name,color:_rightsDef[i].color,billed:Math.round(last.billed*_rightsDef[i].share)}); }
+    var statement=[
+      {rightName:'อปท. (ท้องถิ่น)',visitType:'OP',ym:latestYm,chargeHosxp:98500,submitted:91200,paid:89400,disallowed:1800,approvalPct:98.2,passed:108,failed:2,total:110},
+      {rightName:'บัตรทอง (UC)',visitType:'IP',ym:latestYm,chargeHosxp:212000,submitted:187500,paid:180900,disallowed:6600,approvalPct:95.6,passed:43,failed:2,total:45}];
+    return {ok:true,updatedAt:new Date().toISOString(),latestYm:latestYm,
+      meta:{composite:96.8,ccodePreventablePct:65,pttypeEligible:18},
+      drugs:{noAdp:59,totalDrugs:206,drugsUsed:59,drugBilled:262000},
+      quality:quality,monthly:monthly,rights:rights,statement:statement};
+  })();
   var cockpit={status:'ok',
     actions:{dm_overdue:50,dm_total:539,nostatin:27,high_total:383,af_gap:20,af_total:78,af_cov:74},
     money:{rev_total:26100000,rev_opd:18000000,rev_ipd:8100000,cmi:0.53,cmi_n:115,cmi_coded:61,
@@ -134,6 +280,12 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
   <div class="meta"><b>รพ.ค่ายเขตอุดมศักดิ์ (มทบ.44)</b><br><span id="stamp">ปีงบ 2569</span></div>
 </div></header>
 <div class="wrap">
+  <div class="toptabs">
+    <button class="ttab active" id="tt-exec" onclick="switchTopTab('exec')">📊 ภาพรวมผู้บริหาร</button>
+    <button class="ttab" id="tt-rev" onclick="switchTopTab('revenue')">💰 รายรับ</button>
+    <button class="ttab" id="tt-ecl" onclick="switchTopTab('eclaim')">📤 ส่งข้อมูล 16 แฟ้ม</button>
+  </div>
+  <div id="tab-exec">
   <div class="accessbar">
     <span>🔒 <b>สิทธิ์:</b> เฉพาะผู้บริหาร (Admin)</span>
     <span>🛡️ <b>PDPA:</b> ผอ.เห็นเฉพาะจำนวน — รายชื่อส่งหน่วยที่ดูแล + log</span>
@@ -154,6 +306,45 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
   </div>
 
   <div id="body"><div class="loading">⏳ กำลังโหลด…</div></div>
+  </div><!-- /tab-exec -->
+
+  <div id="tab-revenue" style="display:none">
+    <div class="rev-head">
+      <div class="rev-title">💰 Dashboard รายรับ <small>— แผนกเก็บเงินรายรับสถานพยาบาล · หน่วย: บาท</small></div>
+      <div class="rev-actions"><button class="rev-refresh" onclick="loadRevenue(true)">🔄 รีเฟรช</button><span id="rev-updated" class="rev-updated"></span></div>
+    </div>
+    <div class="rev-subtabs">
+      <button class="rsub active" id="rs-overview" onclick="switchRevSub('overview')">🏠 ภาพรวมรายรับ</button>
+      <button class="rsub" id="rs-anukraoh" onclick="switchRevSub('anukraoh')">🪖 อนุเคราะห์</button>
+      <button class="rsub" id="rs-uc" onclick="switchRevSub('uc')">🏥 UC ในเขต</button>
+    </div>
+    <div class="rev-years" id="rev-years"></div>
+    <div id="rev-loading" class="loading">⏳ กำลังโหลดข้อมูลรายรับ…</div>
+    <div id="rev-overview"></div>
+    <div id="rev-anukraoh" style="display:none"></div>
+    <div id="rev-uc" style="display:none"></div>
+  </div>
+
+  <div id="tab-eclaim" style="display:none">
+    <div class="rev-head">
+      <div class="rev-title">📤 ระบบส่งข้อมูล 16 แฟ้ม (e-Claim) <small>— คุณภาพก่อนส่ง · ปริมาณ · เบิกจ่าย · หน่วย: บาท</small></div>
+      <div class="rev-actions"><button class="rev-refresh" onclick="loadEclaim(true)">🔄 รีเฟรช</button><span id="ecl-updated" class="rev-updated"></span></div>
+    </div>
+    <div class="ecl-legend">
+      <span><span class="ecldot" style="background:var(--green)"></span>🟢 HOSxP DB (สด)</span>
+      <span><span class="ecldot" style="background:var(--amber)"></span>🟡 ไฟล์ REP สปสช. (phase 2)</span>
+      <span><span class="ecldot" style="background:var(--teal)"></span>🔵 finance sheet</span>
+    </div>
+    <div class="rev-subtabs">
+      <button class="rsub active" id="es-health" onclick="switchEclSub('health')">🩺 คุณภาพก่อนส่ง</button>
+      <button class="rsub" id="es-submit" onclick="switchEclSub('submit')">📤 การส่งออก</button>
+      <button class="rsub" id="es-finance" onclick="switchEclSub('finance')">💰 เบิกจ่าย</button>
+    </div>
+    <div id="ecl-loading" class="loading">⏳ กำลังโหลดข้อมูล e-Claim…</div>
+    <div id="ecl-health"></div>
+    <div id="ecl-submit" style="display:none"></div>
+    <div id="ecl-finance" style="display:none"></div>
+  </div>
 
   <div class="foot">KPI Monitor · CEO Cockpit (LIVE) · Action + KPI = ค่าจริงจาก HOSxP (read-only) · การเงินจาก opitemrece · <span id="genstamp"></span></div>
 </div>
@@ -271,7 +462,7 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
     var cv=document.getElementById('rev-trend'); if(!cv||!window.Chart||!hist) return;
     var fys=Object.keys(hist).sort(); if(!fys.length) return;
     var labels=['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
-    var cmap={'2565':'#94a3b8','2566':'#14b8a6','2567':'#f59e0b','2568':'#8b5cf6','2569':'#0f3d5c'};
+    var cmap={'2565':'#9fb2be','2566':'#a99cf5','2567':'#d0870a','2568':'#7c5cff','2569':'#1c8bad'};
     var ds=fys.map(function(fy){
       var arr=(hist[fy]||[]).map(function(v){return v==null?null:Number(v)/1e6;});
       var latest=(fy===fys[fys.length-1]);
@@ -411,6 +602,7 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
     document.getElementById('body').innerHTML =
       actionSection(cd) + moneySection(cd) + incomeSection(mny, cd) + driversSection(mny) + referLeakSection(cd) + drugEventsSection(d) + kpiTableSection() + ha5Section();
     if(cd && cd.status==='ok' && cd.money) renderRevTrend(cd.money.rev_monthly);
+    enhance();
   }
 
   if (window.google && google.script && google.script.run){
@@ -518,18 +710,39 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
     }
     _alRefresh();
   })();
+
+  // Apple-design enhance: scroll-reveal + count-up + bar animation. Pure presentation,
+  // runs AFTER render() paints server data — touches no data/flow logic.
+  function enhance(){
+    var reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+    var secs = [].slice.call(document.querySelectorAll('#body > section.sec'));
+    function animBars(root){ root.querySelectorAll('.rsrc .bar i, .mini i').forEach(function(i){
+      var w=i.style.width; if(!w) return; i.style.width='0'; i.getBoundingClientRect();
+      i.style.transition='width .9s cubic-bezier(.22,.68,.24,1)'; setTimeout(function(){ i.style.width=w; },40); }); }
+    function countUp(el){ var m=(el.textContent||'').match(/^\s*([\d,]+)/); if(!m) return; var end=parseInt(m[1].replace(/,/g,''),10);
+      if(!end||reduce) return; var suffix=el.innerHTML.replace(/^\s*[\d,]+/,''); var t0=null,dur=800+Math.min(500,end*3);
+      function step(ts){ if(!t0)t0=ts; var p=Math.min(1,(ts-t0)/dur),e=1-Math.pow(1-p,3);
+        el.innerHTML=Math.round(end*e).toLocaleString('en-US')+suffix; if(p<1)requestAnimationFrame(step); else el.innerHTML=end.toLocaleString('en-US')+suffix; }
+      requestAnimationFrame(step); }
+    function show(sec){ sec.classList.add('in'); animBars(sec); sec.querySelectorAll('.act .big').forEach(countUp); }
+    if(!('IntersectionObserver' in window) || reduce){ secs.forEach(function(s){ s.classList.add('rise'); show(s); }); return; }
+    secs.forEach(function(s){ s.classList.add('rise');
+      var io=new IntersectionObserver(function(es){ es.forEach(function(en){ if(en.isIntersecting){ show(en.target); io.unobserve(en.target); } }); },{threshold:.14,rootMargin:'0px 0px -40px 0px'});
+      io.observe(s); });
+  }
+
 </script>
 <style>
-  .cl-ov{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,20,35,.66);z-index:9999;align-items:center;justify-content:center;padding:18px}
-  .cl-card{background:#fff;border-radius:16px;max-width:380px;width:100%;padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.3)}
-  .cl-h{font-weight:700;font-size:17px;color:#1B3A5B;margin-bottom:6px}
-  .cl-area{font-size:13px;color:#556;background:#f1f5f9;border-radius:8px;padding:8px 10px;margin-bottom:12px}
-  .cl-list{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}
-  .cl-own{text-align:left;padding:11px 14px;border:1px solid #d8e0ea;border-radius:10px;background:#fff;font-size:15px;color:#1B3A5B;cursor:pointer}
-  .cl-own:hover{background:#eef4fb;border-color:#1B7A3A}
-  .cl-muted{color:#889;padding:8px;font-size:13px}
-  .cl-status{font-size:13px;color:#1B7A3A;margin-top:10px;min-height:18px}
-  .cl-x{margin-top:12px;width:100%;padding:9px;border:none;border-radius:9px;background:#eceff3;color:#445;font-size:14px;cursor:pointer}
+  .cl-ov{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,20,35,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:9999;align-items:center;justify-content:center;padding:18px}
+  .cl-card{background:#fff;border-radius:18px;max-width:400px;width:100%;padding:20px;box-shadow:0 18px 50px rgba(16,40,60,.28);border:1px solid #eaf0f3}
+  .cl-h{font-weight:700;font-size:16.5px;color:#152430;margin-bottom:6px}
+  .cl-area{font-size:12.5px;color:#3d5464;background:#e7edf1;border-radius:9px;padding:8px 11px;margin-bottom:12px}
+  .cl-list{display:flex;flex-direction:column;gap:7px;max-height:46vh;overflow:auto}
+  .cl-own{text-align:left;padding:11px 14px;border:1px solid #dfe7ec;border-radius:11px;background:#fff;font-size:14.5px;color:#152430;cursor:pointer;font-family:inherit;transition:all .16s}
+  .cl-own:hover{background:#f6fafb;border-color:#1c8bad}
+  .cl-muted{color:#6a8090;padding:8px;font-size:13px}
+  .cl-status{font-size:13px;color:#14708e;margin-top:10px;min-height:18px}
+  .cl-x{margin-top:12px;width:100%;padding:10px;border:none;border-radius:11px;background:#e7edf1;color:#3d5464;font-size:14px;cursor:pointer;font-family:inherit}
 </style>
 <div id="cl-modal" class="cl-ov" onclick="if(event.target===this)_clClose()">
   <div class="cl-card">
@@ -540,5 +753,345 @@ tbody td{padding:10px 12px;border-bottom:1px solid var(--line)} tbody tr:last-ch
     <button class="cl-x" onclick="_clClose()">ปิด</button>
   </div>
 </div>
+<script>
+/* ===== Revenue Dashboard (แถบรายรับ) — อ่านจาก getRevenueDashboard (finance sheet, read-only) ===== */
+window._revData = null; window._revYear = ''; window._revSub = 'overview'; window._revCharts = {};
+window._revOvMY = ''; window._revUcMY = '';
+var REV_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
+
+function _revM(n){ return (Number(n)/1e6).toFixed(3)+'M'; }
+function _revC(n){ return Math.round(Number(n)||0).toLocaleString('en-US'); }
+function _revC2(n){ return (Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _revChartMake(id, cfg){ if(window._revCharts[id]){ try{window._revCharts[id].destroy();}catch(e){} } var el=document.getElementById(id); if(el){ window._revCharts[id]=new Chart(el.getContext('2d'), cfg); } }
+
+function switchTopTab(t){
+  var tabs=[['tt-exec','tab-exec'],['tt-rev','tab-revenue'],['tt-ecl','tab-eclaim']];
+  var map={exec:'tab-exec',revenue:'tab-revenue',eclaim:'tab-eclaim'};
+  for(var i=0;i<tabs.length;i++){ var b=document.getElementById(tabs[i][0]); var pane=document.getElementById(tabs[i][1]);
+    var on=(map[t]===tabs[i][1]); if(pane) pane.style.display=on?'':'none'; if(b) b.classList.toggle('active',on); }
+  if(t==='revenue' && !window._revData) loadRevenue(false);
+  if(t==='eclaim' && !window._eclData) loadEclaim(false);
+}
+
+function loadRevenue(force){
+  var ld=document.getElementById('rev-loading'); if(ld) ld.style.display='';
+  if(!(window.google&&google.script&&google.script.run)){ if(ld) ld.textContent='เปิดผ่าน KPI Monitor เท่านั้น'; return; }
+  google.script.run.withSuccessHandler(function(r){
+    if(!r||r.ok!==true){ if(ld) ld.textContent='โหลดข้อมูลรายรับไม่สำเร็จ ('+((r&&r.msg)||'?')+')'; return; }
+    window._revData=r; if(ld) ld.style.display='none';
+    var u=document.getElementById('rev-updated'); if(u) u.textContent='อัปเดต '+(r.updatedAt?new Date(r.updatedAt).toLocaleString('th-TH'):'');
+    _revBuildYears(); renderRevSub();
+  }).withFailureHandler(function(e){ if(ld) ld.textContent='โหลดไม่สำเร็จ: '+e; })
+  .getRevenueDashboard({ email: window._ckEmail, sessionToken: (window._ckToken||''), force: force===true });
+}
+
+function _revBuildYears(){
+  var box=document.getElementById('rev-years'); if(!box||!window._revData) return;
+  var d=window._revData, seen={}, ys=[], i;
+  // union ทุก section (annual 2563- , anukraoh 2561- , uc 2566-) → ปุ่มครอบทุกปี
+  var srcs=[d.annual, d.anukraoh, d.uc];
+  for(var s=0;s<srcs.length;s++){ if(!srcs[s]) continue; for(i=0;i<srcs[s].length;i++){ var f=srcs[s][i].fy; if(f && !seen[f]){ seen[f]=1; ys.push(f); } } }
+  ys.sort();
+  if(!window._revYear && ys.length) window._revYear = ys[ys.length-1];
+  var last=ys.length?ys[ys.length-1]:'';
+  var h='<span class="ylab">🗓 ปีงบประมาณ:</span>';
+  for(i=0;i<ys.length;i++){ h+='<button class="'+(ys[i]===window._revYear?'active':'')+'" onclick="setRevYear(\''+ys[i]+'\')">'+ys[i]+(ys[i]===last?'*':'')+'</button>'; }
+  box.innerHTML=h;
+}
+function setRevYear(fy){ window._revYear=fy; _revBuildYears(); renderRevSub(); }
+
+function switchRevSub(s){
+  window._revSub=s;
+  var map={overview:'rs-overview',anukraoh:'rs-anukraoh',uc:'rs-uc'};
+  var k; for(k in map){ var b=document.getElementById(map[k]); if(b) b.classList.toggle('active', k===s); var p=document.getElementById('rev-'+k); if(p) p.style.display=(k===s?'':'none'); }
+  renderRevSub();
+}
+function renderRevSub(){ if(!window._revData) return; if(window._revSub==='overview') renderRevOverview(); else if(window._revSub==='anukraoh') renderRevAnukraoh(); else renderRevUc(); }
+
+function setRevOvMY(fy){ window._revOvMY=fy; renderRevOverview(); }
+function renderRevOverview(){
+  var d=window._revData, fy=window._revYear, i;
+  var cur=null,prev=null; for(i=0;i<d.annual.length;i++){ if(d.annual[i].fy===fy){ cur=d.annual[i]; if(i>0) prev=d.annual[i-1]; } }
+  if(!cur) cur={fy:fy,billed:0,paid:0,note:''};
+  var maxRow=d.annual[0]; for(i=1;i<d.annual.length;i++){ if(d.annual[i].paid>maxRow.paid) maxRow=d.annual[i]; }
+  var full=[]; for(i=0;i<d.annual.length;i++){ if((d.annual[i].note||'').indexOf('เต็มปี')>=0) full.push(d.annual[i].billed); }
+  var avg=0; if(full.length){ for(i=0;i<full.length;i++) avg+=full[i]; avg/=full.length; }
+  var dBilled = prev? (cur.billed-prev.billed)/(prev.billed||1)*100 : 0;
+  var pctPaid = cur.billed? cur.paid/cur.billed*100 : 0;
+  var moN=_revMoCount_(d.monthlyPaid[fy]||d.monthlyBilled[fy]||[]);
+  var moTxt=moN?(' ('+moN+' เดือน)'):'';
+  var kp='';
+  kp+='<div class="rev-kpi"><div class="k-lab">ยอดเรียกเก็บ ปี '+fy+moTxt+'</div><div class="k-val">'+_revM(cur.billed)+'</div><div class="k-sub">ปีก่อน: '+(prev?_revM(prev.billed):'-')+'</div>'+(prev?'<span class="k-chip '+(dBilled<0?'down':'')+'">'+(dBilled>=0?'▲':'▼')+' '+Math.abs(dBilled).toFixed(1)+'%</span>':'')+'</div>';
+  kp+='<div class="rev-kpi"><div class="k-lab">ยอดได้รับจริง ปี '+fy+moTxt+'</div><div class="k-val">'+_revM(cur.paid)+'</div><div class="k-sub">สัดส่วน '+pctPaid.toFixed(1)+'%</div><span class="k-chip '+(pctPaid<100?'warn':'')+'">'+pctPaid.toFixed(1)+'%</span></div>';
+  kp+='<div class="rev-kpi"><div class="k-lab">สูงสุดในชุดข้อมูล</div><div class="k-val">'+_revM(maxRow.paid)+'</div><div class="k-sub">ปีงบ '+maxRow.fy+'</div><span class="k-chip" style="background:#e3f1f5;color:var(--teal-deep)">ปี '+maxRow.fy+'</span></div>';
+  kp+='<div class="rev-kpi"><div class="k-lab">เฉลี่ยต่อปี (เต็มปี)</div><div class="k-val">'+_revM(avg)+'</div><div class="k-sub">'+full.length+' ปีงบเต็ม</div><span class="k-chip" style="background:var(--bg-2);color:var(--muted)">เฉลี่ย</span></div>';
+  var labels=[],billed=[],paid=[];
+  for(i=0;i<d.annual.length;i++){ labels.push(d.annual[i].fy); billed.push(d.annual[i].billed); paid.push(d.annual[i].paid); }
+  var html='<div class="rev-kpis">'+kp+'</div>';
+  html+='<div class="rev-grid"><div class="rev-card"><div class="c-title">แนวโน้มรายรับ — ทุกปีงบ (ปีที่เลือกเน้น)</div><canvas id="rev-c-annual"></canvas></div>';
+  html+='<div class="rev-card"><div class="c-title">สัดส่วนสิทธิ — ปีงบ '+fy+'</div><canvas id="rev-c-donut"></canvas></div></div>';
+  // กราฟรายเดือน (เส้น) + ปุ่มเลือกปีของกราฟนี้แยก
+  var omy=window._revOvMY || fy; if(labels.indexOf(omy)<0 && labels.length) omy=labels[labels.length-1];
+  var ombtn=''; for(i=0;i<labels.length;i++){ ombtn+='<button class="'+(labels[i]===omy?'active':'')+'" onclick="setRevOvMY(\''+labels[i]+'\')">'+labels[i]+(labels[i]===labels[labels.length-1]?'*':'')+'</button>'; }
+  html+='<div class="rev-card"><div class="c-title">รายรับรายเดือน — เลือกปีงบ</div><div class="rev-years" style="margin:0 0 8px">'+ombtn+'</div><canvas id="rev-c-month"></canvas></div>';
+  // การ์ดสิทธิ (card + มินิบาร์) เรียงมาก→น้อย
+  var rr=[]; for(i=0;i<d.rights.length;i++){ var v=d.rights[i].byFy[fy]||0; if(v>0) rr.push({n:d.rights[i].name,v:v,c:d.rights[i].color}); }
+  rr.sort(function(a,b){return b.v-a.v;}); var tot=0; for(i=0;i<rr.length;i++) tot+=rr[i].v;
+  var rc='<div class="rev-card" style="margin-top:12px"><div class="c-title">สิทธิการรักษาแยกประเภท — ปีงบ '+fy+'</div><div class="rev-rcards">';
+  for(i=0;i<rr.length;i++){ var pctR=tot?rr[i].v/tot*100:0;
+    rc+='<div class="rev-rcard"><div class="rc-nm">'+rr[i].n+'</div><div class="rc-val">'+_revM(rr[i].v)+'</div><div class="rc-pct">'+pctR.toFixed(1)+'%</div><div class="rc-bar"><i style="width:'+pctR.toFixed(1)+'%;background:'+rr[i].c+'"></i></div></div>'; }
+  rc+='</div></div>'; html+=rc;
+  html+='<div class="rev-card" style="margin-top:12px"><div class="c-title">สปสช. รายเดือน — ปีงบ '+omy+'</div><canvas id="rev-c-spsoch"></canvas></div>';
+  // ตาราง
+  var tb='<div class="rev-tablewrap"><table class="rev-table"><thead><tr><th>ปีงบ</th><th>เดือน</th><th>เรียกเก็บ (บาท)</th><th>ได้รับจริง (บาท)</th><th>ผลต่าง (บาท)</th><th>% รับ/เรียก</th><th>สถานะ</th></tr></thead><tbody>';
+  for(i=0;i<d.annual.length;i++){ var a=d.annual[i]; var diff=a.paid-a.billed; var pc=a.billed?a.paid/a.billed*100:0; var ok=pc>=100; var mo=_revMoCount_(d.monthlyPaid[a.fy]||d.monthlyBilled[a.fy]||[]);
+    tb+='<tr'+(a.fy===fy?' style="background:var(--card-2)"':'')+'><td>'+a.fy+(a.fy===fy?' ◀':'')+'</td><td>'+(mo||12)+'เดือน</td><td>'+_revC(a.billed)+'</td><td>'+_revC(a.paid)+'</td><td>'+(diff>=0?'+':'')+_revC(diff)+'</td><td>'+pc.toFixed(1)+'%</td><td><span class="rev-badge '+(ok?'ok':'near')+'">'+(ok?'✓ ดีกว่าเป้า':'เกือบเป้า')+'</span></td></tr>'; }
+  tb+='</tbody></table></div>'; html+=tb;
+  document.getElementById('rev-overview').innerHTML=html;
+  // charts
+  _revChartMake('rev-c-annual',{type:'bar',data:{labels:labels,datasets:[
+    {label:'เรียกเก็บ',data:billed,backgroundColor:labels.map(function(l){return l===fy?'#1c8bad':'#bcdfe8';})},
+    {label:'ได้รับจริง',data:paid,backgroundColor:labels.map(function(l){return l===fy?'#7c5cff':'#d6ccff';})}]},
+    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{ticks:{callback:function(v){return _revM(v);}}}}}});
+  var rlab=[],rval=[],rcol=[]; for(i=0;i<rr.length;i++){ rlab.push(rr[i].n); rval.push(rr[i].v); rcol.push(rr[i].c); }
+  _revChartMake('rev-c-donut',{type:'doughnut',data:{labels:rlab,datasets:[{data:rval,backgroundColor:rcol}]},options:{responsive:true,cutout:'62%',plugins:{legend:{position:'right',labels:{font:{size:10},generateLabels:function(ch){ var ds=ch.data.datasets[0]; var sm=0,j; for(j=0;j<ds.data.length;j++) sm+=ds.data[j]; return ch.data.labels.map(function(lb,idx){ var p=sm?ds.data[idx]/sm*100:0; return {text:lb+' '+p.toFixed(1)+'%',fillStyle:ds.backgroundColor[idx],strokeStyle:'#fff',lineWidth:1,hidden:false,index:idx}; }); }}}}}});
+  var mb=d.monthlyBilled[omy]||[], mp=d.monthlyPaid[omy]||[];
+  _revChartMake('rev-c-month',{type:'line',data:{labels:REV_MONTHS,datasets:[
+    {label:'เรียกเก็บ',data:mb,borderColor:'#1c8bad',backgroundColor:'rgba(28,139,173,.08)',fill:true,tension:.35,pointRadius:3},
+    {label:'ได้รับจริง',data:mp,borderColor:'#7c5cff',borderDash:[6,4],tension:.35,pointRadius:3}]},
+    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{ticks:{callback:function(v){return _revM(v);}}}}}});
+  var sp=d.spsochMonthly[omy]||[];
+  _revChartMake('rev-c-spsoch',{type:'bar',data:{labels:REV_MONTHS,datasets:[{label:'สปสช.จ่ายจริง',data:sp,backgroundColor:'#cf93a4'}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return _revM(v);}}}}}});
+}
+
+function renderRevAnukraoh(){
+  var d=window._revData, fy=window._revYear, i;
+  var rows=d.anukraoh; var cur=null,prev=null; for(i=0;i<rows.length;i++){ if(rows[i].fy===fy){ cur=rows[i]; if(i>0) prev=rows[i-1]; } }
+  if(!cur){ cur=rows[rows.length-1]; fy=cur.fy; prev=rows.length>1?rows[rows.length-2]:null; }
+  var maxRow=rows[0]; for(i=1;i<rows.length;i++){ if(rows[i].total>maxRow.total) maxRow=rows[i]; }
+  var avS=0,nS=0,avG=0,nG=0; for(i=0;i<rows.length;i++){ if(rows[i].soldier>0){avS+=rows[i].soldier;nS++;} if(rows[i].general>0){avG+=rows[i].general;nG++;} } if(nS)avS/=nS; if(nG)avG/=nG;
+  var dTot=prev?(cur.total-prev.total)/(prev.total||1)*100:0;
+  var pS=cur.total?cur.soldier/cur.total*100:0, pG=cur.total?cur.general/cur.total*100:0;
+  var rS=Math.round(pS), rG=100-rS;
+  var kv='font-size:22px';
+  var kp='';
+  kp+='<div class="rev-kpi"><div class="k-lab">ค่าบริการรวม ปี '+fy+'</div><div class="k-val" style="'+kv+'">'+_revC2(cur.total)+' บาท</div>'+(prev?'<span class="k-chip '+(dTot<0?'down':'')+'">'+(dTot>=0?'▲':'▼')+' '+Math.abs(dTot).toFixed(1)+'% vs ปีก่อน</span>':'')+'</div>';
+  kp+='<div class="rev-kpi"><div class="k-lab">พลทหาร ปี '+fy+'</div><div class="k-val" style="'+kv+'">'+_revC2(cur.soldier)+' บาท</div><div class="k-sub">'+pS.toFixed(1)+'% ของรวม</div><span class="k-chip" style="background:#e3f1f5;color:var(--teal-deep)">ปี '+fy+'</span></div>';
+  kp+='<div class="rev-kpi"><div class="k-lab">ทั่วไป ปี '+fy+'</div><div class="k-val" style="'+kv+'">'+_revC2(cur.general)+' บาท</div><div class="k-sub">'+pG.toFixed(1)+'% ของรวม</div><span class="k-chip" style="background:#e3f1f5;color:var(--teal-deep)">ปี '+fy+'</span></div>';
+  kp+='<div class="rev-kpi"><div class="k-lab">สูงสุดในชุดข้อมูล</div><div class="k-val" style="'+kv+'">'+_revC2(maxRow.total)+' บาท</div><div class="k-sub">ปี '+maxRow.fy+'</div><span class="k-chip" style="background:var(--bg-2);color:var(--muted)">ค่าบริการรวม</span></div>';
+  var st='<div class="rev-grid" style="grid-template-columns:1fr 1fr 1fr">';
+  st+='<div class="rev-card"><div class="c-title">เฉลี่ยพลทหาร (ทุกปีที่มีข้อมูล)</div><div class="k-val" style="font-size:22px">'+_revC2(avS)+' บาท/ปี</div></div>';
+  st+='<div class="rev-card"><div class="c-title">เฉลี่ยทั่วไป (ทุกปีที่มีข้อมูล)</div><div class="k-val" style="font-size:22px">'+_revC2(avG)+' บาท/ปี</div></div>';
+  st+='<div class="rev-card"><div class="c-title">สัดส่วน พลทหาร : ทั่วไป ปี '+fy+'</div><div class="k-val" style="font-size:22px">'+rS+'% : '+rG+'%</div><div class="k-sub">เทียบจากยอดรวมกัน</div></div></div>';
+  var html='<div class="rev-kpis">'+kp+'</div>'+st;
+  html+='<div class="rev-grid"><div class="rev-card"><div class="c-title">แนวโน้มค่าบริการ — ทุกปีงบ (ปีที่เลือกเน้น)</div><canvas id="rev-c-anu-trend"></canvas></div>';
+  html+='<div class="rev-card"><div class="c-title">เปรียบเทียบ พลทหาร VS ทั่วไป</div><canvas id="rev-c-anu-cmp"></canvas></div></div>';
+  var tb='<div class="rev-tablewrap"><table class="rev-table"><thead><tr><th>ปีงบ</th><th>เดือน</th><th>พลทหาร (บาท)</th><th>ทั่วไป (บาท)</th><th>ค่าบริการรวม (บาท)</th><th>% พลทหาร</th><th>% ทั่วไป</th></tr></thead><tbody>';
+  for(i=0;i<rows.length;i++){ var r=rows[i]; var mo=(String(r.note||'').indexOf('9')>=0)?'9':'12';
+    tb+='<tr'+(r.fy===fy?' style="background:var(--card-2)"':'')+'><td>'+r.fy+(r.fy===fy?' ◀':'')+'</td><td>'+mo+'เดือน</td><td>'+(r.soldier>0?_revC2(r.soldier):'-')+'</td><td>'+(r.general>0?_revC2(r.general):'-')+'</td><td>'+_revC2(r.total)+'</td><td>'+(r.total&&r.soldier>0?(r.soldier/r.total*100).toFixed(1)+' %':'-')+'</td><td>'+(r.total?(r.general/r.total*100).toFixed(1)+' %':'-')+'</td></tr>'; }
+  tb+='</tbody></table></div>'; html+=tb;
+  document.getElementById('rev-anukraoh').innerHTML=html;
+  var lab=[],tt=[],ss=[],gg=[],pr=[]; for(i=0;i<rows.length;i++){ lab.push(rows[i].fy); tt.push(rows[i].total); ss.push(rows[i].soldier); gg.push(rows[i].general); pr.push(rows[i].fy===fy?6:3); }
+  _revChartMake('rev-c-anu-trend',{type:'line',data:{labels:lab,datasets:[
+    {label:'ค่าบริการรวม',data:tt,borderColor:'#14708e',backgroundColor:'rgba(20,112,142,.10)',fill:true,tension:.3,pointRadius:pr},
+    {label:'พลทหาร',data:ss,borderColor:'#c0748a',borderDash:[6,4],tension:.3,pointRadius:2},
+    {label:'ทั่วไป',data:gg,borderColor:'#1f9d55',borderDash:[6,4],tension:.3,pointRadius:2}]},
+    options:{responsive:true,plugins:{legend:{position:'top'}}}});
+  _revChartMake('rev-c-anu-cmp',{type:'bar',data:{labels:lab,datasets:[
+    {label:'พลทหาร',data:ss,backgroundColor:'#c993a8'},
+    {label:'ทั่วไป',data:gg,backgroundColor:'#8fd3ab'}]},
+    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true}}}});
+}
+
+function _revMoCount_(arr){ var c=0,j; for(j=0;j<arr.length;j++){ if(Number(arr[j])>0) c++; } return c; }
+function setRevUcMY(fy){ window._revUcMY=fy; renderRevUc(); }
+function renderRevUc(){
+  var d=window._revData, fy=window._revYear, i;
+  // จัดกลุ่มตามปี: exp=ค่าบริการที่ใช้, rev=สปสช.จ่ายจริง (= รายได้รพ.รวม), ส่วนต่างที่รพ.ได้ ไม่ใช้ (ตามฝ่ายการเงิน)
+  var byFy={}; for(i=0;i<d.uc.length;i++){ var u=d.uc[i]; if(!byFy[u.fy]) byFy[u.fy]={fy:u.fy,exp:0,rev:0,expMonths:[],revMonths:[]};
+    if(u.type.indexOf('ค่าบริการที่ใช้')>=0){ byFy[u.fy].exp=u.total; byFy[u.fy].expMonths=u.months; }
+    else if(u.type.indexOf('สปสช')>=0){ byFy[u.fy].rev=u.total; byFy[u.fy].revMonths=u.months; } }
+  var fys=[]; for(var kk in byFy) fys.push(kk); fys.sort();
+  if(fys.indexOf(fy)<0 && fys.length) fy=fys[fys.length-1];
+  var cur=byFy[fy]||{exp:0,rev:0,expMonths:[],revMonths:[]};
+  var moCur=_revMoCount_(cur.expMonths);
+  var profit=cur.rev-cur.exp; var pctP=cur.exp?profit/cur.exp*100:0;
+  // 4 KPI
+  var kp='';
+  kp+='<div class="rev-kpi"><div class="k-lab">ค่าบริการ ปี '+fy+' ('+moCur+' เดือน)</div><div class="k-val">'+_revM(cur.exp)+'</div><div class="k-sub">รายจ่าย รพ.</div><span class="k-chip warn">รายจ่าย</span></div>';
+  kp+='<div class="rev-kpi"><div class="k-lab">รายได้ รพ. ปี '+fy+'</div><div class="k-val">'+_revM(cur.rev)+'</div><div class="k-sub">สปสช.จ่ายจริง '+_revM(cur.rev)+'</div><span class="k-chip" style="background:#e3f1f5;color:var(--teal-deep)">รายได้รวม</span></div>';
+  kp+='<div class="rev-kpi"><div class="k-lab">กำไร/ขาดทุน ปี '+fy+'</div><div class="k-val">'+(profit>=0?'+':'')+_revM(profit)+'</div><div class="k-sub">รายได้ − ค่าบริการ</div><span class="k-chip '+(profit>=0?'':'down')+'">'+(profit>=0?'✓ กำไร':'ขาดทุน')+'</span></div>';
+  kp+='<div class="rev-kpi"><div class="k-lab">% กำไร/ต้นทุน ปี '+fy+'</div><div class="k-val">'+(pctP>=0?'+':'')+pctP.toFixed(1)+'%</div><div class="k-sub">รายได้มากกว่าต้นทุน</div><span class="k-chip '+(pctP>=0?'':'down')+'">'+(pctP>=0?'✓ กำไร':'ขาดทุน')+'</span></div>';
+  // 3 การ์ดสถิติ (เต็มความละเอียด บาท)
+  var sc='<div class="rev-grid" style="grid-template-columns:1fr 1fr 1fr">';
+  sc+='<div class="rev-card"><div class="c-title">รายจ่าย ปี '+fy+'</div><div class="k-val" style="font-size:22px">'+_revC(cur.exp)+' บาท</div><div class="k-sub">ค่าบริการผู้ป่วย UC ที่ รพ. รับผิดชอบ</div></div>';
+  sc+='<div class="rev-card"><div class="c-title">รายได้ รพ. ปี '+fy+'</div><div class="k-val" style="font-size:22px">'+_revC(cur.rev)+' บาท</div><div class="k-sub">สปสช.จ่ายจริง '+_revC(cur.rev)+' บาท</div></div>';
+  sc+='<div class="rev-card"><div class="c-title">กำไร ปี '+fy+'</div><div class="k-val" style="font-size:22px;color:'+(profit>=0?'var(--green)':'var(--red)')+'">'+(profit>=0?'+':'')+_revC(profit)+' บาท</div><div class="k-sub">รายได้ '+_revM(cur.rev)+' − ค่าบริการ '+_revM(cur.exp)+' | กำไร '+pctP.toFixed(1)+'%</div></div>';
+  sc+='</div>';
+  var html='<div class="rev-kpis">'+kp+'</div>'+sc;
+  // กราฟ 1: รายจ่าย vs รายได้ vs กำไร — ทุกปีงบ
+  html+='<div class="rev-grid"><div class="rev-card"><div class="c-title">รายจ่าย vs รายได้ vs กำไร/ขาดทุน — ทุกปีงบ</div><canvas id="rev-c-uc-trend"></canvas></div>';
+  // กราฟ 2: รายเดือน (เส้น) + ปุ่มเลือกปีของกราฟนี้แยก
+  var umy=window._revUcMY || fy; if(fys.indexOf(umy)<0 && fys.length) umy=fys[fys.length-1];
+  var mbtn=''; for(i=0;i<fys.length;i++){ mbtn+='<button class="'+(fys[i]===umy?'active':'')+'" onclick="setRevUcMY(\''+fys[i]+'\')">'+fys[i]+(fys[i]===fys[fys.length-1]?'*':'')+'</button>'; }
+  html+='<div class="rev-card"><div class="c-title">ค่าบริการ + สปสช.จ่ายจริง รายเดือน</div><div class="rev-years" style="margin:0 0 8px">'+mbtn+'</div><canvas id="rev-c-uc-month"></canvas></div></div>';
+  // ตาราง
+  var tb='<div class="rev-tablewrap"><table class="rev-table"><thead><tr><th>ปีงบ</th><th>เดือน</th><th>ค่าบริการ (รายจ่าย)</th><th>สปสช.จ่ายจริง</th><th>รายได้รพ.รวม</th><th>กำไร/ขาดทุน</th><th>% กำไร/ต้นทุน</th></tr></thead><tbody>';
+  for(i=0;i<fys.length;i++){ var b=byFy[fys[i]]; var pf=b.rev-b.exp; var pcp=b.exp?pf/b.exp*100:0; var mo=_revMoCount_(b.expMonths);
+    tb+='<tr'+(fys[i]===fy?' style="background:var(--card-2)"':'')+'><td>'+fys[i]+(fys[i]===fy?' ◀':'')+'</td><td>'+mo+'เดือน</td><td>'+_revC(b.exp)+'</td><td>'+_revC(b.rev)+'</td><td>'+_revC(b.rev)+'</td><td>'+(pf>=0?'+':'')+_revC(pf)+'</td><td><span class="rev-badge '+(pf>=0?'ok':'near')+'">'+(pcp>=0?'+':'')+pcp.toFixed(1)+'% '+(pf>=0?'✓กำไร':'ขาดทุน')+'</span></td></tr>'; }
+  tb+='</tbody></table></div>'; html+=tb;
+  document.getElementById('rev-uc').innerHTML=html;
+  // charts
+  var lab=[],ex=[],rv=[],pf2=[]; for(i=0;i<fys.length;i++){ var bb=byFy[fys[i]]; lab.push(fys[i]); ex.push(bb.exp); rv.push(bb.rev); pf2.push(bb.rev-bb.exp); }
+  _revChartMake('rev-c-uc-trend',{type:'bar',data:{labels:lab,datasets:[
+    {label:'ค่าบริการ',data:ex,backgroundColor:lab.map(function(l){return l===fy?'#3d5a80':'#c3cfe0';})},
+    {label:'รายได้ รพ.',data:rv,backgroundColor:lab.map(function(l){return l===fy?'#1f9d55':'#bfe6cf';})},
+    {label:'กำไร/ขาดทุน',data:pf2,backgroundColor:lab.map(function(l){return l===fy?'#7a8b3a':'#dce3c2';})}]},
+    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{ticks:{callback:function(v){return _revM(v);}}}}}});
+  var um=byFy[umy]||{expMonths:[],revMonths:[]};
+  _revChartMake('rev-c-uc-month',{type:'line',data:{labels:REV_MONTHS,datasets:[
+    {label:'ค่าบริการที่ใช้',data:um.expMonths,borderColor:'#3d5a80',backgroundColor:'rgba(61,90,128,.10)',fill:true,tension:.35,pointRadius:3},
+    {label:'สปสช.จ่ายจริง',data:um.revMonths,borderColor:'#c0748a',borderDash:[6,4],tension:.35,pointRadius:3}]},
+    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{ticks:{callback:function(v){return _revM(v);}}}}}});
+}
+
+/* ===== Tab 3 e-Claim (ส่งข้อมูล 16 แฟ้ม) ===== */
+window._eclData=null; window._eclSub='health'; window._eclCharts={};
+function _eclChart(id,cfg){ if(window._eclCharts[id]){ try{window._eclCharts[id].destroy();}catch(e){} } var el=document.getElementById(id); if(el) window._eclCharts[id]=new Chart(el.getContext('2d'),cfg); }
+function _eclMonths(d){ var L=[],i; for(i=0;i<d.monthly.length;i++) L.push(d.monthly[i].ym.substr(2).replace('-','/')); return L; }
+function switchEclSub(s){ window._eclSub=s;
+  var map={health:'es-health',submit:'es-submit',finance:'es-finance'}; var k;
+  for(k in map){ var b=document.getElementById(map[k]); if(b) b.classList.toggle('active',k===s); var p=document.getElementById('ecl-'+k); if(p) p.style.display=(k===s?'':'none'); }
+  renderEclSub();
+}
+function renderEclSub(){ if(!window._eclData) return; if(window._eclSub==='health') renderEclHealth(); else if(window._eclSub==='submit') renderEclSubmit(); else renderEclFinance(); }
+function loadEclaim(force){
+  var ld=document.getElementById('ecl-loading'); if(ld) ld.style.display='';
+  if(!(window.google&&google.script&&google.script.run)){ if(ld) ld.textContent='เปิดผ่าน KPI Monitor เท่านั้น'; return; }
+  if(!window._revData && typeof loadRevenue==='function'){ try{ loadRevenue(false); }catch(e){} } // prefetch จ่ายจริง (finance) สำหรับแท็บเบิกจ่าย
+  google.script.run.withSuccessHandler(function(r){
+    if(!r||r.ok!==true){ if(ld) ld.textContent='โหลดข้อมูล e-Claim ไม่สำเร็จ ('+((r&&r.msg)||'?')+')'; return; }
+    window._eclData=r; if(ld) ld.style.display='none';
+    var u=document.getElementById('ecl-updated'); if(u) u.textContent='อัปเดต '+(r.updatedAt?new Date(r.updatedAt).toLocaleString('th-TH'):'');
+    renderEclSub();
+  }).withFailureHandler(function(e){ if(ld) ld.textContent='โหลดไม่สำเร็จ: '+e; })
+  .getEclaimDashboard({email:window._ckEmail, sessionToken:(window._ckToken||''), force:force===true});
+}
+function renderEclHealth(){
+  var d=window._eclData, i;
+  var qmap={}; for(i=0;i<d.quality.length;i++) qmap[d.quality[i].check]=d.quality[i];
+  var comp=(d.meta&&d.meta.composite)||0;
+  var pdx=qmap['วินิจฉัยหลัก (Pdx) ครบ']||{passPct:0,flag:0,denom:0}, r24=qmap['ยามีวิธีใช้ (R24)']||{passPct:0,flag:0,denom:0}, std=qmap['ยามีรหัสมาตรฐาน']||{passPct:0};
+  var kp='';
+  kp+='<div class="rev-kpi" style="border-top-color:var(--green)"><span class="ecl-src db">DB</span><div class="k-lab">ความพร้อมส่ง (per-visit)</div><div class="k-val" style="color:var(--green)">'+comp.toFixed(1)+'%</div><div class="k-sub">ข้อมูลสะอาดกว่าค่าเฉลี่ยประเทศ</div></div>';
+  kp+='<div class="rev-kpi" style="border-top-color:var(--green)"><span class="ecl-src db">DB</span><div class="k-lab">วินิจฉัยหลัก (Pdx) ครบ</div><div class="k-val">'+pdx.passPct.toFixed(1)+'%</div><div class="k-sub">ขาด '+(pdx.flag||0)+' / '+(pdx.denom||0)+' visit</div></div>';
+  kp+='<div class="rev-kpi" style="border-top-color:var(--amber)"><span class="ecl-src db">DB</span><div class="k-lab">ยาไม่มีวิธีใช้ (R24)</div><div class="k-val" style="color:var(--amber)">'+(100-r24.passPct).toFixed(1)+'%</div><div class="k-sub">'+(r24.flag||0)+' / '+(r24.denom||0)+' บรรทัดยา</div></div>';
+  kp+='<div class="rev-kpi" style="border-top-color:var(--red)"><span class="ecl-src db">DB</span><div class="k-lab">ยาไม่มีรหัสมาตรฐาน</div><div class="k-val" style="color:var(--red)">'+(100-std.passPct).toFixed(1)+'%</div><div class="k-sub">'+(d.drugs.noAdp||0)+' / '+(d.drugs.totalDrugs||0)+' ยา</div></div>';
+  var html='<div class="rev-kpis">'+kp+'</div>';
+  html+='<div class="rev-grid"><div class="rev-card"><div class="c-title">✅ เช็คคุณภาพก่อนส่ง (เดือนล่าสุด '+(d.latestYm||'')+')</div>';
+  for(i=0;i<d.quality.length;i++){ var q=d.quality[i]; var pc=q.status==='ok'?'pill-ok':(q.status==='bad'?'pill-bad':'pill-warn'); var lab=q.status==='ok'?'ผ่าน':(q.status==='bad'?'🔴 '+(100-q.passPct).toFixed(1)+'% ขาด':'⚠ '+(100-q.passPct).toFixed(1)+'% ขาด');
+    html+='<div class="ecl-chk"><span class="nm">'+q.check+'</span><span class="vl">'+q.passPct.toFixed(1)+'%</span><span class="pill '+pc+'">'+lab+'</span></div>'; }
+  html+='</div>';
+  html+='<div class="rev-card"><div class="c-title">🎯 ติด C ที่กันได้ก่อนส่ง</div><div class="rev-updated" style="margin:0 0 8px;color:var(--muted)">C-code catalog 576 รหัส — ~'+((d.meta&&d.meta.ccodePreventablePct)||65)+'% ตรวจจับได้ก่อนส่ง (C-Check cm2:5600)</div>';
+  html+='<div class="ecl-chk"><span class="nm">100s พื้นฐาน+สิทธิ · 200s Dx · 800s ความสอดคล้อง</span><span class="pill pill-ok">กันได้</span></div>';
+  html+='<div class="ecl-chk"><span class="nm">300s/600s/700s policy/EDC</span><span class="pill pill-warn">กันไม่ได้</span></div></div></div>';
+  html+='<div class="ecl-pending" style="border-color:color-mix(in srgb,var(--green) 40%,transparent);background:var(--green-bg);color:var(--green)">💡 <b>2 จุดลงมือได้:</b> ① บังคับกรอกวิธีใช้ยา → R24→0 &nbsp; ② map ยา '+(d.drugs.drugsUsed||0)+' ตัว → รหัส TMT/สปสช (ยา billed '+_revM(d.drugs.drugBilled||0)+'/เดือน)</div>';
+  html+='<div class="rev-card" style="margin-top:12px"><div class="c-title">แนวโน้มคุณภาพรายเดือน</div><canvas id="ecl-c-quality"></canvas></div>';
+  document.getElementById('ecl-health').innerHTML=html;
+  var lab2=_eclMonths(d), pdxArr=[], r24Arr=[];
+  for(i=0;i<d.monthly.length;i++){ var mm=d.monthly[i];
+    pdxArr.push(mm.opdVisits?100*(mm.opdVisits-mm.noPdx)/mm.opdVisits:null);
+    r24Arr.push(mm.drugLines?100*mm.noUsage/mm.drugLines:null); }
+  _eclChart('ecl-c-quality',{type:'line',data:{labels:lab2,datasets:[
+    {label:'Pdx ครบ %',data:pdxArr,borderColor:'#1f9d55',tension:.3,pointRadius:2},
+    {label:'ยาไม่มีวิธีใช้ %',data:r24Arr,borderColor:'#d0870a',tension:.3,pointRadius:2}]},
+    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,max:100}}}});
+}
+function renderEclSubmit(){
+  var d=window._eclData, i;
+  var last=d.monthly[d.monthly.length-1]; for(i=d.monthly.length-1;i>=0;i--){ if(d.monthly[i].billed>0){ last=d.monthly[i]; break; } }
+  var kp='';
+  kp+='<div class="rev-kpi"><span class="ecl-src db">DB</span><div class="k-lab">visit ส่งเบิกได้ /เดือน</div><div class="k-val">'+_revC(last.eclaimVisits)+'</div><div class="k-sub">เดือนล่าสุด ('+last.ym+')</div></div>';
+  kp+='<div class="rev-kpi"><span class="ecl-src db">DB</span><div class="k-lab">สิทธิที่ตั้งส่งเบิก</div><div class="k-val">'+((d.meta&&d.meta.pttypeEligible)||0)+'</div><div class="k-sub">pttype (จาก 60 สิทธิ)</div></div>';
+  kp+='<div class="rev-kpi" style="border-top-color:var(--amber)"><span class="ecl-src rep">REP</span><div class="k-lab">ผ่าน / ติด C จริง</div><div class="k-val" style="color:var(--muted)">—</div><div class="k-sub">รอไฟล์ REP สปสช.</div></div>';
+  kp+='<div class="rev-kpi" style="border-top-color:var(--amber)"><span class="ecl-src rep">REP</span><div class="k-lab">ส่งตรงเวลา</div><div class="k-val" style="color:var(--muted)">—</div><div class="k-sub">รอไฟล์ REP สปสช.</div></div>';
+  var html='<div class="rev-kpis">'+kp+'</div>';
+  html+='<div class="rev-card"><div class="c-title">📈 ปริมาณส่งเบิกรายเดือน</div><canvas id="ecl-c-vol"></canvas></div>';
+  html+='<div class="ecl-pending">🟡 <b>ฝั่งผลตอบกลับ สปสช.</b> (ติด C จริง/ปฏิเสธ/timeliness) อยู่ในไฟล์ REP ที่หมอโหลดจากเว็บ (ไม่ import เข้า DB) — phase 2: ทำ parser + อัปโหลด แล้วเติมส่วนนี้ครบ</div>';
+  document.getElementById('ecl-submit').innerHTML=html;
+  var lab2=_eclMonths(d), vis=[], bil=[]; for(i=0;i<d.monthly.length;i++){ vis.push(d.monthly[i].eclaimVisits); bil.push(d.monthly[i].billed); }
+  _eclChart('ecl-c-vol',{data:{labels:lab2,datasets:[
+    {type:'bar',label:'visit ส่งเบิก',data:vis,backgroundColor:'#bcdfe8',yAxisID:'y'},
+    {type:'line',label:'billed (บาท)',data:bil,borderColor:'#7c5cff',tension:.3,pointRadius:2,yAxisID:'y1'}]},
+    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{position:'left'},y1:{position:'right',grid:{display:false},ticks:{callback:function(v){return _revM(v);}}}}}});
+}
+function _eclThaiYm(ym){
+  var TM=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  if(!ym||ym.length<7) return ym||'';
+  var y=parseInt(ym.substr(0,4),10)+543, m=parseInt(ym.substr(5,2),10);
+  return (TM[m]||'')+String(y).substr(2);
+}
+function _eclBar(lab,val,base,color,note){
+  var w=base>0?Math.max(2,Math.round(val/base*100)):2;
+  return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0">'
+    +'<div style="width:96px;font-size:11px;color:var(--muted);text-align:right;flex:none">'+lab+'</div>'
+    +'<div style="flex:1;background:#eef1f4;border-radius:5px;overflow:hidden;height:22px;position:relative">'
+    +'<div style="width:'+w+'%;height:100%;background:'+color+';border-radius:5px"></div>'
+    +'<div style="position:absolute;top:0;left:8px;line-height:22px;font-size:11px;font-weight:700;color:#0e2233">'+_revM(val)+(note?' <span style="color:var(--muted);font-weight:400">'+note+'</span>':'')+'</div>'
+    +'</div></div>';
+}
+function _eclFunnel(stm){
+  if(!stm||!stm.length){
+    return '<div class="ecl-pending" style="margin-top:12px">🟡 <b>ยังไม่มีไฟล์ Statement เบิกจ่าย</b> — วางไฟล์ .xls (จากเว็บผู้จ่าย) ใน <code>C:\\kpi_sync\\eclaim_statements\\inbox\\</code> แล้วระบบจะดึงเข้าอัตโนมัติ (2 ไฟล์/เดือน: 1-15, 16-31)</div>';
+  }
+  var h='<div class="rev-card" style="margin-top:12px"><div class="c-title">💰 เบิกจ่ายจริงจาก Statement ผู้จ่าย <small style="color:var(--muted)">— charge (HOSxP) → ส่งเบิกจริง → ได้จริง</small></div>';
+  var i, VT={OP:'OPD',IP:'IPD'};
+  for(i=0;i<stm.length;i++){ var s=stm[i];
+    var base=Math.max(s.chargeHosxp,s.submitted,s.paid);
+    var appr=s.approvalPct, dis=s.submitted?(s.disallowed/s.submitted*100):0, tot=s.total||(s.passed+s.failed);
+    h+='<div style="margin:12px 0;padding:10px 12px;background:var(--card-2,#fafbfc);border-radius:10px;border:1px solid #eef1f4">';
+    h+='<div style="display:flex;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px">'
+      +'<b style="font-size:13px">'+esc(s.rightName)+' · '+(VT[s.visitType]||s.visitType)+' · '+_eclThaiYm(s.ym)+'</b>'
+      +'<span style="font-size:11px">ผ่าน <b style="color:var(--green)">'+appr.toFixed(1)+'%</b> ('+_revC(s.passed)+'/'+_revC(tot)+' ราย) · ถูกหัก <b style="color:'+(dis>0.5?'var(--amber)':'var(--green)')+'">'+dis.toFixed(2)+'%</b></span></div>';
+    if(s.chargeHosxp>0) h+=_eclBar('charge (HOSxP)',s.chargeHosxp,base,'#94a3b8','');
+    h+=_eclBar('ส่งเบิกจริง',s.submitted,base,'#1c8bad',s.chargeHosxp>0?('('+(s.chargeHosxp?(s.submitted/s.chargeHosxp*100).toFixed(0):0)+'% ของ charge)'):'');
+    h+=_eclBar('ได้จริง',s.paid,base,'#0F9D58','('+(s.submitted?(s.paid/s.submitted*100).toFixed(1):0)+'% ของส่งเบิก)');
+    h+='</div>';
+  }
+  h+='<div style="font-size:10px;color:var(--muted);margin-top:4px">* charge (HOSxP) = ยอดตั้งเรียกเก็บทั้งเดือนในระบบ · ส่งเบิก/ได้จริง = จากไฟล์ statement ที่โหลด (แต่ละเดือนมี 2 ไฟล์: 1-15, 16-31 — ใส่ครบตัวเลขจึงตรงเดือนเต็ม)</div>';
+  return h+'</div>';
+}
+function renderEclFinance(){
+  var d=window._eclData, i;
+  var last=d.monthly[d.monthly.length-1]; for(i=d.monthly.length-1;i>=0;i--){ if(d.monthly[i].billed>0){ last=d.monthly[i]; break; } }
+  var paid=null;
+  if(window._revData && window._revData.spsochMonthly){ var ly=(d.latestYm||'').substr(0,4); var arr=window._revData.spsochMonthly[ly];
+    if(arr){ var s=0,j; for(j=0;j<arr.length;j++) s+=Number(arr[j])||0; paid=s; } }
+  var stm=d.statement||[], k2, stmSub=0, stmPaid=0, stmDis=0;
+  for(k2=0;k2<stm.length;k2++){ stmSub+=stm[k2].submitted; stmPaid+=stm[k2].paid; stmDis+=stm[k2].disallowed; }
+  var hasStm=stm.length>0;
+  var kp='';
+  kp+='<div class="rev-kpi"><span class="ecl-src db">DB</span><div class="k-lab">ยอดเรียกเก็บ e-Claim</div><div class="k-val">'+_revM(last.billed)+'</div><div class="k-sub">เดือนล่าสุด ('+last.ym+')</div></div>';
+  if(hasStm){
+    kp+='<div class="rev-kpi" style="border-top-color:var(--teal-deep)"><span class="ecl-src rep">STM</span><div class="k-lab">ได้จริง (จาก Statement)</div><div class="k-val" style="color:var(--teal-deep)">'+_revM(stmPaid)+'</div><div class="k-sub">'+(stmSub?(stmPaid/stmSub*100).toFixed(1):'0')+'% ของยอดส่งเบิก</div></div>';
+    kp+='<div class="rev-kpi" style="border-top-color:'+(stmDis>0?'var(--amber)':'var(--green)')+'"><span class="ecl-src rep">STM</span><div class="k-lab">ถูกหัก / ติด C คิดเป็นเงิน</div><div class="k-val" style="color:'+(stmDis>0?'var(--amber)':'var(--green)')+'">'+_revM(stmDis)+'</div><div class="k-sub">'+(stmSub?(stmDis/stmSub*100).toFixed(2):'0')+'% ของยอดส่งเบิก</div></div>';
+  } else {
+    kp+='<div class="rev-kpi"><span class="ecl-src fin">FIN</span><div class="k-lab">จ่ายจริง (สปสช.)</div><div class="k-val" style="color:var(--teal-deep)">'+(paid!==null?_revM(paid):'—')+'</div><div class="k-sub">'+(paid!==null?'จาก Tab รายรับ (ทั้งปี)':'เปิด Tab รายรับ ก่อน')+'</div></div>';
+    kp+='<div class="rev-kpi" style="border-top-color:var(--amber)"><span class="ecl-src rep">REP</span><div class="k-lab">ติด C คิดเป็นเงิน</div><div class="k-val" style="color:var(--muted)">—</div><div class="k-sub">รอไฟล์ statement</div></div>';
+  }
+  kp+='<div class="rev-kpi" style="border-top-color:var(--red)"><span class="ecl-src db">DB</span><div class="k-lab">ยาเสี่ยงเบิกไม่ครบ</div><div class="k-val" style="color:var(--red)">'+_revM(d.drugs.drugBilled||0)+'</div><div class="k-sub">ยา billed ไม่มีรหัสมาตรฐาน</div></div>';
+  var html='<div class="rev-kpis">'+kp+'</div>';
+  html+=_eclFunnel(stm);
+  html+='<div class="rev-card" style="margin-top:12px"><div class="c-title">💊 ยอดเรียกเก็บแยกสิทธิ (เดือนล่าสุด)</div><div class="rev-rights">';
+  var tot=0; for(i=0;i<d.rights.length;i++) tot+=d.rights[i].billed;
+  for(i=0;i<d.rights.length;i++){ var rr=d.rights[i];
+    html+='<div class="rev-rt"><span class="dot" style="background:'+rr.color+'"></span><span class="nm">'+rr.name+'</span><span class="vl">'+_revM(rr.billed)+' · '+(tot?rr.billed/tot*100:0).toFixed(1)+'%</span></div>'; }
+  html+='</div></div>';
+  html+='<div class="rev-card" style="margin-top:12px"><div class="c-title">เรียกเก็บ vs จ่ายจริง</div><canvas id="ecl-c-bp"></canvas></div>';
+  document.getElementById('ecl-finance').innerHTML=html;
+  _eclChart('ecl-c-bp',{type:'bar',data:{labels:['เรียกเก็บ (เดือน)','จ่ายจริง สปสช. (ปี)'],datasets:[{data:[last.billed, paid!==null?paid:0],backgroundColor:['#1c8bad','#7c5cff']}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return _revM(v);}}}}}});
+}
+</script>
 </body>
 </html>
