@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+<!--
+  Cache-bust hint (spec §5.3 "กติกา plumbing" — LINE webview may cache this
+  GitHub Pages HTML): the rich-menu / shared links should carry a version
+  query param, e.g. daily-coach.html?v=20260808 — bump it at deploy step 6b
+  (deploy-checklist step, not code). RATE_ENABLED reaches this page only via
+  task.measure_type in the get_tasks_v4 payload (server-driven, no flag here).
+-->
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -255,6 +262,63 @@
     cursor: not-allowed;
   }
 
+  /* ── Rate KPI (measure_type='rate') two-field entry — Task 9 ── */
+  .rate-pair {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0 4px;
+  }
+  .rate-pair .rate-field { flex: 1; }
+  .rate-pair label {
+    font-size: 11px;
+    color: #6B4A2B;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .rate-pair input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #EDB680;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #FFF7F0;
+    color: #3B2817;
+  }
+  .rate-pair input:focus {
+    outline: none;
+    border-color: #C2410C;
+    box-shadow: 0 0 0 3px rgba(194,65,12,0.12);
+  }
+  .rate-preview {
+    font-size: 13px;
+    font-weight: 600;
+    color: #9A3412;
+    min-height: 18px;
+    margin-bottom: 4px;
+    padding: 0 2px;
+  }
+  .rate-warn {
+    display: none;
+    background: #FFFBEB;
+    border: 1px solid #FCD34D;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin: 6px 0;
+    font-size: 12px;
+    color: #854F0B;
+    line-height: 1.5;
+  }
+  .rate-warn .rate-warn-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .rate-warn .rate-warn-actions .btn {
+    padding: 8px;
+    font-size: 12px;
+  }
+
   .task-actions {
     display: flex;
     gap: 8px;
@@ -397,6 +461,106 @@
     }
     return fetch(API_URL + '?' + query)
       .then(function(r) { return r.json(); });
+  }
+
+  /* ── Rate KPI (measure_type='rate') helpers — Task 9 F ─────────────────
+   * Local port of mobileValidateRateInputs (MobileApp.html) — IDENTICAL
+   * states + Thai messages, which are themselves the gateway's canonical
+   * texts (05_gateway_rules.js). This repo deploys separately (GitHub
+   * Pages), so the function is duplicated by design; the main repo's test
+   * suite cross-checks the texts stay verbatim (cases_homework.js).
+   * No confirm()/alert()/prompt() anywhere — inline warning blocks only. */
+
+  var noCaseOK = {};   // kpi_id -> user pressed "ใช่ ไม่มีเคสจริง" for the CURRENT 0/0 entry
+
+  function coachValidateRateInputs(numRaw, denomRaw) {
+    var numS = (numRaw === null || numRaw === undefined) ? '' : String(numRaw).trim();
+    var denomS = (denomRaw === null || denomRaw === undefined) ? '' : String(denomRaw).trim();
+    if (numS === '' && denomS === '') {
+      return { state: 'empty', msg: '', num: null, denom: null, pct: null };
+    }
+    if (numS === '' || denomS === '') {
+      return { state: 'incomplete', msg: 'KPI นี้เป็นอัตรา ต้องกรอกทั้งตัวเศษและตัวส่วน', num: null, denom: null, pct: null };
+    }
+    var num = parseFloat(numS);
+    var denom = parseFloat(denomS);
+    if (!isFinite(num) || !isFinite(denom) || num < 0 || denom < 0) {
+      return { state: 'invalid', msg: 'ตัวเศษ/ตัวส่วนต้องเป็นตัวเลขและไม่ติดลบ', num: null, denom: null, pct: null };
+    }
+    if (num > 0 && denom === 0) {
+      return { state: 'impossible', msg: 'ตัวเศษมากกว่า 0 แต่ตัวส่วนเป็น 0 — เป็นไปไม่ได้ กรุณาตรวจสอบ', num: num, denom: denom, pct: null };
+    }
+    if (num === 0 && denom === 0) {
+      return { state: 'nocase', msg: '⚠ ไม่มีเคสเข้าเกณฑ์ → บันทึกเป็น "ไม่มีเคส" ไม่ใช่ 0%', num: 0, denom: 0, pct: null };
+    }
+    // round(x, 1) — parity with autosync and computeRateOutcome_ (05_gateway_rules.js)
+    var pct = Math.round((num / denom) * 100 * 10) / 10;
+    if (num > denom) {
+      return { state: 'over100', msg: 'ตัวเศษมากกว่าตัวส่วน — ผลลัพธ์ ' + pct + '% (เกิน 100%) · บาง KPI นับซ้ำได้ ถ้าตัวเลขถูกต้องบันทึกได้เลย', num: num, denom: denom, pct: pct };
+    }
+    return { state: 'ok', msg: '', num: num, denom: denom, pct: pct };
+  }
+
+  function coachHideRateWarn(kpiId) {
+    var el = document.getElementById('warn-' + kpiId);
+    if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+  }
+
+  /* Inline warning block. withNoCaseButtons=true renders the spec §6
+   * proceed/cancel pair; onProceed runs when the user presses ✓. */
+  function coachShowRateWarn(kpiId, msg, withNoCaseButtons, onProceed) {
+    var el = document.getElementById('warn-' + kpiId);
+    if (!el) return;
+    var html = '<div>' + escapeHtml(msg) + '</div>';
+    if (withNoCaseButtons) {
+      html += '<div class="rate-warn-actions">';
+      html += '<button type="button" class="btn primary" data-warn-ok="1">✓ ใช่ ไม่มีเคสจริง</button>';
+      html += '<button type="button" class="btn secondary" data-warn-cancel="1">✗ ขอแก้ตัวเลข</button>';
+      html += '</div>';
+    }
+    el.innerHTML = html;
+    el.style.display = 'block';
+    if (withNoCaseButtons) {
+      var okBtn = el.querySelector('[data-warn-ok]');
+      var cancelBtn = el.querySelector('[data-warn-cancel]');
+      if (okBtn) okBtn.addEventListener('click', function() {
+        noCaseOK[kpiId] = true;
+        coachHideRateWarn(kpiId);
+        if (onProceed) onProceed();
+      });
+      if (cancelBtn) cancelBtn.addEventListener('click', function() {
+        noCaseOK[kpiId] = false;
+        coachHideRateWarn(kpiId);
+        var n = document.getElementById('num-' + kpiId);
+        if (n) n.focus();
+      });
+    }
+  }
+
+  /* Live preview + warning while typing (spec §6: the warning appears as the
+   * user types, BEFORE pressing save). Any edit invalidates a prior
+   * "ไม่มีเคสจริง" confirmation — same rule as web/mobile. */
+  function coachRateInputChanged(kpiId) {
+    noCaseOK[kpiId] = false;
+    var numInput = document.getElementById('num-' + kpiId);
+    var denomInput = document.getElementById('denom-' + kpiId);
+    var prevEl = document.getElementById('preview-' + kpiId);
+    if (!numInput || !denomInput) return;
+    var vr = coachValidateRateInputs(numInput.value, denomInput.value);
+    if (prevEl) {
+      if (vr.state === 'ok' || vr.state === 'over100') prevEl.textContent = '= ' + vr.pct + '%';
+      else if (vr.state === 'nocase') prevEl.textContent = '= ไม่มีเคส';
+      else prevEl.textContent = '';
+    }
+    if (vr.state === 'nocase') {
+      // typing-time ✓ only ARMS the confirmation (no auto-submit) — the user
+      // still presses ยืนยัน to send.
+      coachShowRateWarn(kpiId, vr.msg, true, null);
+    } else if (vr.msg) {
+      coachShowRateWarn(kpiId, vr.msg, false, null);
+    } else {
+      coachHideRateWarn(kpiId);
+    }
   }
 
   function init() {
@@ -599,10 +763,24 @@
       if (task.ai_pre_filled) {
         html += '<div class="ai-prefill">🤖 AI คำนวณให้: <strong>' + escapeHtml(task.ai_pre_filled) + '</strong></div>';
       }
-      html += '<div class="input-group">';
-      html += '<label>ค่าที่จะบันทึก</label>';
-      html += '<input type="text" id="value-' + escapeHtml(task.kpi_id) + '" placeholder="กรอกค่า เช่น 48.2%" value="' + escapeHtml(task.target_value || '') + '">';
-      html += '</div>';
+      if (task.measure_type === 'rate') {
+        // Task 9 F: rate KPI → two numeric fields + live % preview + inline
+        // warning block (no dialogs — iOS standalone PWA swallows them).
+        // measure_type comes LIVE from the server payload (spec I2).
+        html += '<div class="rate-pair">';
+        html += '<div class="rate-field"><label>ตัวเศษ</label>';
+        html += '<input type="text" inputmode="decimal" id="num-' + escapeHtml(task.kpi_id) + '" data-rate-kpi="' + escapeHtml(task.kpi_id) + '" placeholder="เช่น 29"></div>';
+        html += '<div class="rate-field"><label>ตัวส่วน</label>';
+        html += '<input type="text" inputmode="decimal" id="denom-' + escapeHtml(task.kpi_id) + '" data-rate-kpi="' + escapeHtml(task.kpi_id) + '" placeholder="เช่น 40"></div>';
+        html += '</div>';
+        html += '<div class="rate-preview" id="preview-' + escapeHtml(task.kpi_id) + '"></div>';
+        html += '<div class="rate-warn" id="warn-' + escapeHtml(task.kpi_id) + '"></div>';
+      } else {
+        html += '<div class="input-group">';
+        html += '<label>ค่าที่จะบันทึก</label>';
+        html += '<input type="text" id="value-' + escapeHtml(task.kpi_id) + '" placeholder="กรอกค่า เช่น 48.2%" value="' + escapeHtml(task.target_value || '') + '">';
+        html += '</div>';
+      }
       html += '<div class="task-actions">';
       html += '<button class="btn primary" data-action="confirm" data-kpi="' + escapeHtml(task.kpi_id) + '">✓ ยืนยัน</button>';
       html += '<button class="btn snooze" data-action="snooze" data-kpi="' + escapeHtml(task.kpi_id) + '">⏰</button>';
@@ -728,6 +906,13 @@
     for (var i = 0; i < buttons.length; i++) {
       buttons[i].addEventListener('click', handleButton);
     }
+    // Rate two-field inputs: live % preview + inline warning while typing
+    var rateInputs = document.querySelectorAll('input[data-rate-kpi]');
+    for (var j = 0; j < rateInputs.length; j++) {
+      rateInputs[j].addEventListener('input', function(e) {
+        coachRateInputChanged(e.currentTarget.getAttribute('data-rate-kpi'));
+      });
+    }
   }
 
   function handleButton(e) {
@@ -740,44 +925,89 @@
     btn.textContent = '...';
 
     if (action === 'confirm') {
+      var resetBtn = function() {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      };
+      var sendConfirm = function(confirmParams) {
+        btn.disabled = true;
+        btn.textContent = '...';
+        confirmParams.line_id = state.profile.userId;
+        confirmParams.kpi_id = kpiId;
+        // v8.2: switched to confirm_task_v4
+        apiCall('confirm_task_v4', confirmParams).then(function(r) {
+          if (r.ok) {
+            var msg = '✅ บันทึกแล้ว: ' + kpiId;
+            if (r.completed_value) {
+              // rate confirms come back as "n/d (x%)" or "ไม่มีเคส" (server-derived)
+              msg += ' = ' + r.completed_value;
+            }
+            if (r.shared_cleared > 0) {
+              msg += ' (เคลียร์ให้ผู้ร่วมรับผิดชอบ ' + r.shared_cleared + ' คน)';
+            }
+            showToast(msg);
+            setTimeout(loadTasks, 800);
+          } else {
+            // Show the server's error verbatim — the gateway's Thai message
+            // IS the instruction (Task 9 G; never re-wrap it).
+            var errMsg = r.error || 'error';
+            if (r.reason === 'already_completed' && r.completed_by) {
+              errMsg = 'KPI นี้ถูกกรอกแล้วโดย ' + r.completed_by;
+            }
+            showToast('❌ ' + errMsg);
+            resetBtn();
+            // Reload to sync state (maybe shared-done)
+            setTimeout(loadTasks, 1500);
+          }
+        }).catch(function(err) {
+          console.error('confirm error:', err);
+          showToast('❌ เกิดข้อผิดพลาด');
+          resetBtn();
+        });
+      };
+
+      var numInput = document.getElementById('num-' + kpiId);
+      var denomInput = document.getElementById('denom-' + kpiId);
+      if (numInput && denomInput) {
+        // ── Rate card (Task 9 F): validate inline, send raw GET strings —
+        //    the gateway parses/validates server-side (spec §5.3 rows 1-3).
+        var vr = coachValidateRateInputs(numInput.value, denomInput.value);
+        if (vr.state === 'empty' || vr.state === 'incomplete') {
+          coachShowRateWarn(kpiId, 'KPI นี้เป็นอัตรา ต้องกรอกทั้งตัวเศษและตัวส่วน', false, null);
+          resetBtn();
+          return;
+        }
+        if (vr.state === 'invalid' || vr.state === 'impossible') {
+          coachShowRateWarn(kpiId, vr.msg, false, null);
+          resetBtn();
+          return;
+        }
+        var numStr = numInput.value.trim();
+        var denomStr = denomInput.value.trim();
+        if (vr.state === 'nocase' && noCaseOK[kpiId] !== true) {
+          // 0/0 → in-page confirm (spec §6) — proceed sends, cancel edits.
+          resetBtn();
+          coachShowRateWarn(kpiId, vr.msg, true, function() {
+            sendConfirm({ numerator: numStr, denominator: denomStr });
+          });
+          return;
+        }
+        // ok / over100 (advisory — never a block) / armed nocase → send.
+        // No `value` param: the server derives the stored % itself.
+        coachHideRateWarn(kpiId);
+        sendConfirm({ numerator: numStr, denominator: denomStr });
+        return;
+      }
+
+      // ── Non-rate card: unchanged single-value flow ──
       var input = document.getElementById('value-' + kpiId);
       var value = input ? input.value.trim() : '';
       if (!value) {
         showToast('⚠️ กรุณากรอกค่าก่อน');
-        btn.disabled = false;
-        btn.textContent = originalText;
+        resetBtn();
         return;
       }
-      // v8.2: switched to confirm_task_v4
-      apiCall('confirm_task_v4', {
-        line_id: state.profile.userId,
-        kpi_id: kpiId,
-        value: value
-      }).then(function(r) {
-        if (r.ok) {
-          var msg = '✅ บันทึกแล้ว: ' + kpiId;
-          if (r.shared_cleared > 0) {
-            msg += ' (เคลียร์ให้ผู้ร่วมรับผิดชอบ ' + r.shared_cleared + ' คน)';
-          }
-          showToast(msg);
-          setTimeout(loadTasks, 800);
-        } else {
-          var errMsg = r.error || 'error';
-          if (r.reason === 'already_completed' && r.completed_by) {
-            errMsg = 'KPI นี้ถูกกรอกแล้วโดย ' + r.completed_by;
-          }
-          showToast('❌ ' + errMsg);
-          btn.disabled = false;
-          btn.textContent = originalText;
-          // Reload to sync state (maybe shared-done)
-          setTimeout(loadTasks, 1500);
-        }
-      }).catch(function(err) {
-        console.error('confirm error:', err);
-        showToast('❌ เกิดข้อผิดพลาด');
-        btn.disabled = false;
-        btn.textContent = originalText;
-      });
+      sendConfirm({ value: value });
     } else if (action === 'snooze') {
       // v8.2: switched to snooze_task_v4 (fixed bug, per-user only)
       apiCall('snooze_task_v4', {
