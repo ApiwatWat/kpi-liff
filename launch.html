@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KPI Monitor — กำลังเข้าสู่ระบบ</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  body { margin:0; font-family:'Prompt','Leelawadee UI',sans-serif; background:#FFF7F0;
+         min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .card { text-align:center; padding:32px; }
+  .spin { width:44px; height:44px; border:4px solid #FBE5CD; border-top-color:#C2410C;
+          border-radius:50%; margin:0 auto 18px; animation:s 1s linear infinite; }
+  @keyframes s { to { transform:rotate(360deg); } }
+  h1 { font-size:17px; color:#3B2817; margin:0 0 6px; }
+  p  { font-size:13px; color:#6B4A2B; margin:0; }
+  .err { color:#B91C1C; font-size:13px; margin-top:12px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="spin"></div>
+  <h1>กำลังยืนยันตัวตนผ่าน LINE...</h1>
+  <p id="msg">รอสักครู่</p>
+  <div class="err" id="err"></div>
+</div>
+<script>
+/* LIFF launcher (10 ส.ค.69) — liff.init dies inside the Apps Script iframe,
+ * so this GitHub-hosted page (same origin as the daily-coach LIFF, where LIFF
+ * provably works) does the LINE handshake, trades the idToken for a 60-second
+ * single-use code via doPost liff_line_login, and forwards the user to the
+ * Apps Script app with ONLY that code in the URL — the session token itself
+ * never rides a URL. No code / any failure → forwarded without otc → the
+ * app's normal email+OTP login shows instead. */
+var API_URL = 'https://script.google.com/macros/s/AKfycbw_svUdey6l6A0uNVFAYEnF6pyPA_hWdVifQwX4zGY2BnW50SbtKoQ4UscNdOvDRTs/exec';
+
+function qp(name) {
+  var m = new RegExp('[?&]' + name + '=([^&#]*)').exec(location.search);
+  return m ? decodeURIComponent(m[1]) : '';
+}
+
+var TO  = qp('to') || 'mobile';
+var LID = qp('lid');
+var DEST = API_URL + (TO === 'mobile' ? '?view=mobile' : '');
+
+function go(otc) {
+  location.replace(DEST + (otc ? (TO === 'mobile' ? '&' : '?') + 'otc=' + encodeURIComponent(otc) : ''));
+}
+
+function fail(msg) {
+  document.getElementById('err').textContent = msg || '';
+  document.getElementById('msg').textContent = 'เปิดหน้า login ปกติแทน...';
+  setTimeout(function() { go(null); }, 900);
+}
+
+if (!LID) { fail('ไม่มี lid ใน endpoint URL'); }
+else {
+  liff.init({ liffId: LID }).then(function() {
+    if (!liff.isLoggedIn()) {
+      // external browser: bounce through LINE login once, then re-land here
+      liff.login({ redirectUri: location.href });
+      return;
+    }
+    var idt = null;
+    try { idt = liff.getIDToken(); } catch (e) {}
+    if (!idt) { fail('ไม่ได้ idToken (ต้องเปิด scope openid)'); return; }
+    document.getElementById('msg').textContent = 'ตรวจสอบสิทธิ์กับเซิร์ฟเวอร์...';
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'liff_line_login', id_token: idt })
+    }).then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (r && r.ok && r.otc) { go(r.otc); }
+        else { fail(r && r.msg ? r.msg : 'login ไม่สำเร็จ'); }
+      })
+      .catch(function(e) { fail('เครือข่ายขัดข้อง'); });
+  }).catch(function(e) { fail('LIFF init ไม่สำเร็จ'); });
+}
+</script>
+</body>
+</html>
