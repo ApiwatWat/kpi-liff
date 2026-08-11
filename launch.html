@@ -32,7 +32,16 @@
  * Apps Script app with ONLY that code in the URL — the session token itself
  * never rides a URL. No code / any failure → forwarded without otc → the
  * app's normal email+OTP login shows instead. */
+/* Two URLs, and they must stay apart (Track C cutover, 11 ส.ค. 2569).
+   API_URL is where the LINE idToken is exchanged for a one-time code. That is
+   Apps Script's liff_line_login, and the Worker does not have it — it has
+   otc_exchange, which it calls server-side after the browser arrives. Pointing
+   API_URL at the Worker would break LINE login for everyone while looking like
+   a one-line change.
+   APP_URL is only where the person is SENT once the code exists.
+   TO ROLL BACK: set APP_URL back to API_URL. */
 var API_URL = 'https://script.google.com/macros/s/AKfycbw_svUdey6l6A0uNVFAYEnF6pyPA_hWdVifQwX4zGY2BnW50SbtKoQ4UscNdOvDRTs/exec';
+var APP_URL = 'https://kpi-front.www-apiwat-wat-com.workers.dev';
 
 function qp(name) {
   var m = new RegExp('[?&]' + name + '=([^&#]*)').exec(location.search);
@@ -41,7 +50,7 @@ function qp(name) {
 
 var TO  = qp('to') || 'mobile';
 var LID = qp('lid');
-var DEST = API_URL + (TO === 'mobile' ? '?view=mobile' : '');
+var DEST = APP_URL + (TO === 'mobile' ? '/?view=mobile' : '/');
 
 function go(otc) {
   location.replace(DEST + (otc ? (TO === 'mobile' ? '&' : '?') + 'otc=' + encodeURIComponent(otc) : ''));
