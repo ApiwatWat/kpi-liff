@@ -16,7 +16,6 @@
   @keyframes s { to { transform:rotate(360deg); } }
   h1 { font-size:17px; color:#3B2817; margin:0 0 6px; }
   p  { font-size:13px; color:#6B4A2B; margin:0; }
-  .err { color:#B91C1C; font-size:13px; margin-top:12px; }
 </style>
 </head>
 <body>
@@ -24,7 +23,6 @@
   <div class="spin"></div>
   <h1>กำลังยืนยันตัวตนผ่าน LINE...</h1>
   <p id="msg">รอสักครู่</p>
-  <div class="err" id="err"></div>
 </div>
 <script>
 /* LIFF launcher (10 ส.ค.69) — liff.init dies inside the Apps Script iframe,
@@ -68,15 +66,23 @@ function go(otc) {
 }
 
 function fail(msg) {
-  document.getElementById('err').textContent = msg || '';
-  document.getElementById('msg').textContent = 'เปิดหน้า login ปกติแทน...';
+  dbg('fail', msg || '');
+  say('เปิดหน้า login ปกติแทน...');
   setTimeout(function() { go(null); }, 900);
 }
 
-var BUILD = 'v3 · 11 ส.ค. 14:05';
+/* Diagnostics go to the console, never to the screen (11 ส.ค. 2569).
+   While chasing the LIFF 400 these lines were printed into #err, so EVERY normal
+   visitor met a red "v3 · … · lid=…" line on a page that was working fine. The
+   information is still worth having when it breaks — it just belongs where only
+   someone debugging will look. On-screen text stays in #msg and stays in Thai. */
+var BUILD = 'v4 · 11 ส.ค. 2569';
 function dbg(label, extra) {
-  var e = document.getElementById('err');
-  if (e) e.textContent = BUILD + ' · ' + label + (extra ? ' · ' + extra : '');
+  try { console.log('[launch] ' + BUILD + ' · ' + label + (extra ? ' · ' + extra : '')); } catch (e) {}
+}
+function say(text) {
+  var m = document.getElementById('msg');
+  if (m) m.textContent = text;
 }
 dbg('เริ่ม', 'lid=' + (LID || '(ว่าง)') + ' to=' + TO);
 
@@ -97,7 +103,11 @@ else {
         // and that page cannot be copied, shared or opened elsewhere, so the
         // reason was unreadable. Say what we know here instead.
         dbg('ไม่ได้ login', 'inClient=true os=' + (liff.getOS ? liff.getOS() : '?'));
-        setTimeout(function () { go(null); }, 6000);
+        /* 6 s used to be the time needed to READ the on-screen debug line. With
+           the line gone that is 6 s of a spinner saying nothing, so the wait is
+           only what a redirect needs. */
+        say('เปิดหน้า login ปกติแทน...');
+        setTimeout(function () { go(null); }, 900);
         return;
       }
       liff.login({ redirectUri: location.href });
@@ -118,7 +128,8 @@ else {
       .catch(function(e) { fail('เครือข่ายขัดข้อง'); });
   }).catch(function(e) {
     dbg('init ล้มเหลว', (e && (e.code || e.message)) ? (e.code || e.message) : String(e));
-    setTimeout(function () { go(null); }, 6000);
+    say('เปิดหน้า login ปกติแทน...');
+    setTimeout(function () { go(null); }, 900);
   });
 }
 </script>
