@@ -48,7 +48,16 @@ function qp(name) {
   return m ? decodeURIComponent(m[1]) : '';
 }
 
-var TO  = qp('to') || 'mobile';
+/* `view` overrides `to`, and both are read (11 ส.ค.69).
+   `to` arrives baked into the LIFF's own endpoint URL, so one LIFF can only ever
+   mean one destination. `view` arrives from the link that was tapped, which lets
+   a SINGLE LIFF serve both buttons:
+       https://liff.line.me/<id>            → whatever its endpoint says
+       https://liff.line.me/<id>?view=web   → the desktop app, same LIFF
+   Added because the Dashboard LIFF answered 400 at access.line.me and the app
+   should not be hostage to a second LIFF registration. Existing links are
+   unaffected: with no `view`, this is exactly the old behaviour. */
+var TO  = qp('view') || qp('to') || 'mobile';
 var LID = qp('lid');
 var DEST = APP_URL + (TO === 'mobile' ? '/?view=mobile' : '/');
 
