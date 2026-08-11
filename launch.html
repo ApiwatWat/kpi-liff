@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+<meta http-equiv="Cache-Control" content="no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>KPI Monitor — กำลังเข้าสู่ระบบ</title>
@@ -71,6 +73,13 @@ function fail(msg) {
   setTimeout(function() { go(null); }, 900);
 }
 
+var BUILD = 'v3 · 11 ส.ค. 14:05';
+function dbg(label, extra) {
+  var e = document.getElementById('err');
+  if (e) e.textContent = BUILD + ' · ' + label + (extra ? ' · ' + extra : '');
+}
+dbg('เริ่ม', 'lid=' + (LID || '(ว่าง)') + ' to=' + TO);
+
 if (!LID) { fail('ไม่มี lid ใน endpoint URL'); }
 else {
   liff.init({ liffId: LID }).then(function() {
@@ -83,7 +92,14 @@ else {
          The app already has a way in without LINE. Use it rather than stranding
          them. liff.login is kept only for a real external browser, where it is
          the correct move and where a failure still lands on the same fallback. */
-      if (liff.isInClient()) { fail('LINE ไม่ได้ให้สิทธิ์ — เข้าด้วย email แทน'); return; }
+      if (liff.isInClient()) {
+        // Never bounce to LINE Login from inside the LINE app: it answered 400
+        // and that page cannot be copied, shared or opened elsewhere, so the
+        // reason was unreadable. Say what we know here instead.
+        dbg('ไม่ได้ login', 'inClient=true os=' + (liff.getOS ? liff.getOS() : '?'));
+        setTimeout(function () { go(null); }, 6000);
+        return;
+      }
       liff.login({ redirectUri: location.href });
       return;
     }
@@ -100,7 +116,10 @@ else {
         else { fail(r && r.msg ? r.msg : 'login ไม่สำเร็จ'); }
       })
       .catch(function(e) { fail('เครือข่ายขัดข้อง'); });
-  }).catch(function(e) { fail('LIFF init ไม่สำเร็จ'); });
+  }).catch(function(e) {
+    dbg('init ล้มเหลว', (e && (e.code || e.message)) ? (e.code || e.message) : String(e));
+    setTimeout(function () { go(null); }, 6000);
+  });
 }
 </script>
 </body>
