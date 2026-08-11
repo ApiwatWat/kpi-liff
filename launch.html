@@ -75,7 +75,15 @@ if (!LID) { fail('ไม่มี lid ใน endpoint URL'); }
 else {
   liff.init({ liffId: LID }).then(function() {
     if (!liff.isLoggedIn()) {
-      // external browser: bounce through LINE login once, then re-land here
+      /* Inside the LINE app the user IS logged in, so reaching here means LINE
+         will not grant this LIFF a session — and bouncing to LINE Login then
+         dead-ends on its own 400 page with no way forward. Seen live 11 ส.ค.69
+         on the Dashboard LIFF: the page appeared for a second and then became a
+         LINE error screen, and the person could go no further.
+         The app already has a way in without LINE. Use it rather than stranding
+         them. liff.login is kept only for a real external browser, where it is
+         the correct move and where a failure still lands on the same fallback. */
+      if (liff.isInClient()) { fail('LINE ไม่ได้ให้สิทธิ์ — เข้าด้วย email แทน'); return; }
       liff.login({ redirectUri: location.href });
       return;
     }
