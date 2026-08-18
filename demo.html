@@ -1,3 +1,149 @@
+<script>
+// KPI_RPC_SHIM — one page, two hosts.
+//
+// Apps Script provides google.script.run inside its sandbox iframe. The
+// Cloudflare front door does not, so when this page is served from there we
+// install a runner with the same shape and the same chaining contract. All 78
+// existing call sites, including callBackend's runner[fnName].apply(), keep
+// working untouched — which is the whole point: there is ONE copy of this page,
+// not two that drift.
+//
+// Installed ONLY when the real runner is missing, so nothing changes on the
+// Apps Script host, where google.script is defined by the sandbox wrapper long
+// before any markup from this file is parsed.
+//
+// The name list is generated from every server function these pages reference —
+// direct chains AND names passed as strings to callBackend. Source of truth:
+// cloudflare/kpi-front/src/rpc_functions.json. tests/gateway/cases_shim.js
+// fails if the two disagree. Methods are declared explicitly rather than caught
+// by a Proxy so a mistyped name throws a TypeError at the call site instead of
+// silently POSTing a name the server has never heard of.
+var KPI_RPC_FN_NAMES = [
+  'bootstrapPayload', 'getKPIsByDept', 'getDepartments', 'checkPermission',
+  'getDashboardStats', 'getCellHistory', 'saveKPIValue', 'addKPI',
+  'addUser', 'askAI', 'bulkImportKPIsFromRows', 'computeHAGapForUI',
+  'deleteKPI', 'deleteUser', 'editUser', 'exportKPIToExcel',
+  'exportWordReport', 'forceClearCacheAPI', 'generateMonthlySlideDeck', 'generatePDCA',
+  'getActionFollowup', 'getActionOwners', 'getActionPlans', 'getAvailableMonths',
+  'getCareCockpit', 'getDashboardAggregates', 'getExecPopSummary', 'getHeatmapStats',
+  'getKPIDefinition', 'getKPIsByUser', 'getNextKpiId', 'getNotifications',
+  'getQualityAgenda', 'getRecentAuditLog', 'getSlideOutlineText', 'getSmartSuggestions',
+  'getSystemFeedback', 'getSystemVitals', 'getUsers', 'getYoYStats',
+  'haQueueList', 'haQueueReview', 'haSarExport', 'listUsers',
+  'loginWithGoogle', 'loginWithLine', 'mapLineUser', 'otpRequest',
+  'otpVerify', 'revertKPICellAPI', 'saveActionPlan', 'saveComment',
+  'saveGoalOverride', 'saveKPIMeta', 'saveMeetingDecision', 'saveSystemFeedback',
+  'teamView'
+];
+if (!(window.google && window.google.script && window.google.script.run)) {
+  (function () {
+    // The real google.script.run does NOT route a success handler's own
+    // exception into the failure handler — it lets it escape. Reproducing that
+    // matters: a render bug after a save that the server ACCEPTED would
+    // otherwise tell the user the save failed, they would retry, and a replayed
+    // L1-over-L1 write passes RULE 1 and silently overwrites. Call each handler
+    // exactly once, and rethrow its exception asynchronously so it surfaces as
+    // an uncaught error the way it does on Apps Script.
+    function callHandler(fn, arg, userObject) {
+      if (!fn) return;
+      try {
+        fn(arg, userObject);
+      } catch (e) {
+        setTimeout(function () { throw e; }, 0);
+      }
+    }
+
+    // The web page keeps the session token in memory as well as in storage, and
+    // every setItem is wrapped in a swallowing try/catch. In a browser where
+    // storage is blocked — a LINE in-app webview, private mode — the page would
+    // log in successfully and then send an empty token on every call, which
+    // looks like an unbreakable login loop. Fall back to what the page holds.
+    function sessionToken() {
+      var t = '';
+      try { t = localStorage.getItem('kpi_token') || ''; } catch (e) {}
+      if (t) return t;
+      try { if (window.S && window.S.sessionToken) return window.S.sessionToken; } catch (e) {}
+      return '';
+    }
+
+    function makeRunner(onOk, onFail, userObject) {
+      var runner = {
+        withSuccessHandler: function (f) { return makeRunner(f, onFail, userObject); },
+        withFailureHandler: function (f) { return makeRunner(onOk, f, userObject); },
+        withUserObject:     function (o) { return makeRunner(onOk, onFail, o); }
+      };
+      KPI_RPC_FN_NAMES.forEach(function (name) {
+        runner[name] = function () {
+          var args = Array.prototype.slice.call(arguments);
+          fetch('/rpc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fn: name, args: args, sessionToken: sessionToken() })
+          })
+          // ⚠️ The message built here is what a Thai-speaking nurse reads on
+          // screen at the moment something is wrong, so it has to be a Thai
+          // sentence — google.script.run always produced one
+          // ("การเชื่อมต่อล้มเหลวเนื่องจาก HTTP 0"). Calling res.json() with no
+          // status or content-type check instead surfaced whatever the browser
+          // or the parser happened to produce: "Failed to fetch", or a
+          // JSON.parse error quoting an HTML error page — which the page then
+          // injects with innerHTML, so the browser eats the quoted markup and
+          // the user is left with "Unexpected token '<', \"" cut off mid-quote.
+          // Useless to them and useless to whoever they report it to.
+          .then(function (res) {
+            var ct = res.headers.get('content-type') || '';
+            if (!res.ok || ct.indexOf('json') < 0) {
+              // Read and discard the body: an HTML error page must never reach
+              // the screen, but the status must.
+              return res.text().then(function () {
+                var e = new Error('การเชื่อมต่อล้มเหลวเนื่องจาก HTTP ' + res.status);
+                e.httpStatus = res.status;
+                throw e;
+              });
+            }
+            return res.json().catch(function () {
+              throw new Error('การเชื่อมต่อล้มเหลวเนื่องจาก HTTP ' + res.status);
+            });
+          })
+          .then(
+            function (j) {
+              // A transport-level refusal is a FAILURE, not a success carrying
+              // an error object — handing {ok:false} to a success handler makes
+              // the page try to render it.
+              if (!j || j.ok === false) {
+                var err = new Error((j && (j.msg || j.reason)) || 'rpc failed');
+                err.reason = j && j.reason;
+                callHandler(onFail, err, userObject);
+                return;
+              }
+              callHandler(onOk, j.result, userObject);
+            },
+            // Two-argument then, not .catch: a rejection here can only come from
+            // the fetch, the status check or the JSON parse. Chaining .catch
+            // would also catch the handlers above and call onFail a second time.
+            function (e) {
+              // A rejected fetch — the browser is offline, DNS failed, the
+              // request was aborted — arrives as TypeError: Failed to fetch.
+              // Everything above this line already carries a Thai sentence.
+              if (!e || !e.httpStatus) {
+                if (!e || /Failed to fetch|NetworkError|Load failed/i.test(String(e && e.message))) {
+                  e = new Error('การเชื่อมต่อล้มเหลว — กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+                }
+              }
+              callHandler(onFail, e, userObject);
+            }
+          );
+        };
+      });
+      return runner;
+    }
+    window.google = window.google || {};
+    window.google.script = window.google.script || {};
+    window.google.script.run = makeRunner(null, null, undefined);
+  })();
+}
+// KPI_RPC_SHIM_END
+</script>
 <script>function navToDept(el){loadDept(el.getAttribute('data-dept'));}function navToDeptRow(el){loadDept(el.getAttribute('data-dept'));}function selectKPIRow(el,ev){var skipScroll=false;if(ev&&ev.target){var
   t=ev.target;while(t&&t!==el){if(t.classList&&(t.classList.contains('editable')||t.classList.contains('val-cell'))){skipScroll=true;break;}t=t.parentNode;}}selectKPI(el.getAttribute('data-kid'),el.getAttribute('data-mode'),skipScroll);}function cmtClick(b){openComment(b,b.getAttribute('data-kid'),b.getAttribute('data-month'));}function editClick(b){openEditKPI(b.getAttribute('data-id'),b.getAttribute('data-name'),b.getAttribute('data-unit'),b.getAttribute('data-target'),b.getAttribute('data-dir'),parseInt(b.getAttribute('data-freq'))||1);}function goalClick(b){openEditGoal(b.getAttribute('data-id'),b.getAttribute('data-name'),b.getAttribute('data-goal'),b.getAttribute('data-dir'),b.getAttribute('data-month'));}function delClick(b){confirmDeleteKPI(b.getAttribute('data-id'));}function dblEdit(el){var kid=el.getAttribute('data-kid');var month=el.getAttribute('data-month');var val=el.getAttribute('data-val');var name=el.getAttribute('data-kname')||kid;var target=el.getAttribute('data-ktarget')||'';var
   unit=el.getAttribute('data-kunit')||'';openEditModal(kid,month,val,name,target,unit);}function pdcaClick(b){openActionPlan(b.getAttribute('data-id'),b.getAttribute('data-name'),b.getAttribute('data-month'),b.getAttribute('data-val'),b.getAttribute('data-target'),b.getAttribute('data-dir'));}</script>
@@ -129,6 +275,8 @@ body.light-mode .btn-kpi-info:hover{background:#FFEDD9;color:#9A3412;border-colo
 .pill.miss{background:rgba(248,113,113,.14);color:#fca5a5}
 .pill.na{background:rgba(14,165,233,.06);color:rgba(125,211,252,.4)}
 .pill.pending{background:rgba(251,191,36,.18);color:#fbbf24;font-weight:600}
+/* ★ measure-types Task 10 (spec §8): ไม่มีเคส — gray, distinct from na (blue-ish)/pending (amber)/hit(green)/miss(red) */
+.pill.no_case{background:rgba(148,163,184,.16);color:#cbd5e1}
 /* ── Dashboard header tooltip (hover meaning) ───────────────── */
 .dash-th[data-tooltip]{position:relative;cursor:help;text-decoration:underline dotted rgba(125,211,252,0.4);text-underline-offset:3px}
 .dash-th[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;bottom:130%;left:50%;transform:translateX(-50%);background:rgba(20,30,50,0.96);color:#f1f5f9;padding:8px 12px;border-radius:6px;font-size:11px;white-space:nowrap;z-index:100;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-weight:400}
@@ -663,6 +811,7 @@ body.light-mode .val-cell.before-start{background:rgba(251,229,205,.5)}
 body.light-mode .pill.hit{background:rgba(99,153,34,.15);color:#3F6514;border:1px solid rgba(99,153,34,.3)}
 body.light-mode .pill.miss{background:rgba(163,45,45,.12);color:#7A1F1F;border:1px solid rgba(163,45,45,.25)}
 body.light-mode .pill.na{background:#FBE5CD;color:#6B4A2B}
+body.light-mode .pill.no_case{background:#e2e8f0;color:#475569}
 body.light-mode .chart-panel{background:#FFEDD9;border:1px solid #F4D9BC;box-shadow:0 2px 8px rgba(194,65,12,.06)}
 body.light-mode .chart-kpi-name{color:#3B2817}
 body.light-mode .chart-meta{color:#6B4A2B}
@@ -825,6 +974,10 @@ body.light-mode #my-na{color:#92400E !important}
 body.light-mode #my-hit-pct{color:#3F6514 !important}
 body.light-mode #my-miss-pct{color:#A32D2D !important}
 body.light-mode #my-na-pct{color:#92400E !important}
+/* ★ measure-types Task 10: ไม่มีเคส card light-mode contrast (same idiom as the 4 cards above) */
+body.light-mode #my-dash div[style*="background:rgba(148,163,184,.06)"]{background:#F1F5F9 !important;border-color:#CBD5E1 !important}
+body.light-mode #my-dash div[style*="color:#94a3b8"]{color:#475569 !important}
+body.light-mode #my-nocase{color:#475569 !important}
 body.light-mode #my-dept-wrap > div:first-child{color:#3B2817 !important}
 body.light-mode .kpi-responsible span[style*="background:"]{background:#FBE5CD !important}
 body.light-mode .month-col.current{background:#F4D9BC !important}
@@ -866,12 +1019,62 @@ body.light-mode #dept-bc{color:#9A3412 !important;font-weight:600}
   body.light-mode .ekm-card .ekm-history{background:rgba(245,232,200,0.5);color:#7c5e2a !important}
   .val-cell.is-na{background:rgba(180,180,180,0.06)}
   body.light-mode .val-cell.is-na{background:rgba(0,0,0,0.03)}
+  /* ★ measure-types Task 10: ไม่มีเคส cell tint — same neutral family as is-na, kept a
+     separate class so it never collides with the na "—" dash treatment above */
+  .val-cell.is-nocase{background:rgba(148,163,184,0.05)}
+  body.light-mode .val-cell.is-nocase{background:rgba(100,116,139,0.04)}
   /* ★ v9.15.3: Light mode contrast fixes (2 พ.ค. 2569) */
   body.light-mode .ekm-foot button[onclick="closeEditModal()"]{color:#475569 !important;border-color:#cbd5e1 !important;background:#fff !important}
   body.light-mode .ekm-foot button[onclick="closeEditModal()"]:hover{background:#f1f5f9 !important}
   /* Past month "ค้างกรอก" — darker amber for light bg */
   body.light-mode td.val-cell span[style*="color:#d4a72c"]{color:#92400e !important;opacity:1 !important;font-weight:600 !important}
+  /* ★ measure-types Task 7: modal rate-preview + in-page warning panel — light-mode contrast (amber → #92400e, same rule as ค้างกรอก above) */
+  body.light-mode #ekm-rate-preview{color:#1e90d4 !important}
+  body.light-mode #ekm-warn{background:rgba(251,191,36,0.15) !important;border-color:rgba(180,120,10,0.5) !important}
+  body.light-mode #ekm-warn-msg{color:#92400e !important}
+  body.light-mode #ekm-warn-ok{color:#92400e !important;border-color:rgba(180,120,10,0.5) !important}
+  body.light-mode #ekm-warn-cancel{color:#475569 !important;border-color:#cbd5e1 !important}
   body.light-mode td.val-cell span[style*="color:#fbbf24"]{color:#b45309 !important}
+  /* ★ measure-types (9 ส.ค.69 หมอรายงาน): measure-type cards + form hints.
+     .mt-card is flex so the radio never inherits .form-row input{width:100%}
+     (that global rule was stretching the bullet into its own full-width row).
+     .form-hint replaces the inline faint rgba(125,211,252,.35-.5) texts that
+     were unreadable on the light/cream theme — กติกา รพ.: ห้ามเทาจาง. */
+  .mt-card{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1.5px solid rgba(14,165,233,.2);border-radius:8px;cursor:pointer}
+  .mt-card input[type=radio]{width:auto !important;flex:none;margin:3px 0 0;padding:0}
+  .mt-card .mt-q{font-size:12.5px;margin-top:2px}
+  .mt-card .mt-ex{font-size:12px;color:rgba(125,211,252,.55);margin-top:4px}
+  .form-hint{color:rgba(125,211,252,.55)}
+  body.light-mode .mt-card{border-color:rgba(154,52,18,.25)}
+  body.light-mode .mt-card .mt-ex{color:#475569 !important}
+  body.light-mode .form-hint{color:#475569 !important}
+  /* ★ 10 ส.ค.69 — หน้าต่างหมายเหตุ. เหตุ: ผู้ใช้พิมพ์ "89" ลงช่องนี้แทนการกรอกค่า
+     KPI แล้วเห็น "บันทึกสำเร็จ" (คอมเมนต์ลงจริง แต่ค่าไม่ขยับ) = เคส phantom save
+     ที่ตามหากันหลายวัน. สีเดิม rgba(125,211,252,.5) อ่านไม่ออกบนธีมพีช (ห้ามเทาจาง) */
+  .cmt-sub{color:#7dd3fc;font-size:13px;margin-bottom:10px;font-weight:600}
+  .cmt-note{font-size:12.5px;line-height:1.6;padding:10px 12px;border-radius:8px;
+            border-left:3px solid #38bdf8;background:rgba(14,165,233,.08);color:#cbe9fb;margin-bottom:12px}
+  .cmt-hist{margin-top:12px;border-top:1px dashed rgba(14,165,233,.25);padding-top:10px}
+  .cmt-hist-h{font-size:11px;font-weight:700;letter-spacing:.4px;color:#7dd3fc;margin-bottom:6px}
+  .cmt-hist-row{font-size:12.5px;line-height:1.55;color:#dbeafe;padding:4px 0;border-bottom:1px dotted rgba(14,165,233,.15)}
+  .cmt-hist-m{color:#7dd3fc;font-weight:700;margin-right:6px}
+  .cmt-warn{display:none;font-size:13px;line-height:1.6;padding:11px 13px;border-radius:8px;
+            border:1.5px solid #f59e0b;background:rgba(245,158,11,.12);color:#fde68a;margin-top:10px}
+  body.light-mode .cmt-sub{color:#9A3412 !important}
+  body.light-mode .cmt-note{background:#FFEDD9 !important;border-left-color:#C2410C !important;color:#3B2817 !important}
+  body.light-mode .cmt-hist{border-top-color:#EDB680 !important}
+  body.light-mode .cmt-hist-h{color:#9A3412 !important}
+  body.light-mode .cmt-hist-row{color:#3B2817 !important;border-bottom-color:#F4D9BC !important}
+  body.light-mode .cmt-hist-m{color:#C2410C !important}
+  body.light-mode .cmt-warn{background:#FEF3C7 !important;border-color:#B45309 !important;color:#7C2D12 !important}
+  /* the comment button lives inside the value cell — make it read as a
+     separate control, not part of the number, and keep its tap target away
+     from the middle of the cell where people aim to edit */
+  .cmt-btn{background:rgba(148,163,184,.12);border:1px solid rgba(148,163,184,.3);border-radius:6px;
+           cursor:pointer;font-size:10px;line-height:1;padding:2px 4px;margin-left:6px;opacity:.75;vertical-align:middle}
+  .cmt-btn:hover{opacity:1;background:rgba(56,189,248,.2);border-color:#38bdf8}
+  body.light-mode .cmt-btn{background:#FBE5CD;border-color:#EDB680}
+  body.light-mode .cmt-btn:hover{background:#F4D9BC;border-color:#C2410C}
   body.light-mode td.val-cell span[style*="color:#a0a8b0"]{color:#94a3b8 !important}
 </style>
 </head>
@@ -905,7 +1108,10 @@ body.has-demo-ribbon{padding-top:25px}
     if(opts.naMonths)opts.naMonths.forEach(function(idx){out[idx]='NA';});
     return out;
   }
-  function K(o){o.months=MONTHS.slice();o.monthGoals=o.months.map(function(){return (o.direction==='↑'?'≥':'≤')+o.target;});o.ownerName=o.ownerName||o.owner;return o;}
+  // measureType/rateSince ride on every KPI now (18_users.js:267). Unclassified
+  // is null on the server, not 'value' - the page treats both the same, but a
+  // demo that claimed everything was classified would misrepresent a real sheet.
+  function K(o){o.months=MONTHS.slice();o.monthGoals=o.months.map(function(){return (o.direction==='↑'?'≥':'≤')+o.target;});o.ownerName=o.ownerName||o.owner;if(o.measureType===undefined)o.measureType=null;if(o.rateSince===undefined)o.rateSince='';return o;}
 
   var KPIS=[
     K({id:'PCT-2', dept:'PCT', name:'อัตราการกลับมารักษาซ้ำใน 48 ชม. (Revisit)', unit:'%', target:'1.0', direction:'↓', frequency:1, owner:'somchai@hospital.demo', ownerName:'นพ.สมชาย (เดโม่)', startMonth:'', formula:'(ผู้ป่วยกลับมาซ้ำ ≤48 ชม.) ÷ (ผู้ป่วย ER ทั้งหมด) × 100', values:gen(0.45,0,0.12,{dec:2,min:0})}),
@@ -934,6 +1140,67 @@ body.has-demo-ribbon{padding-top:25px}
     K({id:'HPH-1',dept:'HPH', name:'หญิงตั้งครรภ์ฝากครรภ์ก่อนอายุครรภ์ 12 สัปดาห์', unit:'%', target:'75', direction:'↑', frequency:1, owner:'suda@hospital.demo', ownerName:'พว.สุดา (เดโม่)', startMonth:'', formula:'(ANC ก่อน 12 สัปดาห์) ÷ (ฝากครรภ์รายใหม่) × 100', values:gen(72,0.25,2.5,{dec:0,max:100})}),
     K({id:'FIN-1',dept:'การเงิน', name:'อัตราส่วนทุนหมุนเวียน (Current Ratio)', unit:'เท่า', target:'1.5', direction:'↑', frequency:3, owner:'admin@hospital.demo', ownerName:'จนท.การเงิน (เดโม่)', startMonth:'', formula:'สินทรัพย์หมุนเวียน ÷ หนี้สินหมุนเวียน', values:gen(1.8,0,0.2,{dec:2,min:0,freq:3})}),
   ];
+
+
+  /* ===== DEMO_MEASURE_TYPES (18 ส.ค.69) =========================================
+     measure types went live across all 188 real KPIs; the demo has to show what that
+     actually changed on screen, which is three things:
+
+       rate KPIs      open numerator/denominator boxes with a live % preview
+       rateSince      months BEFORE the stamp are ระบบเดิม and still open the single
+                      %-field - so one KPI here is stamped mid-window on purpose,
+                      otherwise the legacy path never appears in a demo
+       ไม่มีเคส        0/0 is a CONFIRMED no-case, not a blank. It gets a gray chip,
+                      its own summary card, and it is excluded from the % denominators
+
+     Chosen so the classification is defensible rather than decorative: a rate is a
+     KPI that really is "how many out of how many". ราย counts and วัน/เท่า averages
+     stay value - misclassifying those is the exact mistake the ตัวส่วน=100 tripwire
+     in the real system exists to catch. */
+  (function(){
+    var RATE_SINCE = {
+      'PCT-10': MONTHS[0],    // rate for the whole visible window
+      'PCT-11': MONTHS[0],
+      'IC-4'  : MONTHS[0],
+      'ER-2'  : MONTHS[12]    // stamped mid-window -> first 12 months are ระบบเดิม
+    };
+    var VALUE_ONLY = ['PCT-19','PCT-20','PCT-30','RM-1','RM-3','FIN-1','IC-1'];
+    KPIS.forEach(function(k){
+      if (RATE_SINCE[k.id]) { k.measureType = 'rate'; k.rateSince = RATE_SINCE[k.id]; }
+      else if (VALUE_ONLY.indexOf(k.id) >= 0) { k.measureType = 'value'; }
+      // everything else stays null = unclassified, which is a real state in the sheet
+    });
+
+    /* ไม่มีเคส where it is clinically honest: a 30-bed hospital genuinely has months
+       with no STEMI and no severe hypoglycaemia. Putting it on a busy KPI instead
+       would look like missing data, which is the confusion the chip exists to end. */
+    function noCase(id, idxs){
+      var k = null;
+      for (var i=0;i<KPIS.length;i++){ if(KPIS[i].id===id){k=KPIS[i];break;} }
+      if (!k) return;
+      idxs.forEach(function(ix){ if(ix>=0 && ix<k.values.length) k.values[ix]='ไม่มีเคส'; });
+    }
+    noCase('PCT-12', [18, 20, 23]);   // STEMI - incl. the CURRENT month, so the card is non-zero
+    noCase('PCT-30', [21, 22, 23]);   // severe hypoglycaemia - three quiet months running
+  })();
+
+  /* Fractions behind the rate cells. The real getCellHistory returns the stored
+     numerator/denominator for the month being opened (22_ai.js) so the form can show
+     what the % was made of. Derived from the displayed value rather than stored
+     separately - two sources for one number is how a demo starts contradicting itself. */
+  function demoFraction(kpiId, month){
+    var k=null,i;
+    for (i=0;i<KPIS.length;i++){ if(KPIS[i].id===kpiId){k=KPIS[i];break;} }
+    if (!k || k.measureType!=='rate') return null;
+    if (k.rateSince && MONTHS.indexOf(month) < MONTHS.indexOf(k.rateSince)) return null; // ระบบเดิม
+    var mi = k.months.indexOf(month); if (mi < 0) return null;
+    var v = k.values[mi];
+    if (v==='ไม่มีเคส') return {numerator:0, denominator:0};
+    var pct = parseFloat(v); if (isNaN(pct)) return null;
+    // a plausible denominator per KPI, then the numerator that reproduces the %
+    var den = ({'PCT-10':520,'PCT-11':1176,'IC-4':400,'ER-2':310})[kpiId] || 100;
+    return {numerator: Math.round(pct*den/100), denominator: den};
+  }
 
   var DEPTS=['PCT','IC','IM','RM','ENV','HRD','HPH','การเงิน'];
   function kpisForDept(d){return KPIS.filter(function(k){return k.dept===d;});}
@@ -992,7 +1259,32 @@ body.has-demo-ribbon{padding-top:25px}
     return {ok:true,showing:entries.length,total:entries.length,entries:entries};
   }
   function smartSuggestions(){
-    return {ok:true,suggestions:[{kpiId:'PCT-11',name:'ความดันโลหิตคุมได้',reason:'ค่าดิ่งลงต่อเนื่อง 5 เดือน หลุดเป้า',score:95},{kpiId:'IM-9',name:'AV ครอบคลุม',reason:'ใกล้เป้า เหลือ 2 เครื่อง',score:70},{kpiId:'PCT-10',name:'เบาหวานคุมได้',reason:'เดือนนี้ยังไม่กรอก',score:60}]};
+    // ssRender reads id/dept/currentValue/unit/target/direction/whyNow/action.
+    // Returning {kpiId,name,reason,score} printed "ค่า: undefined · เป้า: ↑ undefined"
+    // and two empty advice boxes on the panel that auto-opens on KPI ของฉัน.
+    function sug(id, whyNow, action){
+      var k = find(id);
+      if (!k) return null;
+      var cur = getLatest(k);
+      return {
+        id: k.id, name: k.name, dept: k.dept, unit: k.unit,
+        target: k.target, direction: k.direction,
+        // ยังไม่กรอก must be null, not the string - ssRender tests `!== null`
+        currentValue: (cur === '' || cur === 'ค้างกรอก' || cur === undefined) ? null : cur,
+        whyNow: whyNow, action: action
+      };
+    }
+    return {ok:true, fromCache:false, suggestions:[
+      sug('PCT-11',
+          'ค่าลดลงต่อเนื่อง 5 เดือนและหลุดเป้ามาตลอดไตรมาส — เป็นตัวชี้วัดที่ถอยชัดที่สุดในฝ่าย',
+          'ทบทวน flow ติดตามความดันที่บ้านในกลุ่มที่คุมไม่ได้ แล้วนัดทบทวนยาในคลินิก NCD รอบหน้า'),
+      sug('IM-9',
+          'ใกล้เป้าแล้ว เหลืออีกไม่กี่เครื่องก็ผ่าน — ปิดได้ในเดือนนี้ด้วยแรงน้อยที่สุด',
+          'ไล่เครื่องที่ยังไม่มี AV ตามห้อง แล้วติดตั้งรวดเดียว ไม่ต้องรอรอบตรวจถัดไป'),
+      sug('PCT-10',
+          'เดือนนี้ยังไม่ได้กรอก ทั้งที่ 3 เดือนก่อนหน้าบรรลุเป้าต่อเนื่อง — ขาดข้อมูลจะทำให้แนวโน้มขาดช่วง',
+          'ดึงผล HbA1c เดือนล่าสุดจาก HOSxP แล้วกรอกให้ครบก่อนประชุม PCT')
+    ].filter(function(x){return x;})};
   }
   function aiAnswer(question,email,key){
     var ok=KPIS.filter(function(k){return evalSt(k.target,k.direction,getLatest(k))==='hit';}).length;
@@ -1140,8 +1432,8 @@ body.has-demo-ribbon{padding-top:25px}
 
   // ---- the fake backend dispatch table ----
   var FAKE={
-    bootstrapPayload:function(arg){return {ok:true,user:{role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,userId:'USR-004',kpis:['ALL'],haFillActive:false},depts:DEPTS,primaryDept:'PCT',kpis:kpisForDept('PCT')};},
-    checkPermission:function(){return {role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,kpis:['ALL'],haFillActive:false};},
+    bootstrapPayload:function(arg){return {ok:true,rateEnabled:true,user:{role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,userId:'USR-004',kpis:['ALL'],haFillActive:false},depts:DEPTS,primaryDept:'PCT',kpis:kpisForDept('PCT')};},
+    checkPermission:function(){return {role:'ADMIN',rateEnabled:true,name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,kpis:['ALL'],haFillActive:false};},
     getDashboardStats:dashboardStats,
     getMyDashboardStats:dashboardStats,
     getKPIsByDept:function(dept){return (!dept||dept==='ALL')?KPIS.slice():kpisForDept(dept);},
@@ -1161,7 +1453,23 @@ body.has-demo-ribbon{padding-top:25px}
     generatePDCA:pdcaGen,
     getAvailableMonths:function(){return MONTHS.slice();},
     getDepartments:function(){return DEPTS.slice();},
-    getCellHistory:function(){return [];},
+    // {ok, history, fraction} since 10 ส.ค.69 - the form used to spend a second
+    // google.script.run just to fetch the fraction, and each one costs 2-4 s of
+    // Apps Script overhead. Returning [] here (the old shape) leaves the rate
+    // boxes empty and the history panel blank.
+    getCellHistory:function(kpiId, month){
+      var hist=[];
+      var k=null,i; for(i=0;i<KPIS.length;i++){ if(KPIS[i].id===kpiId){k=KPIS[i];break;} }
+      if(k){
+        var mi=k.months.indexOf(month);
+        if(mi>0){
+          for(var b=Math.max(0,mi-2);b<mi;b++){
+            hist.push({month:k.months[b], value:String(k.values[b]), by:k.ownerName, at:k.months[b]});
+          }
+        }
+      }
+      return {ok:true, history:hist, fraction:demoFraction(kpiId, month)};
+    },
     getActionPlans:function(){return {ok:true,plans:[]};},
     getRevenueData:function(){return {ok:true,months:MONTHS.slice(12),revenue:[2.1,2.3,2.0,2.4,2.2,2.5,2.3,2.6,2.4,2.5,2.3,2.7].map(function(x){return x*1e6;})};},
     getSlideOutlineText:function(){return {ok:true,text:'(ตัวอย่างโหมดสาธิต)'};},
@@ -1174,7 +1482,18 @@ body.has-demo-ribbon{padding-top:25px}
     saveSystemFeedback:function(){return {ok:true};},
     saveMeetingDecision:function(){return {ok:true};},
     // write ops — accept and echo ok so the UI behaves
-    saveKPIValue:function(){return {ok:true};},
+    // Track A (11 ส.ค.69): the form closes before this answers, and the toast is
+    // built from the reply - r.noop picks "ค่าเดิมอยู่แล้ว" over "บันทึกสำเร็จ", and
+    // suggest_reclassify raises the ตัวส่วน=100 advisory. Returning a bare {ok:true}
+    // means the demo can never show either.
+    saveKPIValue:function(kpiId, month, value, comment, numerator, denominator){
+      var isNoCase = (String(numerator)==='0' && String(denominator)==='0');
+      return {ok:true, noop:false, new_value:isNoCase?'ไม่มีเคส':value,
+              suggest_reclassify:(String(denominator)==='100')};
+    },
+    // Reset-to-blank. Unmocked until now, so the button in the edit form hit the
+    // Proxy fallback, got null, and did nothing at all.
+    revertKPICellAPI:function(){return {ok:true,new_value:'ค้างกรอก'};},
     saveKPIMeta:function(){return {ok:true};},
     saveGoalOverride:function(){return {ok:true};},
     saveComment:function(){return {ok:true};},
@@ -1184,6 +1503,62 @@ body.has-demo-ribbon{padding-top:25px}
     addUser:function(){return {ok:true,newId:'USR-NEW'};},
     editUser:function(){return {ok:true};},
     deleteUser:function(){return {ok:true};},
+
+    // ---- filled in 18 ส.ค.69: these are all in KPI_RPC_FN_NAMES, and every one of
+    // them used to fall through to the Proxy and answer null (= blank panel) ----
+    getNotifications:function(){return {ok:true,items:[
+      {id:'N1',type:'pending',text:'PCT-10 ยังไม่ได้กรอกเดือน '+CUR,at:CUR,read:false},
+      {id:'N2',type:'miss',text:'PCT-11 ต่ำกว่าเป้า 3 เดือนติด',at:CUR,read:false},
+      {id:'N3',type:'ok',text:'IC-4 กลับมาบรรลุเป้าแล้ว',at:PREV,read:true}
+    ],unread:2};},
+    getKPIDefinition:function(kpiId){
+      var k=null,i; for(i=0;i<KPIS.length;i++){ if(KPIS[i].id===kpiId){k=KPIS[i];break;} }
+      if(!k) return {ok:false,error:'ไม่พบตัวชี้วัด'};
+      return {ok:true,id:k.id,name:k.name,unit:k.unit,target:k.target,direction:k.direction,
+              frequency:k.frequency,formula:k.formula,dept:k.dept,ownerName:k.ownerName,
+              measureType:k.measureType,rateSince:k.rateSince};
+    },
+    getDashboardAggregates:function(){var s=dashboardStats();return {ok:true,cur:s.cur,prev:s.prev,depts:s.depts,deptStats:s.deptStats};},
+    listUsers:fakeUsers,
+    teamView:function(){return {ok:true,members:[
+      {name:'นพ.สมชาย (เดโม่)',dept:'PCT',assigned:7,filled:6,pct:86},
+      {name:'พว.สมศรี (เดโม่)',dept:'PCT',assigned:5,filled:5,pct:100},
+      {name:'พว.วิไล (เดโม่)',dept:'IC',assigned:3,filled:2,pct:67},
+      {name:'จนท.ไอที (เดโม่)',dept:'IM',assigned:3,filled:3,pct:100}
+    ]};},
+    getActionOwners:function(){return {ok:true,owners:[
+      {email:'somchai@hospital.demo',name:'นพ.สมชาย (เดโม่)'},
+      {email:'somsri@hospital.demo',name:'พว.สมศรี (เดโม่)'},
+      {email:'wilai@hospital.demo',name:'พว.วิไล (เดโม่)'}
+    ]};},
+    getActionFollowup:function(){return {ok:true,items:[
+      {kpiId:'PCT-11',title:'ทบทวน flow ติดตามความดันที่บ้าน',owner:'พว.สมศรี (เดโม่)',due:CUR,status:'กำลังทำ'},
+      {kpiId:'PCT-10',title:'เพิ่มการปรับยาเชิงรุกในกลุ่มคุมไม่ได้',owner:'นพ.สมชาย (เดโม่)',due:PREV,status:'เสร็จแล้ว'}
+    ]};},
+    // HA mapping / SAR queue (24_ha_mapping.js)
+    computeHAGapForUI:function(){return {ok:true,gaps:[
+      {std:'III-4.3 ก',title:'การดูแลผู้ป่วยโรคเรื้อรัง',covered:2,expected:3,kpis:['PCT-10','PCT-11']},
+      {std:'II-4.1',title:'การป้องกันการติดเชื้อ',covered:2,expected:2,kpis:['IC-1','IC-4']},
+      {std:'I-6.2',title:'ระบบสารสนเทศ',covered:1,expected:2,kpis:['IM-13']}
+    ],coveredPct:71};},
+    haQueueList:function(){return {ok:true,items:[
+      {kpiId:'PCT-10',std:'III-4.3 ก',status:'รอตรวจ',by:'นพ.สมชาย (เดโม่)',at:CUR},
+      {kpiId:'IC-4',std:'II-4.1',status:'ผ่านแล้ว',by:'พว.วิไล (เดโม่)',at:PREV}
+    ]};},
+    haQueueReview:function(){return {ok:true};},
+    haSarExport:function(){return {ok:true,url:'#demo',note:'โหมดสาธิต — ไม่มีไฟล์จริง'};},
+    // login paths: the demo auto-logs in, but the buttons still exist on screen
+    loginWithGoogle:function(){return {ok:true,role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)'};},
+    loginWithLine:function(){return {ok:true,role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)'};},
+    mapLineUser:function(){return {ok:true};},
+    otpRequest:function(email,channel){return {ok:true,via:channel||'line'};},
+    otpVerify:function(){return {ok:true,role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',sessionToken:'demo-token'};},
+    // exports: the demo overrides these with preview overlays further down, so these
+    // only matter if an override is ever removed - answer honestly rather than null
+    exportWordReport:function(){return {ok:true,url:'#demo',note:'โหมดสาธิต'};},
+    exportKPIToExcel:function(){return {ok:true,url:'#demo',note:'โหมดสาธิต'};},
+    generateMonthlySlideDeck:function(){return {ok:true,url:'#demo',note:'โหมดสาธิต'};},
+    bulkImportKPIsFromRows:function(rows){return {ok:true,added:(rows&&rows.length)||0,skipped:0};},
     getNextKpiId:function(){return 'DEMO-99';},
     forceClearCacheAPI:function(){return true;},
     warmCache:function(){return true;}
@@ -1294,7 +1669,7 @@ body.has-demo-ribbon{padding-top:25px}
   <div class="topbar-left">
     <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
     <div class="logo"><img src="https://apiwatwat.github.io/kpi-liff/KPI_Monitor_Logo_DonutRing.jpg" style="width:32px;height:32px;border-radius:8px"></div>
-    <h1>KPI Monitor<span><?!= tenantGet('hospital_name') ?> HA v.5</span></h1>
+    <h1>KPI Monitor<span>โรงพยาบาลสาธิต HA v.5</span></h1>
   </div>
   <div style="display:flex;align-items:center;gap:12px">
     <span id="top-date" style="font-size:12px;color:rgba(125,211,252,.3)" class="top-date-text"></span>
@@ -1352,7 +1727,8 @@ body.has-demo-ribbon{padding-top:25px}
       <div class="inp"><label>EMAIL</label><input type="email" id="email-inp" placeholder="yourname@hospital.mil.th" onkeydown="if(event.keyCode==13)requestOtp()"></div>
       <!-- email-only login hidden (Phase 2 force-OTP); doLogin still used internally after OTP/LINE verify -->
       <button class="btn-primary" id="login-btn" onclick="doLogin()" style="display:none">&#8594; เข้าสู่ระบบ</button>
-      <button class="btn-primary" id="otp-req-btn" onclick="requestOtp()">&#128231; ส่งรหัส OTP เข้าอีเมล เพื่อเข้าสู่ระบบ</button>
+      <button class="btn-primary" id="otp-req-line" onclick="requestOtp('line')" style="background:#06c755">&#128172; รับรหัส OTP ทาง LINE</button>
+      <button class="btn-primary" id="otp-req-email" onclick="requestOtp('email')" style="background:#6b7280;margin-top:8px">&#9993;&#65039; รับทาง Email แทน</button>
       <div id="otp-box" style="display:none;margin-top:12px">
         <div class="inp"><label>รหัส 6 หลัก (OTP)</label><input type="tel" id="otp-inp" maxlength="6" inputmode="numeric" onkeydown="if(event.keyCode==13)verifyOtp()"></div>
         <button class="btn-primary" id="otp-verify-btn" onclick="verifyOtp()">&#10004; ยืนยันรหัส</button>
@@ -1379,7 +1755,7 @@ body.has-demo-ribbon{padding-top:25px}
     <div class="sb-item" id="nav-ai" onclick="showPage(this.dataset.p)" data-p="ai">&#129504; AI Insight</div>
     <div class="sb-item" id="nav-ai-report" onclick="showPage(this.dataset.p)" data-p="ai-report">&#128209; AI Report</div>
     <div class="sb-section" style="margin-top:10px">&#9670; Cockpit &middot; 3 มิติ</div>
-    <a class="sb-item" id="nav-cockpit" href="<?= ScriptApp.getService().getUrl() ?>?view=cockpit" target="_blank" rel="noopener" style="display:none;text-decoration:none;align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>CEO Cockpit</span><span style="font-size:10px;opacity:.5;font-weight:400">บริหาร</span></span></a>
+    <a class="sb-item" id="nav-cockpit" href="demo-cockpit.html" target="_blank" rel="noopener" style="display:none;text-decoration:none;align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>CEO Cockpit</span><span style="font-size:10px;opacity:.5;font-weight:400">บริหาร</span></span></a>
     <div class="sb-item" id="nav-carecockpit" onclick="showPage(this.dataset.p)" data-p="carecockpit" style="align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>Care Cockpit</span><span style="font-size:10px;opacity:.5;font-weight:400">ผู้ป่วย</span></span></div>
     <div class="sb-item" id="nav-qcockpit" onclick="showPage(this.dataset.p)" data-p="qcockpit" style="align-items:center">&#129658; <span style="display:inline-flex;flex-direction:column;line-height:1.12;white-space:nowrap"><span>Quality Cockpit</span><span style="font-size:10px;opacity:.5;font-weight:400">คุณภาพ</span></span></div>
     <div class="sb-section" style="margin-top:10px">ฝ่าย HA</div>
@@ -1389,7 +1765,7 @@ body.has-demo-ribbon{padding-top:25px}
     <div class="sb-item" id="nav-log" onclick="showPage(this.dataset.p)" data-p="log">&#128203; Audit Log</div>
     <div class="sb-item" id="nav-sysvitals" onclick="showPage(this.dataset.p)" data-p="sysvitals">&#128200; มิติการใช้จริง</div>
     <div class="sb-item" id="nav-ha-std" onclick="showPage(this.dataset.p)" data-p="ha-std" style="display:none">&#127973; มาตรฐาน HA</div>
-    <a class="sb-item" id="nav-military" href="<?= ScriptApp.getService().getUrl() ?>?view=military" target="_blank" rel="noopener" style="text-decoration:none">&#127894; ความพร้อมกำลังพล</a>
+    <a class="sb-item" id="nav-military" href="demo-military.html" target="_blank" rel="noopener" style="text-decoration:none">&#127894; ความพร้อมกำลังพล</a>
   </nav>
   <main class="main">
     <div class="page active" id="page-home">
@@ -1655,6 +2031,14 @@ body.has-demo-ribbon{padding-top:25px}
             <div style="font-size:11px;color:rgba(125,211,252,.4);font-weight:600;text-transform:uppercase;letter-spacing:.5px">รอกรอก</div>
             <div id="my-na" style="font-size:32px;font-weight:700;color:#fbbf24;margin:4px 0;line-height:1">0</div>
             <div id="my-na-pct" style="font-size:12px;color:#fbbf24;font-weight:600"></div>
+          </div>
+          <!-- ★ measure-types Task 10 (spec §8: "บรรทัดแยก ไม่มีเคส N เดือน ต่างหากจาก บรรลุ/ไม่บรรลุ/ค้างกรอก") -->
+          <div style="flex:1;min-width:120px;background:rgba(148,163,184,.06);border:1px solid rgba(148,163,184,.14);border-radius:14px;padding:16px;text-align:center;transition:transform .2s;cursor:default" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+            <div style="font-size:11px;color:rgba(125,211,252,.4);font-weight:600;text-transform:uppercase;letter-spacing:.5px">ไม่มีเคส</div>
+            <div id="my-nocase" style="font-size:32px;font-weight:700;color:#94a3b8;margin:4px 0;line-height:1">0</div>
+            <!-- caption = month scope, NOT "ไม่นับเข้า % บรรลุ" — an overlap KPI (no-case this
+                 month, graded from its last real value) still participates in % บรรลุ (Fable I-1) -->
+            <div style="font-size:12px;color:#94a3b8;font-weight:600">เดือนปัจจุบัน</div>
           </div>
         </div>
         <!-- ★ Dept Breakdown Table ★ -->
@@ -2223,12 +2607,12 @@ body.has-demo-ribbon{padding-top:25px}
 <div class="modal-overlay" id="modal-kpi" role="dialog" aria-modal="true" aria-labelledby="modal-kpi-title"><div class="modal"><h3  id="modal-kpi-title">เพิ่ม KPI</h3><div class="form-row" id="f-customid-wrap">
   <label>รหัส KPI (ไม่บังคับ)</label>
 <input id="f-customid" placeholder="กำลังโหลด..." readonly style="background:rgba(125,211,252,0.1);color:rgba(125,211,252,0.8);cursor:default;">
-<div style="font-size:12px;color:rgba(125,211,252,.4);margin-top:5px">ด้านว่างระบบจะสร้างให้อัตโนมัติ</div>
-</div><div class="form-row"><label>ชื่อ KPI</label><input id="f-name" placeholder="ชื่อตัวชี้วัด"></div><div class="form-row"><label>หน่วย</label><input id="f-unit" placeholder="%, ราย, ครั้ง"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="form-row"><label>เป้าหมาย</label><input id="f-target" placeholder=">80%, 0"></div><div class="form-row"><label>ทิศทาง</label><select id="f-dir"><option value="up">สูงยิ่งดี</option><option value="down">ต่ำยิ่งดี</option><option value="">ไม่ระบุ</option></select></div></div><div class="form-row"><label>รอบการกรอก</label><select id="f-freq"><option value="1">ทุกเดือน</option><option value="2">ทุก 2 เดือน</option><option value="3">รายไตรมาส</option><option value="6">ทุก 6 เดือน</option><option value="12">ปีละครั้ง</option></select></div><div class="form-row" id="f-dtype-wrap"><label>ประเภทการเก็บข้อมูล</label><select id="f-datatype" onchange="toggleStartMonth()"><option value="forward">เก็บไปข้างหน้า (ไม่เก็บย้อนหลัง)</option><option value="retroactive">เก็บย้อนหลัง (สูงสุด 3 ปี)</option></select></div><div id="f-start-wrap"><div class="form-row"><label id="f-start-label">เดือนเริ่มต้น</label><select id="f-startmonth"></select><div style="font-size:12px;color:rgba(125,211,252,.4);margin-top:5px" id="f-start-hint">เลือกเดือนที่จะเริ่มเก็บข้อมูล</div></div></div><div class="form-row" id="f-def-wrap"><label>&#128218; นิยาม KPI (ไม่บังคับ)</label><textarea id="f-definition" placeholder="คำอธิบายตัวชี้วัด สูตรคำนวณ หรือหมายเหตุ..." style="min-height:56px"></textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="form-row"><label>ค่าต่ำสุดปกติ</label><input id="f-valmin" type="number" step="any" placeholder="เช่น 0"></div><div class="form-row"><label>ค่าสูงสุดปกติ</label><input id="f-valmax" type="number" step="any" placeholder="เช่น 100"></div></div><div class="modal-footer"><button class="btn btn-cancel" onclick="closeModal('modal-kpi')">ยกเลิก</button><button class="btn btn-save" onclick="submitKPI()">บันทึก</button></div></div></div>
+<div class="form-hint" style="font-size:12px;margin-top:5px">ด้านว่างระบบจะสร้างให้อัตโนมัติ</div>
+</div><div class="form-row"><label>ชื่อ KPI</label><input id="f-name" placeholder="ชื่อตัวชี้วัด"></div><div class="form-row"><label>หน่วย</label><input id="f-unit" placeholder="%, ราย, ครั้ง"></div><div class="form-row" id="f-mt-wrap"><label>ประเภทการวัด (Measure Type)</label><div id="f-mt-cards" style="display:flex;flex-direction:column;gap:8px"><label id="f-mt-card-rate" class="mt-card" style="display:none"><input type="radio" name="f-measuretype" value="rate"><div><b>อัตรา (rate)</b><div class="mt-q">บอกได้ทุกเดือนไหมว่า กี่รายจากทั้งหมดกี่ราย?</div><div class="mt-ex">เช่น ติดเชื้อใน รพ. · CPR สำเร็จ</div></div></label><label id="f-mt-card-count" class="mt-card"><input type="radio" name="f-measuretype" value="count"><div><b>จำนวน (count)</b><div class="mt-q">นับจำนวนครั้งอย่างเดียว ไม่มีตัวหาร</div><div class="mt-ex">เช่น Refer out · จำนวนอุบัติการณ์</div></div></label><label id="f-mt-card-value" class="mt-card"><input type="radio" name="f-measuretype" value="value" checked><div><b>ค่าที่วัดได้ (value)</b><div class="mt-q">เป็นค่าที่วัดมา หรือเป็น % ที่บอกตัวหารไม่ได้</div><div class="mt-ex">เช่น คะแนนความพึงพอใจ · วันนอนเฉลี่ย</div></div></label></div><div style="font-size:12px;color:#f59e0b;margin-top:8px;padding:8px 10px;background:rgba(245,158,11,.1);border-radius:6px;border-left:3px solid #f59e0b">⚠ หน่วยเป็น % ไม่ได้แปลว่าเป็น rate เสมอ — ถ้าบอกไม่ได้ว่ากี่รายจากกี่ราย ให้เลือก value</div><div class="form-hint" style="font-size:11px;margin-top:6px">KPI ที่ฐานไม่ใช่ 100 (per-1000, ต่อ100วันใส่สาร) — สูตร ×100 ตายตัว จึงจัดเป็น rate ไม่ได้ในเวอร์ชันนี้ ให้เป็น value ไปก่อน</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="form-row"><label>เป้าหมาย</label><input id="f-target" placeholder=">80%, 0"></div><div class="form-row"><label>ทิศทาง</label><select id="f-dir"><option value="up">สูงยิ่งดี</option><option value="down">ต่ำยิ่งดี</option><option value="">ไม่ระบุ</option></select></div></div><div class="form-row"><label>รอบการกรอก</label><select id="f-freq"><option value="1">ทุกเดือน</option><option value="2">ทุก 2 เดือน</option><option value="3">รายไตรมาส</option><option value="6">ทุก 6 เดือน</option><option value="12">ปีละครั้ง</option></select></div><div class="form-row" id="f-dtype-wrap"><label>ประเภทการเก็บข้อมูล</label><select id="f-datatype" onchange="toggleStartMonth()"><option value="forward">เก็บไปข้างหน้า (ไม่เก็บย้อนหลัง)</option><option value="retroactive">เก็บย้อนหลัง (สูงสุด 3 ปี)</option></select></div><div id="f-start-wrap"><div class="form-row"><label id="f-start-label">เดือนเริ่มต้น</label><select id="f-startmonth"></select><div class="form-hint" style="font-size:12px;margin-top:5px" id="f-start-hint">เลือกเดือนที่จะเริ่มเก็บข้อมูล</div></div></div><div class="form-row" id="f-def-wrap"><label>&#128218; นิยาม KPI (ไม่บังคับ)</label><textarea id="f-definition" placeholder="คำอธิบายตัวชี้วัด สูตรคำนวณ หรือหมายเหตุ..." style="min-height:56px"></textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="form-row"><label>ค่าต่ำสุดปกติ</label><input id="f-valmin" type="number" step="any" placeholder="เช่น 0"></div><div class="form-row"><label>ค่าสูงสุดปกติ</label><input id="f-valmax" type="number" step="any" placeholder="เช่น 100"></div></div><div class="modal-footer"><button class="btn btn-cancel" onclick="closeModal('modal-kpi')">ยกเลิก</button><button class="btn btn-save" onclick="submitKPI()">บันทึก</button></div></div></div>
 
 <div class="modal-overlay" id="modal-goal" role="dialog" aria-modal="true" aria-label="แก้ไข Goal เดือนนี้"><div class="modal"><h3>แก้ไข Goal เดือนนี้</h3><div id="modal-goal-info" style="font-size:14px;color:rgba(125,211,252,.5);margin-bottom:18px"></div><div class="form-row"><label>Goal ใหม่</label><input id="g-goal" placeholder=">85%, 0"></div><div class="form-row"><label>ทิศทาง</label><select id="g-dir"><option value="up">สูงยิ่งดี</option><option value="down">ต่ำยิ่งดี</option></select></div><div class="modal-footer"><button class="btn btn-cancel" onclick="closeModal('modal-goal')">ยกเลิก</button><button class="btn btn-save" onclick="submitGoal()">บันทึก Goal</button></div></div></div>
 
-<div class="modal-overlay" id="modal-comment" role="dialog" aria-modal="true" aria-label="Comment"><div class="modal"><h3>Comment</h3><div id="modal-comment-info" style="font-size:14px;color:rgba(125,211,252,.5);margin-bottom:14px"></div><div class="form-row"><label>ความเห็น</label><textarea id="c-text" placeholder="บันทึกเหตุการณ์..."></textarea></div><div class="modal-footer"><button class="btn btn-cancel" onclick="closeModal('modal-comment')">ยกเลิก</button><button class="btn btn-save" onclick="submitComment()">บันทึก</button></div></div></div>
+<div class="modal-overlay" id="modal-comment" role="dialog" aria-modal="true" aria-label="หมายเหตุ"><div class="modal"><h3>&#128172; หมายเหตุ / ความเห็น</h3><div id="modal-comment-info" class="cmt-sub"></div><div class="cmt-note">ช่องนี้ใช้บันทึก<b>คำอธิบาย</b>เท่านั้น — <b>ไม่ใช่ช่องกรอกค่า KPI</b><br>ถ้าต้องการกรอก<b>ตัวเลข</b> ให้ปิดหน้านี้แล้ว<b>ดับเบิลคลิกที่ช่องตัวเลข</b>ของเดือนนั้น</div><div class="form-row"><label>ความเห็น</label><textarea id="c-text" placeholder="เช่น เดือนนี้เครื่องเสีย 3 วัน จึงตรวจได้น้อย"></textarea></div><div id="c-numwarn" class="cmt-warn"><div id="c-numwarn-msg"></div><div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn btn-save" style="font-size:13px" onclick="cmtGoToValue()">&#9998; ไปกรอกค่า KPI</button><button class="btn btn-cancel" style="font-size:13px" onclick="cmtForceComment()">บันทึกเป็นหมายเหตุ</button></div></div><div id="c-history" class="cmt-hist" style="display:none"></div><div class="modal-footer"><button class="btn btn-cancel" onclick="closeModal('modal-comment')">ยกเลิก</button><button class="btn btn-save" onclick="submitComment()">บันทึก</button></div></div></div>
 
 <div class="modal-overlay" id="modal-user" role="dialog" aria-modal="true" aria-labelledby="modal-user-title"><div class="modal" style="max-width:540px"><h3 id="modal-user-title">เพิ่ม User</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="form-row"><label>ชื่อ-นามสกุล</label><input id="u-name" placeholder="ชื่อ นามสกุล"></div><div class="form-row"><label>Email</label><input id="u-email" type="email" placeholder="name@hospital.mil.th"></div></div><div class="form-row"><label>ฝ่าย (เลือกได้หลายฝ่าย)</label><div id="u-dept-checks" style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1.5px solid rgba(14,165,233,.2);border-radius:8px;background:rgba(10,22,40,.4)"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="form-row"><label>ตำแหน่ง</label><input id="u-position" placeholder="แพทย์, พยาบาล, เจ้าหน้าที่"></div><div class="form-row"><label>Role</label><select id="u-role"><option value="USER">USER — แก้ไขข้อมูลได้</option><option value="VIEWER">VIEWER — ดูอย่างเดียว</option><option value="ADMIN">ADMIN — ทุกสิทธิ์ (IT เท่านั้น)</option></select></div></div><div class="form-row"><label>สถานะ</label><select id="u-status"><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div><div class="form-row"><label>KPI ที่รับผิดชอบ</label><input id="u-kpis" placeholder="ว่างไว้ — จะได้ KPI เมื่อสร้างเอง"><div style="font-size:12px;color:rgba(125,211,252,.35);margin-top:5px">ระบบ Owner-based: User จะได้ KPI เมื่อสร้าง KPI ใหม่เอง</div></div><div class="modal-footer"><button class="btn btn-cancel" onclick="closeModal('modal-user')">ยกเลิก</button><button class="btn btn-save" onclick="submitUser()">บันทึก</button></div></div></div>
 
@@ -2463,6 +2847,8 @@ function doLogin(){
     S.email=email;S.role=info.role;S.name=info.name;S.dept=info.dept;
     S.depts=info.depts||[info.dept];S.userId=info.userId;S.kpis=info.kpis||[];
     S.haFillActive=!!info.haFillActive;
+    // measure-types spec 2026-08-08 §13.1: gates the `rate` option in the create/edit KPI form
+    S.rateEnabled=!!payload.rateEnabled;
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
     document.getElementById('user-pill-text').textContent=info.name+' ('+info.role+')';
@@ -2488,6 +2874,20 @@ function doLogin(){
   }).bootstrapPayload({email:email,sessionToken:S.sessionToken});
 }
 
+/* LIFF launcher handoff (10 ส.ค.69): doGet exchanged the launcher's one-time
+   code into these template values — seed storage BEFORE tryAutoLogin reads it
+   (LINE already verified the user; no OTP). JSON.stringify = safe literals. */
+/* < escaped (review D-1): email is a raw Users-sheet cell — JSON.stringify
+   alone would let a crafted closing-script-tag value break out of this block.
+   NOTE: never write that tag literally in here, not even in a comment — the
+   HTML parser closes the block on sight and the page dies with
+   "Malformed HTML content" (that is exactly how this line broke prod). */
+var BOOT_TOKEN = '';
+var BOOT_EMAIL = '';
+if (BOOT_TOKEN && BOOT_EMAIL) {
+  try { localStorage.setItem('kpi_token', BOOT_TOKEN); } catch(e) {}
+  try { localStorage.setItem('kpi_email', BOOT_EMAIL); } catch(e) {}
+}
 function tryAutoLogin(){try{var tk=localStorage.getItem('kpi_token');if(tk){S.sessionToken=tk;}var saved=localStorage.getItem('kpi_email');if(saved){var inp=document.getElementById('email-inp');if(inp)inp.value=saved;doLogin();}}catch(e){}}
 if(document.readyState!=='loading')tryAutoLogin();else document.addEventListener('DOMContentLoaded',tryAutoLogin);
 
@@ -2511,21 +2911,26 @@ function handleGoogleCredential(resp){
   }).loginWithGoogle(resp.credential);
 }
 var _otpEmail='';
-function requestOtp(){
+function _otpBtnsReset(lb,mb){lb.disabled=false;mb.disabled=false;lb.innerHTML='&#128172; รับรหัส OTP ทาง LINE';mb.innerHTML='&#9993;&#65039; รับทาง Email แทน';}
+function requestOtp(channel){
+  channel=channel||'line';
   var email=document.getElementById('email-inp').value.trim();
   if(!email){document.getElementById('login-err').textContent='กรุณากรอก Email ก่อนขอรหัส';return;}
-  var b=document.getElementById('otp-req-btn');b.disabled=true;b.textContent='กำลังส่ง...';
+  var lb=document.getElementById('otp-req-line'),mb=document.getElementById('otp-req-email');
+  lb.disabled=true;mb.disabled=true;(channel==='email'?mb:lb).textContent='กำลังส่ง...';
   google.script.run.withSuccessHandler(function(r){
-    b.disabled=false;b.innerHTML='&#128231; ส่งรหัส OTP เข้าอีเมล เพื่อเข้าสู่ระบบ';
+    _otpBtnsReset(lb,mb);
     if(!r||!r.ok){document.getElementById('login-err').textContent=(r&&r.msg)?r.msg:'ส่งรหัสไม่สำเร็จ';return;}
     _otpEmail=email;
     document.getElementById('otp-box').style.display='block';
-    document.getElementById('login-err').textContent='ส่งรหัสไปที่อีเมลแล้ว — กรอกรหัส 6 หลัก (ถ้าไม่เจอ เช็คกล่อง Junk/สแปมด้วย)';
+    document.getElementById('login-err').textContent=(r.via==='line')
+      ?'ส่งรหัสไปที่ LINE ของคุณแล้ว — เปิดแอป LINE ดูรหัส 6 หลัก'
+      :'ส่งรหัสไปที่อีเมลแล้ว — กรอกรหัส 6 หลัก (ถ้าไม่เจอ เช็ค Junk/สแปม)';
     var oi=document.getElementById('otp-inp');if(oi)oi.focus();
   }).withFailureHandler(function(e){
-    b.disabled=false;b.innerHTML='&#128231; ส่งรหัส OTP เข้าอีเมล เพื่อเข้าสู่ระบบ';
+    _otpBtnsReset(lb,mb);
     document.getElementById('login-err').textContent='Error: '+(e&&e.message?e.message:e);
-  }).otpRequest(email);
+  }).otpRequest(email,channel);
 }
 function verifyOtp(){
   var email=_otpEmail||document.getElementById('email-inp').value.trim();
@@ -2560,7 +2965,11 @@ var _liffTries=0;
 function liffAutoLogin(){
   if(!window.liff){ if(_liffTries++>20){return;} setTimeout(liffAutoLogin,300); return; }
   try{
-    liff.init({liffId:'2009680870-loqsVGDv'}).then(function(){
+    /* KPI Dashboard LIFF (10 ส.ค.69) — its endpoint IS this /exec page, so
+       liff.init resolves inside LINE and the idToken auto-login below fires.
+       The old id (loqsVGDv) belongs to the daily-coach LIFF whose endpoint is
+       GitHub — init always failed here and every LINE user fell to OTP. */
+    liff.init({liffId:'2009680870-c5NCnioN'}).then(function(){
       if(!liff.isInClient()){ return; } /* only auto-login inside the LINE app; desktop skips */
       var idt=null; try{ idt=liff.getIDToken(); }catch(e){}
       if(!idt){ return; }
@@ -2846,7 +3255,18 @@ function renderDashboard(s){
 
 function startCountdown(msLeft){if(cdTimer)clearInterval(cdTimer);var ms=msLeft;function tick(){var d=Math.floor(ms/86400000);var h=Math.floor((ms%86400000)/3600000);var m=Math.floor((ms%3600000)/60000);var sc=Math.floor((ms%60000)/1000);function pad(n){return n<10?'0'+n:''+n;}document.getElementById('cd-d').textContent=pad(d);document.getElementById('cd-h').textContent=pad(h);document.getElementById('cd-m').textContent=pad(m);document.getElementById('cd-s').textContent=pad(sc);if(d<3){document.getElementById('cd-d').classList.add('urgent');document.getElementById('cd-s').classList.add('urgent');}ms-=1000;if(ms<0)clearInterval(cdTimer);}tick();cdTimer=setInterval(tick,1000);}
 
-function loadDept(dept){showPage('dept');var navItems=document.querySelectorAll('.sb-item');for(var i=0;i<navItems.length;i++){navItems[i].classList.remove('active');}var nav=document.getElementById('nav-dept-'+dept);if(nav)nav.classList.add('active');document.getElementById('dept-bc').textContent=dept;document.getElementById('dept-title').textContent=dept;var canManage=S.role==='ADMIN'||(S.role==='USER'&&S.depts&&S.depts.indexOf(dept)>=0);document.getElementById('btn-add-kpi').style.display=canManage?'':'none';document.getElementById('btn-add-kpi').setAttribute('data-dept',dept);var expBtn=document.getElementById('btn-export-dept');if(expBtn)expBtn.setAttribute('data-dept',dept);var cachedKPIs=bcGet('dept_'+dept);if(cachedKPIs){window._deptKPIs=cachedKPIs;renderTable(cachedKPIs,'dept',dept);return;}document.getElementById('dept-load').style.display='flex';document.getElementById('dept-content').style.display='none';google.script.run.withSuccessHandler(function(kpis){bcPut('dept_'+dept,kpis,10);window._deptKPIs=kpis;renderTable(kpis,'dept',dept);}).withFailureHandler(function(e){showToast('Error: '+e,'error');}).getKPIsByDept(dept);}
+/* ⚠️ LAST ANSWER WINS — do not remove S.currentDept.
+   loadDept paints the breadcrumb, the title and the sidebar highlight BEFORE the
+   data arrives. Click briskly down the sidebar and an earlier request can answer
+   last, and the success handler used to render it regardless: IM's rows under
+   IC's heading, count and all, and it STAYS that way. Every label agrees; only
+   the numbers belong to someone else, so there is nothing on screen to warn the
+   person reading them into a PCT meeting or an HA SAR.
+   Measured 11 ส.ค. 2569 at ~220 ms between clicks: 2 in 10 on Apps Script and
+   2 in 10 on the Worker. tools/dept_race.mjs reproduces it and is the regression
+   test. The cache write stays — that data is valid for ITS department, just not
+   wanted on screen right now. */
+function loadDept(dept){S.currentDept=dept;showPage('dept');var navItems=document.querySelectorAll('.sb-item');for(var i=0;i<navItems.length;i++){navItems[i].classList.remove('active');}var nav=document.getElementById('nav-dept-'+dept);if(nav)nav.classList.add('active');document.getElementById('dept-bc').textContent=dept;document.getElementById('dept-title').textContent=dept;var canManage=S.role==='ADMIN'||(S.role==='USER'&&S.depts&&S.depts.indexOf(dept)>=0);document.getElementById('btn-add-kpi').style.display=canManage?'':'none';document.getElementById('btn-add-kpi').setAttribute('data-dept',dept);var expBtn=document.getElementById('btn-export-dept');if(expBtn)expBtn.setAttribute('data-dept',dept);var cachedKPIs=bcGet('dept_'+dept);if(cachedKPIs){window._deptKPIs=cachedKPIs;renderTable(cachedKPIs,'dept',dept);return;}document.getElementById('dept-load').style.display='flex';document.getElementById('dept-content').style.display='none';/* the table is hidden while loading, but the count under the title is NOT inside dept-content, so it kept showing the PREVIOUS department's number against the new department's heading for as long as the fetch took. A wrong number for one second is still a wrong number. */document.getElementById('dept-sub').textContent='กำลังโหลด…';var _dbg=document.getElementById('dept-badge');if(_dbg)_dbg.textContent='';google.script.run.withSuccessHandler(function(kpis){bcPut('dept_'+dept,kpis,10);if(S.currentDept!==dept)return;window._deptKPIs=kpis;renderTable(kpis,'dept',dept);}).withFailureHandler(function(e){showToast('Error: '+e,'error');}).getKPIsByDept(dept);}
 
 function renderTable(kpis, mode, dept) {
   var loadId = mode === 'dept' ? 'dept-load' : 'byuser-load';
@@ -2894,7 +3314,7 @@ function renderTable(kpis, mode, dept) {
     var curGoalIdx = months.indexOf(curLabel);
     var curGoal = goals[curGoalIdx] || kpi.target || '';
     var st = evalSt({ target: curGoal, direction: kpi.direction }, latestVal);
-    var pill = st === 'hit' ? '<span class="pill hit">บรรลุ</span>' : st === 'miss' ? '<span class="pill miss">ไม่บรรลุ</span>' : st === 'pending' ? '<span class="pill pending">⏳ ค้างกรอก</span>' : '<span class="pill na">NA</span>';
+    var pill = st === 'hit' ? '<span class="pill hit">บรรลุ</span>' : st === 'miss' ? '<span class="pill miss">ไม่บรรลุ</span>' : st === 'pending' ? '<span class="pill pending">⏳ ค้างกรอก</span>' : st === 'no_case' ? '<span class="pill no_case">ไม่มีเคส</span>' : '<span class="pill na">NA</span>';
 
     var kpiOwner = kpi.owner || '';
     // ★ 28 เม.ย.69: Multi-edit — Users.KPI_IDs เป็น source of truth
@@ -2924,8 +3344,12 @@ var cellsHTML = '';
         var beforeStart = kpiStart ? isMonthBefore(cm, kpiStart) : false;
 
         // ★ v9.15: cell value drives display + editability — no positional ci%freq
+        // ★ measure-types Task 10 (spec §8): ไม่มีเคส gets its own sentinel bucket —
+        // BEFORE this fix it fell into 'value' and rendered as the raw Thai string
+        // with number styling (looked clickable/numeric, not a confirmed-no-case state).
         var sentinel;
-        if (cv === 'NA') sentinel = 'na';
+        if (cv === 'ไม่มีเคส') sentinel = 'no_case';
+        else if (cv === 'NA') sentinel = 'na';
         else if (cv === '' || cv === null || cv === undefined || cv === 'ค้างกรอก') sentinel = 'pending';
         else sentinel = 'value';
 
@@ -2934,6 +3358,8 @@ var cellsHTML = '';
           dispVal = '<span style="color:#a0a8b0;font-size:10px">—</span>';
         } else if (sentinel === 'na') {
           dispVal = '<span style="color:#a0a8b0;font-size:14px">—</span>';
+        } else if (sentinel === 'no_case') {
+          dispVal = '<span class="pill no_case" style="font-size:10px;padding:2px 8px;font-weight:600">ไม่มีเคส</span>';
         } else if (sentinel === 'pending') {
           dispVal = isCurM
             ? '<span style="color:#fbbf24;font-weight:600;font-size:11px">⏳ ค้างกรอก</span>'
@@ -2954,6 +3380,7 @@ var cellsHTML = '';
           (isCurM ? ' current' : '') +
           (editable ? ' editable' : '') +
           (sentinel === 'na' ? ' is-na' : '') +
+          (sentinel === 'no_case' ? ' is-nocase' : '') +
           (beforeStart ? ' before-start' : '');
 
         var dblAttr = '';
@@ -2967,8 +3394,13 @@ var cellsHTML = '';
                     ' ondblclick="dblEdit(this)"';
         }
 
+        // ★ 10 ส.ค.69: this button sits INSIDE the value cell, and a user aiming
+        // for the cell hit it instead — typed the KPI value into the comment box,
+        // got an honest "saved" toast, and the number never moved. Give it its
+        // own visual identity and a tooltip that says what it is NOT, so the
+        // mis-aim is obvious before the click.
         var cmtBtn = (sentinel !== 'na' && canEditThisKPI && !beforeStart)
-          ? '<button style="background:none;border:none;cursor:pointer;font-size:11px;opacity:0.5;margin-left:3px" data-kid="' + kpi.id + '" data-month="' + cm + '" onclick="event.stopPropagation();cmtClick(this)">&#128172;</button>'
+          ? '<button class="cmt-btn" title="หมายเหตุ (คำอธิบาย) — ไม่ใช่ช่องกรอกค่า KPI · กรอกค่าให้ดับเบิลคลิกที่ตัวเลข" data-kid="' + kpi.id + '" data-month="' + cm + '" onclick="event.stopPropagation();cmtClick(this)">&#128172;</button>'
           : '';
 
         cellsHTML += '<td class="' + cellCls + '"' + dblAttr + '>' + dispVal + cmtBtn + '</td>';
@@ -3000,6 +3432,10 @@ var safeName = (kpi.name || '').split('"').join('&quot;').split('<').join('&lt;'
     tbHTML += '<td>' + pill + pdcaBtn + '</td><td>' + editBtn + '</td></tr>';
   }
   document.getElementById(tbodyId).innerHTML = tbHTML;
+  // every <td> was just rebuilt — restore the marks for writes still in flight
+  // or awaiting the user, or a pending cell would look ordinary after a dept
+  // switch (review I-4)
+  if (typeof kpwRepaintAll === 'function') kpwRepaintAll();
 
   // ★ Scroll to right (current month) + setup top scrollbar
 setTimeout(function() {
@@ -3040,29 +3476,122 @@ function selectKPI(kpiId, mode, skipScroll) {
     window._chartTimer = setTimeout(function() { renderChart(kpi, panelId); }, 150);
   }
 
-function renderChart(kpi,panelId){var panel=document.getElementById(panelId);var SHOW=24;var months=kpi.months.slice(-SHOW);var vals = kpi.values.slice(-SHOW).map(function(v){return(v===null||v===undefined||v==='NA'||v==='')?null:parseFloat(v);});var goals=kpi.monthGoals?kpi.monthGoals.slice(-SHOW):[];var key=(kpi.id||'').split('-')[0];var color=getDeptColor(key)||'#1e90d4';var dynGoals=goals.map(function(g){var n=parseFloat((g||'').toString().replace(/[^0-9.]/g,''));return isNaN(n)?null:n;});var hasGoal=dynGoals.some(function(g){return g!==null;});
+function renderChart(kpi,panelId){var panel=document.getElementById(panelId);var SHOW=24;var months=kpi.months.slice(-SHOW);var vals = kpi.values.slice(-SHOW).map(function(v){return(v===null||v===undefined||v===DISPLAY_MARKERS_C[1]||v===''||v===DISPLAY_MARKERS_C[2])?null:parseFloat(v);});var goals=kpi.monthGoals?kpi.monthGoals.slice(-SHOW):[];var key=(kpi.id||'').split('-')[0];var color=getDeptColor(key)||'#1e90d4';var dynGoals=goals.map(function(g){var n=parseFloat((g||'').toString().replace(/[^0-9.]/g,''));return isNaN(n)?null:n;});var hasGoal=dynGoals.some(function(g){return g!==null;});
 var kpiStart=kpi.startMonth||'';if(kpiStart){for(var si=0;si<months.length;si++){if(isMonthBefore(months[si],kpiStart)){vals[si]=null;dynGoals[si]=null;}}}
 var hasAnyData=vals.some(function(v){return v!==null;});
+// ★ measure-types Task 10 (spec §8 chart row): distinguish "confirmed ไม่มีเคส every
+// visible month" from "genuinely never filled in" — the generic "กรุณากรอกข้อมูล"
+// placeholder is misleading when every point is a resolved no-case, not missing data.
+// Derived straight from kpi.values (already in scope here) — no need for window._deptKPIs.
+// ★ fix round (I-3): skip before-start months (kpiStart/isMonthBefore already in scope
+// above — those are legitimately not-yet-started, not "still needs filling"); treat
+// ''/null/undefined as pending too, same bucket as ค้างกรอก — a KPI with some never-
+// filled-in months mixed with some ไม่มีเคส months must NOT read as "confirmed no-case
+// throughout" (that was the bug: only literal 'ค้างกรอก' contaminated allNoCase before).
+var rawVals=kpi.values.slice(-SHOW);var _anyNoCase=false,_hasPending=false;
+for(var _rvi=0;_rvi<rawVals.length;_rvi++){
+  if(kpiStart&&isMonthBefore(months[_rvi],kpiStart))continue;
+  var _rv=rawVals[_rvi];
+  if(_rv===DISPLAY_MARKERS_C[2])_anyNoCase=true;
+  else if(_rv===DISPLAY_MARKERS_C[0]||_rv===null||_rv===undefined||_rv==='')_hasPending=true;
+}
+var allNoCase=_anyNoCase&&!_hasPending;
 var html='<div style="margin-bottom:12px"><div class="chart-kpi-name">'+escHtml(kpi.id)+' — '+escHtml(kpi.name)+'</div><div class="chart-meta">Owner: '+escHtml(kpi.owner||'—')+' · หน่วย: '+escHtml(kpi.unit||'—')+'</div></div>';if(kpi.formula)html+='<div style="font-size:11px;color:#6b7c93;background:#f5f8ff;border-radius:6px;padding:8px 12px;margin-bottom:14px;border-left:3px solid #1e90d4">'+escHtml(kpi.formula)+'</div>';
-if(!hasAnyData){html+='<div class="no-chart" style="padding:40px;text-align:center">&#128202; ยังไม่มีข้อมูลสำหรับกราฟ<br><span style="font-size:12px;color:rgba(125,211,252,.3)">กรุณากรอกข้อมูลอย่างน้อย 1 เดือน</span></div>';panel.innerHTML=html;if(S.chart){S.chart.destroy();S.chart=null;}return;}
+if(!hasAnyData){var _phMsg=allNoCase?'&#128202; ไม่มีเคสเข้าเกณฑ์ตลอดช่วงที่แสดง':'&#128202; ยังไม่มีข้อมูลสำหรับกราฟ<br><span style="font-size:12px;color:rgba(125,211,252,.3)">กรุณากรอกข้อมูลอย่างน้อย 1 เดือน</span>';html+='<div class="no-chart" style="padding:40px;text-align:center">'+_phMsg+'</div>';panel.innerHTML=html;if(S.chart){S.chart.destroy();S.chart=null;}return;}
 html+='<div class="chart-container"><canvas id="chart-canvas"></canvas></div>';panel.innerHTML=html;if(S.chart){S.chart.destroy();S.chart=null;}var datasets=[{label:kpi.name,data:vals,borderColor:color,backgroundColor:color+'22',borderWidth:2.5,fill:true,tension:0.35,spanGaps:true,pointRadius:5,pointHoverRadius:7,pointBackgroundColor:vals.map(function(v,i){if(v===null)return'transparent';var g=dynGoals[i];if(g===null)return color;if(kpi.direction==='up'||kpi.direction==='↑')return v>=g?'#27ae60':'#e74c3c';if(kpi.direction==='down'||kpi.direction==='↓')return v<=g?'#27ae60':'#e74c3c';return color;})}];if(hasGoal)datasets.push({label:'เป้าหมาย',data:dynGoals,borderColor:'#f4a61d',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false});S.chart=new Chart(document.getElementById('chart-canvas').getContext('2d'),{type:'line',data:{labels:months,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{family:'Sarabun',size:12},boxWidth:20}},tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+(ctx.parsed.y!==null?ctx.parsed.y+' '+(kpi.unit||''):'NA');}}}},scales:{x:{ticks:{font:{family:'Sarabun',size:10},maxRotation:45},grid:{color:'#eee'}},y:{ticks:{font:{family:'Sarabun',size:11}},grid:{color:'#eee'},beginAtZero:false}}}});}
 
 
   // ★ v9.15: Modal-based edit handlers (1 พ.ค. 2569 — replaces inline startEdit/commitEdit)
-  var EKM_STATE = { kpiId: null, month: null, prevVal: null };
+  // ★ measure-types Task 7 (spec §5.1/§6/§12): measureType rides in EKM_STATE
+  // (threaded at open time from the kpi object in _deptKPIs/_userKPIs). rate
+  // KPIs render numerator/denominator inputs + in-page warning panel — NO
+  // confirm()/alert()/prompt() anywhere in the save path (iOS standalone PWA
+  // swallows window dialogs silently, spec §6).
+  var EKM_STATE = { kpiId: null, month: null, prevVal: null, measureType: null,
+                    rateLayout: false, noCaseOK: false, oorOK: false, saving: false };
 
   function openEditModal(kpiId, month, curVal, kpiName, target, unit) {
     EKM_STATE.kpiId = kpiId;
     EKM_STATE.month = month;
     EKM_STATE.prevVal = curVal;
+    // Task 7: thread measureType into EKM_STATE at open time. Search BOTH
+    // lists (same rule as openEditKPI — _deptKPIs is never cleared when
+    // leaving the dept page, so a stale truthy list must not stop the
+    // fallback scan of _userKPIs). Unresolved kpi object or blank column →
+    // null → single input, behavior unchanged (spec test 22).
+    var mtKpi = null;
+    var mtDept = window._deptKPIs || [];
+    for (var mi = 0; mi < mtDept.length; mi++) { if (mtDept[mi].id === kpiId) { mtKpi = mtDept[mi]; break; } }
+    if (!mtKpi) {
+      var mtUser = window._userKPIs || [];
+      for (var mu = 0; mu < mtUser.length; mu++) { if (mtUser[mu].id === kpiId) { mtKpi = mtUser[mu]; break; } }
+    }
+    EKM_STATE.measureType = (mtKpi && mtKpi.measureType) ? mtKpi.measureType : null;
+    // RateSince §13.2: the rate layout is per (KPI, month) — months BEFORE the
+    // KPI's rateSince stamp are "ระบบเดิม" (legacy %-era) and open the single
+    // %-field instead of the two fraction boxes. isMonthBefore(month, '')
+    // already returns false via its !monthB guard, but the rsRaw !== '' check
+    // makes the blank edge explicit; unparseable rsRaw also compares false in
+    // isMonthBefore → rateLayout stays true — fail-closed, exactly matching
+    // the server's _isLegacyMonth_ (12_central_write.js).
+    var rsRaw = (mtKpi && mtKpi.rateSince) ? String(mtKpi.rateSince) : '';
+    var isLegacyRateMonth = EKM_STATE.measureType === 'rate' && rsRaw !== '' && isMonthBefore(month, rsRaw);
+    EKM_STATE.rateLayout = EKM_STATE.measureType === 'rate' && !isLegacyRateMonth;
+    EKM_STATE.noCaseOK = false;
+    EKM_STATE.oorOK = false;
+    EKM_STATE.saving = false;
     document.getElementById('ekm-kpi-name').textContent = (kpiName || kpiId);
     document.getElementById('ekm-month').textContent = month;
     document.getElementById('ekm-target').textContent = target || '-';
     document.getElementById('ekm-unit').textContent = unit || '';
     var inp = document.getElementById('ekm-input');
-    var v = (curVal === 'NA' || curVal === '' || curVal === null || curVal === undefined ||
-             curVal === 'ค้างกรอก') ? '' : curVal;
+    var v = (curVal === DISPLAY_MARKERS_C[1] || curVal === '' || curVal === null || curVal === undefined ||
+             curVal === DISPLAY_MARKERS_C[0] || curVal === DISPLAY_MARKERS_C[2]) ? '' : curVal;
     inp.value = v;
+    // Task 7: rate ↔ single-input layout switch. Rate months always open with
+    // EMPTY fraction fields (spec §13.1 — client has no meta to prefill from);
+    // the current display value is shown as context in the preview line.
+    // RateSince §13.2: the switch keys off rateLayout (per KPI *and* month),
+    // not measureType alone — legacy months get the single %-field + hint.
+    var isRate = EKM_STATE.rateLayout;
+    document.getElementById('ekm-single-row').style.display = isRate ? 'none' : 'flex';
+    document.getElementById('ekm-rate-rows').style.display = isRate ? 'block' : 'none';
+    document.getElementById('ekm-legacy-hint').style.display = isLegacyRateMonth ? 'block' : 'none';
+    document.getElementById('ekm-num').value = '';
+    document.getElementById('ekm-denom').value = '';
+    document.getElementById('ekm-rate-preview').textContent =
+      (isRate && v !== '') ? ('ค่าเดิม: ' + v + (unit ? ' ' + unit : '')) : '';
+    // (the fraction hint now rides the single getCellHistory call at the end of
+    // this function — one round trip instead of two)
+    ekmHideWarn();
+    // Track A: if this cell has a write waiting on the user's answer, put the
+    // question back in front of them the moment they open it. The retry sends
+    // the ORIGINAL snapshot, never whatever is in the inputs now.
+    var _pw = KPW[kpwKey(kpiId, month)];
+    if (_pw && _pw.status === 'needs_confirm' && _pw.reply) {
+      (function (pw) {
+        var rr = pw.reply, s = pw.snap;
+        var newDisp = (s.num !== null && s.num !== undefined)
+          ? (s.num + '/' + s.denom + ' = ' + s.previewDisp)
+          : String(s.value === '' ? 'ค้างกรอก' : s.value);
+        ekmShowWarn('⚠ ค่านี้เพิ่งถูกยืนยันผ่าน LINE เมื่อ ' + rr.hours_since + ' ชม.ที่แล้ว (เวลา ' + rr.prev_at +
+                    ' โดย ' + (rr.prev_by || 'ผู้ใช้') + ') · ค่าเดิม: ' + rr.old_value + ' → ค่าใหม่: ' + newDisp, {
+          okLabel: 'เขียนทับ',
+          cancelLabel: 'ยกเลิก',
+          onOk: function () {
+            delete KPW[kpwKey(s.kpiId, s.month)];
+            closeEditModal();
+            kpwSubmit(s, true);              // force retry — from the snapshot
+          },
+          onCancel: function () {
+            delete KPW[kpwKey(s.kpiId, s.month)];
+            kpwClearMark(s.kpiId, s.month);
+            ekmHideWarn();
+            showToast('ยกเลิกการแก้ไข', 'info');
+          }
+        });
+      })(_pw);
+    }
     document.getElementById('ekm-history').textContent = 'กำลังโหลด...';
     var defCard = document.getElementById('ekm-def-card');
     if (defCard) {
@@ -3083,30 +3612,159 @@ html+='<div class="chart-container"><canvas id="chart-canvas"></canvas></div>';p
       }
     }
     document.getElementById('edit-kpi-modal').style.display = 'flex';
-    setTimeout(function(){ inp.focus(); inp.select(); }, 50);
-    google.script.run.withSuccessHandler(function(history) {
-      if (!history || history.length === 0) {
-        document.getElementById('ekm-history').textContent = '(ไม่มีประวัติ)';
-        return;
-      }
-      var line = history.map(function(h){
-        var v = (h.value === '' || h.value === null || h.value === undefined) ? '(blank)' : h.value;
-        var d = '';
-        if (h.datetime) {
-          var s = String(h.datetime);
-          d = s.substring(0, 10);
-        }
-        return v + (d ? ' (' + d + ')' : '');
-      }).join(' → ');
-      document.getElementById('ekm-history').textContent = line;
-    }).getCellHistory(kpiId, month, S.sessionToken, S.email);
+    setTimeout(function(){
+      if (EKM_STATE.rateLayout) { document.getElementById('ekm-num').focus(); }
+      else { inp.focus(); inp.select(); }
+    }, 50);
+    // ONE round trip for history + fraction (10 ส.ค.69). Each google.script.run
+    // costs ~2-4 s of Apps Script overhead — measured — so opening the form used
+    // to burn two of them. getCellHistory now returns {ok, history, fraction}.
+    (function(forKpi, forMonth, shownVal, shownUnit) {
+      google.script.run.withSuccessHandler(function(r) {
+        if (EKM_STATE.kpiId !== forKpi || EKM_STATE.month !== forMonth) return; // user moved on
+        var history = (r && r.history) || [];
+        document.getElementById('ekm-history').textContent =
+          history.length === 0 ? '(ไม่มีประวัติ)' : history.map(function(h){
+            var v = (h.value === '' || h.value === null || h.value === undefined) ? '(blank)' : h.value;
+            var d = h.datetime ? String(h.datetime).substring(0, 10) : '';
+            return v + (d ? ' (' + d + ')' : '');
+          }).join(' → ');
+
+        // fraction hint — only when it actually derives the value on screen
+        // (§4.2 lets a failed meta write heal later, so a stale pair must never
+        // be shown beside an unrelated %). Server rounds Math.round(pct*10)/10.
+        var fr = r && r.fraction;
+        if (!fr || !EKM_STATE.rateLayout || shownVal === '') return;
+        var nEl = document.getElementById('ekm-num');
+        var dEl = document.getElementById('ekm-denom');
+        if ((nEl && nEl.value !== '') || (dEl && dEl.value !== '')) return; // typing
+        var _shown = parseFloat(shownVal);
+        var _derived = (fr.numerator / fr.denominator) * 100;
+        if (!isFinite(_shown) || !isFinite(_derived) || Math.abs(_derived - _shown) > 0.05) return;
+        document.getElementById('ekm-rate-preview').textContent =
+          'ค่าเดิม: ' + fr.numerator + '/' + fr.denominator +
+          ' = ' + shownVal + (shownUnit ? ' ' + shownUnit : '');
+      }).withFailureHandler(function() {
+        document.getElementById('ekm-history').textContent = '(โหลดประวัติไม่สำเร็จ)';
+      }).getCellHistory(forKpi, forMonth, S.sessionToken, S.email);
+    })(kpiId, month, v, unit);
   }
 
   function closeEditModal() {
     document.getElementById('edit-kpi-modal').style.display = 'none';
+    ekmHideWarn();
     EKM_STATE.kpiId = null;
     EKM_STATE.month = null;
     EKM_STATE.prevVal = null;
+    EKM_STATE.measureType = null;
+    EKM_STATE.rateLayout = false;
+    EKM_STATE.noCaseOK = false;
+    EKM_STATE.oorOK = false;
+    EKM_STATE.saving = false;
+  }
+
+  // ── ★ measure-types Task 7: in-page warning panel (spec §6) ──────────────
+  // Replaces every confirm() in the save path — iOS standalone PWA swallows
+  // window dialogs silently (user taps save, nothing happens). Buttons render
+  // only when opts.onOk is provided; message-only mode = blocking/advisory bar.
+  function ekmShowWarn(msg, opts) {
+    opts = opts || {};
+    document.getElementById('ekm-warn-msg').textContent = msg;
+    var btnRow = document.getElementById('ekm-warn-btns');
+    var okBtn = document.getElementById('ekm-warn-ok');
+    var cancelBtn = document.getElementById('ekm-warn-cancel');
+    if (opts.onOk) {
+      btnRow.style.display = 'block';
+      okBtn.textContent = opts.okLabel || 'ยืนยัน';
+      cancelBtn.textContent = opts.cancelLabel || 'ยกเลิก';
+      okBtn.onclick = opts.onOk;
+      cancelBtn.onclick = opts.onCancel || function() { ekmHideWarn(); };
+    } else {
+      btnRow.style.display = 'none';
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+    }
+    document.getElementById('ekm-warn').style.display = 'block';
+  }
+
+  function ekmHideWarn() {
+    var panel = document.getElementById('ekm-warn');
+    if (!panel) return;
+    panel.style.display = 'none';
+    document.getElementById('ekm-warn-ok').onclick = null;
+    document.getElementById('ekm-warn-cancel').onclick = null;
+  }
+
+  // ── ★ measure-types Task 7: pure rate-input validation ───────────────────
+  // Node-tested in tests/gateway/cases_fillform.js — MUST stay free of DOM /
+  // google.script access. Mirrors gateway rows 1-3 (05_gateway_rules.js)
+  // client-side so the user sees the SAME Thai text the server would reject
+  // with, before any round-trip. Returns { state, msg, num, denom, pct }:
+  //   'empty'      both blank → save clears the month (server writes ค้างกรอก)
+  //   'incomplete' one field filled, other blank → BLOCK
+  //   'invalid'    non-numeric / negative → BLOCK
+  //   'impossible' num > 0 with denom = 0 → BLOCK
+  //   'nocase'     0/0 → needs in-page confirmation → stores 'ไม่มีเคส'
+  //   'over100'    num > denom → advisory only (some KPIs double-count)
+  //   'ok'         valid fraction, pct = round(num/denom×100, 1)
+  function ekmValidateRateInputs(numRaw, denomRaw) {
+    var numS = (numRaw === null || numRaw === undefined) ? '' : String(numRaw).trim();
+    var denomS = (denomRaw === null || denomRaw === undefined) ? '' : String(denomRaw).trim();
+    if (numS === '' && denomS === '') {
+      return { state: 'empty', msg: '', num: null, denom: null, pct: null };
+    }
+    if (numS === '' || denomS === '') {
+      return { state: 'incomplete', msg: 'KPI นี้เป็นอัตรา ต้องกรอกทั้งตัวเศษและตัวส่วน', num: null, denom: null, pct: null };
+    }
+    var num = parseFloat(numS);
+    var denom = parseFloat(denomS);
+    if (!isFinite(num) || !isFinite(denom) || num < 0 || denom < 0) {
+      return { state: 'invalid', msg: 'ตัวเศษ/ตัวส่วนต้องเป็นตัวเลขและไม่ติดลบ', num: null, denom: null, pct: null };
+    }
+    if (num > 0 && denom === 0) {
+      return { state: 'impossible', msg: 'ตัวเศษมากกว่า 0 แต่ตัวส่วนเป็น 0 — เป็นไปไม่ได้ กรุณาตรวจสอบ', num: num, denom: denom, pct: null };
+    }
+    if (num === 0 && denom === 0) {
+      return { state: 'nocase', msg: '⚠ ไม่มีเคสเข้าเกณฑ์ → บันทึกเป็น "ไม่มีเคส" ไม่ใช่ 0%', num: 0, denom: 0, pct: null };
+    }
+    // round(x, 1) — parity with autosync and computeRateOutcome_ (05_gateway_rules.js)
+    var pct = Math.round((num / denom) * 100 * 10) / 10;
+    if (num > denom) {
+      return { state: 'over100', msg: 'ตัวเศษมากกว่าตัวส่วน — ผลลัพธ์ ' + pct + '% (เกิน 100%) · บาง KPI นับซ้ำได้ ถ้าตัวเลขถูกต้องบันทึกได้เลย', num: num, denom: denom, pct: pct };
+    }
+    return { state: 'ok', msg: '', num: num, denom: denom, pct: pct };
+  }
+
+  // Live handler for both fraction inputs (spec §6: the warning bar appears
+  // as the user types, BEFORE save). Any edit invalidates a prior "ไม่มีเคสจริง"
+  // confirmation — the confirmed fact (0/0) is no longer what's in the fields.
+  function ekmRateInputChanged() {
+    EKM_STATE.noCaseOK = false;
+    var vr = ekmValidateRateInputs(document.getElementById('ekm-num').value,
+                                   document.getElementById('ekm-denom').value);
+    var prev = document.getElementById('ekm-rate-preview');
+    if (vr.state === 'ok' || vr.state === 'over100') prev.textContent = '= ' + vr.pct + '%';
+    else if (vr.state === 'nocase') prev.textContent = '= ไม่มีเคส';
+    else prev.textContent = '';
+    if (vr.state === 'nocase') {
+      ekmShowWarn(vr.msg, {
+        okLabel: '✓ ใช่ ไม่มีเคสจริง',
+        cancelLabel: '✗ ขอแก้ตัวเลข',
+        onOk: function() { EKM_STATE.noCaseOK = true; ekmSaveClick(); },
+        onCancel: function() { ekmHideWarn(); var n = document.getElementById('ekm-num'); n.focus(); n.select(); }
+      });
+    } else if (vr.state === 'incomplete' || vr.state === 'invalid' || vr.state === 'impossible' || vr.state === 'over100') {
+      ekmShowWarn(vr.msg, {});
+    } else {
+      ekmHideWarn();
+    }
+  }
+
+  // Single-value input live handler: editing the number invalidates a prior
+  // out-of-range confirmation and clears any visible warning bar.
+  function ekmSingleInputChanged() {
+    EKM_STATE.oorOK = false;
+    ekmHideWarn();
   }
 
 // ★ v9.15.7: Fast local cell update (no server round-trip)
@@ -3118,7 +3776,12 @@ html+='<div class="chart-container"><canvas id="chart-canvas"></canvas></div>';p
     if (!cells || cells.length === 0) return false;
 
     var sentinel;
-    if (newValue === 'NA') sentinel = 'na';
+    // ★ measure-types Task 10 fix round (reviewer item 4): same no_case sentinel
+    // bucket as renderTable (spec §8) — BEFORE this fix a rate 0/0 confirmed
+    // save landed here as sentinel 'value' and rendered the raw 'ไม่มีเคส' string
+    // with plain-text styling instead of the gray chip.
+    if (newValue === 'ไม่มีเคส') sentinel = 'no_case';
+    else if (newValue === 'NA') sentinel = 'na';
     else if (newValue === '' || newValue === null || newValue === undefined || newValue === 'ค้างกรอก') sentinel = 'pending';
     else sentinel = 'value';
 
@@ -3133,6 +3796,10 @@ html+='<div class="chart-container"><canvas id="chart-canvas"></canvas></div>';p
     var dispVal;
     if (sentinel === 'na') {
       dispVal = '<span style="color:#a0a8b0;font-size:14px">—</span>';
+    } else if (sentinel === 'no_case') {
+      // same chip markup as renderTable's no_case cell (line ~2560) — reuse
+      // the 'pill no_case' classes so both render paths look identical.
+      dispVal = '<span class="pill no_case" style="font-size:10px;padding:2px 8px;font-weight:600">ไม่มีเคส</span>';
     } else if (sentinel === 'pending') {
       dispVal = monthIsCur
         ? '<span style="color:#fbbf24;font-weight:600;font-size:11px">⏳ ค้างกรอก</span>'
@@ -3146,8 +3813,9 @@ html+='<div class="chart-container"><canvas id="chart-canvas"></canvas></div>';p
       var cmtBtn = cell.querySelector('button');
       cell.innerHTML = dispVal + (cmtBtn ? cmtBtn.outerHTML : '');
       cell.setAttribute('data-val', newValue == null ? '' : String(newValue));
-      cell.classList.remove('is-na');
+      cell.classList.remove('is-na', 'is-nocase');
       if (sentinel === 'na') cell.classList.add('is-na');
+      else if (sentinel === 'no_case') cell.classList.add('is-nocase');
       cell.style.transition = 'background 0.4s';
       cell.style.background = 'rgba(34,211,238,0.3)';
       (function(c){ setTimeout(function(){ c.style.background = ''; }, 800); })(cell);
@@ -3155,6 +3823,229 @@ html+='<div class="chart-container"><canvas id="chart-canvas"></canvas></div>';p
     return true;
   }
 
+  // ★ The fast path above repaints ONE DOM cell — but the summary cards on
+  // "KPI ของฉัน" render from window._userKPIs, which the fast path never
+  // touched, so the ไม่มีเคส card stayed stale until a full reload
+  // (doctor-caught 9 ส.ค.69: set no-case → chip updated, card stuck at 0).
+  // Sync the in-memory arrays to the server-confirmed value and re-render the
+  // cards when the by-user page is showing.
+  function ekmSyncLocalModel(kpiId, month, newValue) {
+    try {
+      var lists = [window._userKPIs, window._deptKPIs];
+      for (var L = 0; L < lists.length; L++) {
+        var list = lists[L]; if (!list) continue;
+        for (var i = 0; i < list.length; i++) {
+          if (String(list[i].id) !== String(kpiId)) continue;
+          var mi = (list[i].months || []).indexOf(month);
+          if (mi >= 0 && list[i].values) list[i].values[mi] = newValue;
+        }
+      }
+      var myPage = document.getElementById('page-byuser');
+      if (myPage && myPage.classList.contains('active') && window._userKPIs && typeof renderMyDashFromKPIs === 'function') {
+        renderMyDashFromKPIs(window._userKPIs);
+      }
+    } catch (e) { /* silent — cards catch up on the next full load */ }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Track A — perceived-instant save (10 ส.ค.69, docs/fast_save_design_20260810.md §3)
+  //
+  // Measured: every google.script.run costs ~2-4 s of Apps Script overhead no
+  // matter what it does, so a save can never feel instant while the user waits
+  // for it. It does not have to: the form closes at once and the CELL carries
+  // the state until the server answers.
+  //
+  // What this is NOT: it never claims success early. The chip says
+  // "กำลังบันทึก…" — never a tick — until the server actually replies, so a
+  // rejection can still surface honestly. That distinction is the whole point;
+  // an optimistic "สำเร็จ" would manufacture the phantom-save bug by design.
+  //
+  // Scope of this pass (deliberate): in-memory only. No localStorage registry,
+  // no offline queue, no auto-replay after a reload — that is where the unsafe
+  // resend logic lives (spec INVARIANT R: writeKPIValue has no request id and
+  // is not idempotent, so a silent resend can overwrite a colleague's edit
+  // through RULE 1 without any confirmation). Closing the tab mid-flight
+  // behaves exactly as it does today.
+  // ══════════════════════════════════════════════════════════════════════
+  var KPW = {};                                   // key → pending write
+  function kpwKey(k, m) { return k + '|' + m; }
+
+  // Is this cell mid-write? Every path that can start ANOTHER write to the
+  // same cell must ask first — save, reset, and the reopen that leads to them.
+  // (Review C-1/C-2: without this, a second save was swallowed inside
+  // kpwSubmit AFTER the form had already closed — the user's value vanished
+  // with no message, and the earlier write's success toast then "confirmed"
+  // the value they had just replaced. Reset had the same hole via a different
+  // door: two writes to one cell serialized only by the server lock.)
+  function kpwBusy(kpiId, month) {
+    var e = KPW[kpwKey(kpiId, month)];
+    return !!(e && e.status === 'inflight');
+  }
+  var KPW_WATCHDOG_MS = 90000;
+
+  // The snapshot is IMMUTABLE and complete. Every dispatch — first attempt and
+  // the force retry — reads only from it, never from EKM_STATE or the DOM:
+  // the form is closed by then and may have been reopened on another cell, so
+  // live state would write one KPI's number into another (spec §3.3).
+  function kpwPaintPending(snap) {
+    var sel = 'td.val-cell[data-kid="' + snap.kpiId + '"][data-month="' + snap.month + '"]';
+    var cells; try { cells = document.querySelectorAll(sel); } catch (e) { return; }
+    for (var i = 0; i < cells.length; i++) {
+      var c = cells[i];
+      var shown = (snap.previewDisp !== null && snap.previewDisp !== undefined)
+        ? snap.previewDisp
+        : (snap.value === '' ? 'ค้างกรอก' : String(snap.value));
+      var btn = c.querySelector('button');
+      c.innerHTML = '<span style="opacity:.55;font-style:italic">' + escHtml(shown) + '</span>' +
+                    '<span class="pill" style="background:rgba(34,211,238,.15);color:#22d3ee;' +
+                    'font-size:9px;padding:1px 5px;margin-left:4px">⏳</span>' +
+                    (btn ? btn.outerHTML : '');
+      c.style.outline = '1.5px dashed rgba(34,211,238,.6)';
+      c.style.outlineOffset = '-2px';
+      c.title = 'กำลังบันทึก — ยังไม่ยืนยันจากเซิร์ฟเวอร์';
+    }
+  }
+
+  function kpwClearMark(kpiId, month) {
+    var sel = 'td.val-cell[data-kid="' + kpiId + '"][data-month="' + month + '"]';
+    var cells; try { cells = document.querySelectorAll(sel); } catch (e) { return; }
+    for (var i = 0; i < cells.length; i++) {
+      cells[i].style.outline = ''; cells[i].style.borderLeft = ''; cells[i].title = '';
+    }
+  }
+
+  // A failure must STICK. A toast that fades after 3 s is exactly how a failed
+  // save gets mistaken for a successful one.
+  //
+  // Split in two on purpose (review I-4b): the ROLLBACK is a one-time act at
+  // failure, the MARK is idempotent styling. kpwRepaintAll must only ever redo
+  // the mark — re-running the rollback on every table render would keep
+  // stamping a stale oldValue over whatever the render just fetched (the write
+  // may in fact have landed, or a colleague may have corrected the value).
+  function kpwMarkFailed(snap, msg) {
+    var sel = 'td.val-cell[data-kid="' + snap.kpiId + '"][data-month="' + snap.month + '"]';
+    var cells; try { cells = document.querySelectorAll(sel); } catch (e) { return; }
+    for (var i = 0; i < cells.length; i++) {
+      cells[i].style.outline = '';
+      cells[i].style.borderLeft = '3px solid #f87171';
+      cells[i].title = 'บันทึกไม่สำเร็จ: ' + msg + ' — ดับเบิลคลิกเพื่อแก้ไขใหม่';
+    }
+  }
+  function kpwPaintFailed(snap, msg) {
+    ekmUpdateCellLocally(snap.kpiId, snap.month, snap.oldValue);  // roll the cell back
+    kpwMarkFailed(snap, msg);
+  }
+
+  function kpwPaintNeedsConfirm(snap) {
+    var sel = 'td.val-cell[data-kid="' + snap.kpiId + '"][data-month="' + snap.month + '"]';
+    var cells; try { cells = document.querySelectorAll(sel); } catch (e) { return; }
+    for (var i = 0; i < cells.length; i++) {
+      cells[i].style.outline = '2px solid rgba(251,191,36,.8)';
+      cells[i].style.outlineOffset = '-2px';
+      cells[i].title = 'ต้องยืนยันก่อนเขียนทับ — ดับเบิลคลิกที่ช่องนี้';
+    }
+  }
+
+  // A cell whose reply never arrives must not stay locked forever (review I-3:
+  // google.script.run going silent is a live suspect in this project's own
+  // phantom-save case). After 90 s we stop claiming to know: the mark turns
+  // grey, the cell unlocks so the user CAN act — and we still never resend by
+  // ourselves, because the write may well have landed (INVARIANT R).
+  function kpwPaintUnknown(snap) {
+    var sel = 'td.val-cell[data-kid="' + snap.kpiId + '"][data-month="' + snap.month + '"]';
+    var cells; try { cells = document.querySelectorAll(sel); } catch (e) { return; }
+    for (var i = 0; i < cells.length; i++) {
+      cells[i].style.outline = '1.5px dashed #9ca3af';
+      cells[i].style.outlineOffset = '-2px';
+      cells[i].title = 'ยังไม่ได้รับคำตอบจากเซิร์ฟเวอร์ — ค่าอาจถูกบันทึกไปแล้วหรือยังไม่ได้บันทึก ' +
+                       'ระบบจะไม่ส่งซ้ำเอง · กด Refresh เพื่อดูค่าจริงก่อนบันทึกใหม่';
+    }
+  }
+
+  function kpwSubmit(snap, force) {
+    var key = kpwKey(snap.kpiId, snap.month);
+    if (kpwBusy(snap.kpiId, snap.month)) return;   // callers check first; belt & braces
+    var entry = { snap: snap, status: 'inflight', force: force === true };
+    KPW[key] = entry;
+    kpwClearMark(snap.kpiId, snap.month);
+    kpwPaintPending(snap);
+    entry.timer = setTimeout(function () {
+      if (KPW[key] !== entry || entry.status !== 'inflight') return;
+      entry.status = 'unknown';
+      kpwPaintUnknown(snap);
+      showToast('⏱ ' + snap.kpiId + ' ' + snap.month + ' ยังไม่ได้รับคำตอบจากเซิร์ฟเวอร์ — ' +
+                'กด Refresh ดูค่าจริงก่อนบันทึกซ้ำ (ระบบไม่ส่งซ้ำเองเพื่อกันบันทึกซ้อน)', 'error');
+    }, KPW_WATCHDOG_MS);
+    // ★ review C-3: both handlers must answer for THEIR OWN dispatch, not for
+    // whatever currently sits at this key. Once the watchdog unlocks a cell the
+    // user can start a second write, and the first request may still be alive —
+    // its late reply would otherwise resolve (or fail, or delete) the NEWER
+    // entry, painting stale server data and swallowing the real outcome. The
+    // watchdog already keyed off entry identity; these two did not.
+    google.script.run.withSuccessHandler(function (r) {
+      kpwResolve(key, entry, r);
+    }).withFailureHandler(function (err) {
+      if (KPW[key] !== entry) return;              // superseded — not ours to answer
+      if (entry.timer) clearTimeout(entry.timer);
+      entry.status = 'failed';
+      var m = (err && err.message) ? err.message : String(err);
+      entry.msg = 'เครือข่าย/เซิร์ฟเวอร์ขัดข้อง';
+      kpwPaintFailed(entry.snap, entry.msg);
+      showToast('บันทึกไม่สำเร็จ (เครือข่าย/เซิร์ฟเวอร์ขัดข้อง) — ' + m, 'error');
+    }).saveKPIValue(snap.kpiId, snap.month, snap.value, S.email,
+                    force === true, snap.oor, snap.num, snap.denom);
+  }
+
+  // renderTable rebuilds every <td> from scratch (dept switch, refresh), which
+  // wipes the marks — the cell would look ordinary while a write is still out
+  // (review I-4). Repaint from the registry after any table render.
+  function kpwRepaintAll() {
+    for (var key in KPW) {
+      if (!Object.prototype.hasOwnProperty.call(KPW, key)) continue;
+      var e = KPW[key];
+      if (e.status === 'inflight') kpwPaintPending(e.snap);
+      else if (e.status === 'needs_confirm') kpwPaintNeedsConfirm(e.snap);
+      else if (e.status === 'unknown') kpwPaintUnknown(e.snap);
+      else if (e.status === 'failed') kpwMarkFailed(e.snap, e.msg || 'ไม่สำเร็จ');  // mark only
+    }
+  }
+
+  function kpwResolve(key, entry, r) {
+    // answer only for our own dispatch (review C-3) — a reply that arrives
+    // after the watchdog unlocked the cell and the user retried must not
+    // resolve, fail, or delete the newer write's entry
+    if (KPW[key] !== entry) return;
+    var e = entry;
+    if (e.timer) clearTimeout(e.timer);
+    var snap = e.snap;
+    if (r && r.needs_confirm) {
+      // The form is gone, so the question moves onto the cell. Nothing is
+      // resent until the user answers — double-clicking the cell reopens the
+      // form and openEditModal surfaces the panel from this stored reply.
+      e.status = 'needs_confirm';
+      e.reply = r;
+      kpwPaintNeedsConfirm(snap);
+      showToast('⚠ ' + snap.kpiId + ' ' + snap.month + ' ต้องยืนยันก่อนเขียนทับ — ดับเบิลคลิกที่ช่องนั้น', 'info');
+      return;
+    }
+    if (!r || r.ok !== true) {
+      e.status = 'failed';
+      var msg = (r && r.msg) ? r.msg : 'unknown';
+      e.msg = msg;                       // kpwRepaintAll needs it after a re-render
+      kpwPaintFailed(snap, msg);
+      showToast('บันทึกไม่สำเร็จ: ' + msg, 'error');
+      return;
+    }
+    delete KPW[key];
+    kpwClearMark(snap.kpiId, snap.month);
+    handleEKMSaveResult(r, snap.kpiId, snap.month, snap.previewDisp);
+  }
+
+ // ★ measure-types Task 7: pure boolean now — true = in range (or no range
+ // defined), false = out of range. The old version confirm()'d right here;
+ // iOS standalone PWA swallows window dialogs (spec §6), so the caller
+ // (ekmSaveClick) shows the in-page warning panel and re-enters with
+ // EKM_STATE.oorOK set instead.
  function checkRangeOK(kpiInfo, val) {
     if (!kpiInfo) return true;
     var v = parseFloat(val);
@@ -3162,69 +4053,153 @@ html+='<div class="chart-container"><canvas id="chart-canvas"></canvas></div>';p
     var lo = kpiInfo.valMin, hi = kpiInfo.valMax;
     if (lo === null && hi === null) return true;
     if ((lo === null || v >= lo) && (hi === null || v <= hi)) return true;
-    return confirm('⚠️ ค่าปกติของ KPI นี้อยู่ระหว่าง ' + (lo !== null ? lo : '-') + ' ถึง ' + (hi !== null ? hi : '-')
-      + '\nคุณกรอก: ' + v + '\n\nยืนยันบันทึกค่านี้?');
+    return false;
   }
 
+ // ★ measure-types Task 7 rewrite (spec §5.1/§6/§10/§12): rate KPIs send
+ // numerator/denominator; every confirm() replaced by the in-page panel; the
+ // save invocation is a single inner doSave(force) closing over the parsed
+ // inputs so the needs_confirm force retry resends num/denom (spec §4.2).
  function ekmSaveClick() {
-    var inp = document.getElementById('ekm-input');
-    var raw = inp.value;
-    var valToSend = raw === '' ? 'NA' : parseFloat(raw);
-    if (raw !== '' && isNaN(valToSend)) {
-      showToast('ค่าที่กรอกไม่ใช่ตัวเลข', 'error');
-      return;
-    }
     if (!EKM_STATE.kpiId || !EKM_STATE.month) {
       showToast('ข้อมูล KPI ไม่ครบ — โปรดเปิด modal ใหม่', 'error');
       return;
     }
-    var _oor = false;
-    if (raw !== '' && !isNaN(valToSend)) {
-      var _defInfo = (S.kpiDefMap && S.kpiDefMap[EKM_STATE.kpiId]) || null;
-      if (!checkRangeOK(_defInfo, valToSend)) {
-        showToast('ยกเลิก', 'info');
-        return;
-      }
-      if (_defInfo && (_defInfo.valMin !== null || _defInfo.valMax !== null)) {
-        var _lo = _defInfo.valMin, _hi = _defInfo.valMax;
-        if ((_lo !== null && valToSend < _lo) || (_hi !== null && valToSend > _hi)) _oor = true;
-      }
+    // ★ review C-1: refuse a SECOND write to a cell whose first one is still
+    // out, and say so with the form still open — the guard used to live inside
+    // kpwSubmit, which runs after closeEditModal(), so the user's value was
+    // dropped in silence. Tell them here, keep what they typed.
+    if (kpwBusy(EKM_STATE.kpiId, EKM_STATE.month)) {
+      ekmShowWarn('⏳ ค่าก่อนหน้าของช่องนี้ยังบันทึกไม่เสร็จ — รอผลก่อนแล้วค่อยบันทึกใหม่ ' +
+                  '(กันบันทึกซ้อนกัน)', {});
+      return;
     }
+    if (EKM_STATE.saving) return;
     var kpi = EKM_STATE.kpiId;
     var month = EKM_STATE.month;
-    closeEditModal();
-    showToast('กำลังบันทึก...', 'info');
+    // RateSince §13.2: rateLayout, not measureType — a legacy month of a rate
+    // KPI saves through the single-value path (server passes value-mode to the
+    // gateway for months before RateSince, so the bare % is accepted there).
+    var isRate = EKM_STATE.rateLayout;
 
-    google.script.run.withSuccessHandler(function(r) {
-      if (r && r.needs_confirm) {
-        var msg = 'ค่านี้เพิ่งถูกยืนยันผ่าน LINE เมื่อ ' + r.hours_since +
-                  ' ชม.ที่แล้ว\n(เวลา ' + r.prev_at + ' โดย ' + (r.prev_by || 'ผู้ใช้') +
-                  ')\n\nค่าเดิม: ' + r.old_value + '\nค่าใหม่: ' + r.new_value +
-                  '\n\nต้องการเขียนทับหรือไม่?';
-        if (confirm(msg)) {
-          showToast('กำลังบันทึก (force)...', 'info');
-          google.script.run.withSuccessHandler(function(rr){
-            handleEKMSaveResult(rr, kpi, month, valToSend);
-          }).saveKPIValue(kpi, month, valToSend, S.email, true, _oor);
-        } else {
-          showToast('ยกเลิกการแก้ไข', 'info');
-        }
+    // spec §10 / test 17: blank goes to the server as '' (server maps '' →
+    // ค้างกรอก). Never send the NA sentinel string — it is system-owned and
+    // the gateway now rejects it from web_manual (fake_sentinel).
+    var valToSend = '';
+    var numToSend = null;
+    var denomToSend = null;
+    var previewDisp = null;  // display-only (warning panels) — never written to the cell
+    var _oor = false;
+
+    if (isRate) {
+      var vr = ekmValidateRateInputs(document.getElementById('ekm-num').value,
+                                     document.getElementById('ekm-denom').value);
+      if (vr.state === 'incomplete' || vr.state === 'invalid' || vr.state === 'impossible') {
+        ekmShowWarn(vr.msg, {});  // block — message bar, no dialogs (spec §6)
         return;
       }
-      handleEKMSaveResult(r, kpi, month, valToSend);
-    }).saveKPIValue(kpi, month, valToSend, S.email, false, _oor);
+      if (vr.state === 'nocase' && !EKM_STATE.noCaseOK) {
+        // 0/0 → in-page confirmation (spec §6 verbatim). Proceed only from the
+        // ✓ button, which re-enters ekmSaveClick with noCaseOK set.
+        ekmShowWarn(vr.msg, {
+          okLabel: '✓ ใช่ ไม่มีเคสจริง',
+          cancelLabel: '✗ ขอแก้ตัวเลข',
+          onOk: function() { EKM_STATE.noCaseOK = true; ekmSaveClick(); },
+          onCancel: function() { ekmHideWarn(); var n = document.getElementById('ekm-num'); n.focus(); n.select(); }
+        });
+        return;
+      }
+      if (vr.state !== 'empty') {
+        numToSend = vr.num;
+        denomToSend = vr.denom;
+        previewDisp = (vr.state === 'nocase') ? 'ไม่มีเคส' : (vr.pct + '%');
+      }
+      // vr.state === 'empty': both fields blank → plain clear, no fraction
+      // (server writes ค้างกรอก — same as the single-value blank path).
+    } else {
+      var raw = document.getElementById('ekm-input').value;
+      if (raw !== '') {
+        var singleNum = parseFloat(raw);
+        if (isNaN(singleNum)) {
+          showToast('ค่าที่กรอกไม่ใช่ตัวเลข', 'error');
+          return;
+        }
+        valToSend = singleNum;
+        var _defInfo = (S.kpiDefMap && S.kpiDefMap[kpi]) || null;
+        if (!checkRangeOK(_defInfo, singleNum)) {
+          if (!EKM_STATE.oorOK) {
+            var _lo = _defInfo.valMin, _hi = _defInfo.valMax;
+            ekmShowWarn('⚠ ค่าปกติของ KPI นี้อยู่ระหว่าง ' + (_lo !== null ? _lo : '-') + ' ถึง ' +
+                        (_hi !== null ? _hi : '-') + ' — คุณกรอก: ' + singleNum, {
+              okLabel: 'ยืนยันบันทึกค่านี้',
+              cancelLabel: 'ขอแก้ตัวเลข',
+              onOk: function() { EKM_STATE.oorOK = true; ekmSaveClick(); },
+              onCancel: function() { ekmHideWarn(); var si = document.getElementById('ekm-input'); si.focus(); si.select(); }
+            });
+            return;
+          }
+          _oor = true;  // out of range + user confirmed via in-page panel → server logs OOR_CONFIRM
+        }
+      }
+    }
+
+    // Track A: freeze everything the write needs, close the form, then send.
+    // The snapshot exists because the form is no longer holding the user in
+    // place — by the time the reply lands they may be editing another cell, so
+    // reading live state at dispatch (or on the force retry) would write this
+    // number into a different KPI (spec §3.3).
+    var snap = {
+      kpiId: kpi, month: month, isRate: isRate,
+      value: valToSend, num: numToSend, denom: denomToSend, oor: _oor,
+      previewDisp: previewDisp,
+      oldValue: EKM_STATE.prevVal        // for rolling the cell back on failure
+    };
+    closeEditModal();                    // ★ ผู้ใช้ได้เวลาคืนตรงนี้ (~200 ms)
+    kpwSubmit(snap, false);
   }
 
   function handleEKMSaveResult(r, kpi, month, displayVal) {
     if (r && r.ok) {
-      showToast('บันทึกสำเร็จ', 'success');
-      if (kpi && month && ekmUpdateCellLocally(kpi, month, displayVal)) {
-        // Cell updated locally — fast path (~50ms)
+      // name the cell: under Track A the form closed seconds ago and the user
+      // has probably moved on, so a bare "บันทึกสำเร็จ" no longer says what
+      // succeeded. r.noop = the value was already there, nothing changed.
+      showToast(r.noop ? ('ค่าเดิมอยู่แล้ว — ' + kpi + ' ' + month + ' ไม่มีอะไรเปลี่ยน')
+                       : ('บันทึกสำเร็จ · ' + kpi + ' ' + month), 'success');
+      // _bcache (browser side, 10 min TTL) holds the dept/user KPI arrays that
+      // loadDept/loadMyKPIs render from, and loadDept returns from it WITHOUT
+      // calling the server. The fast path below repaints one DOM cell only, so
+      // skipping this leaves the cached array holding the old number: the save
+      // looks fine, then navigating away and back shows the old value again.
+      // Reproduced 8 ส.ค.69 — PCT-1 saved 50 (KPI_Data really held 50), screen
+      // went back to 0 after switching depts. Clear on every successful save,
+      // both paths; the refreshCurrentView branch already did this.
+      bcClear();
+      // (the form was closed at dispatch — Track A. Do NOT close it here: by
+      // now the user may have opened a DIFFERENT cell, and closing that one
+      // out from under them would throw away what they are typing.)
+      // Rate saves: the cell shows the SERVER's stored value (r.new_value —
+      // the derived % or 'ไม่มีเคส'), never a client-computed number. Blank
+      // single-value saves land here as 'ค้างกรอก' (spec §10 / test 17).
+      var cellVal = (r.new_value !== undefined && r.new_value !== null) ? r.new_value : displayVal;
+      if (kpi && month && ekmUpdateCellLocally(kpi, month, cellVal)) {
+        // Cell updated locally — fast path (~50ms); cards render from the
+        // in-memory arrays, so they need the same server-confirmed value.
+        ekmSyncLocalModel(kpi, month, cellVal);
       } else {
         // Fallback: full refresh ถ้า cell selector ไม่เจอ
         refreshCurrentView();
       }
+      if (r.suggest_reclassify) {
+        // spec §5.1 advisory (test 44, client half) — delayed past the success
+        // toast's 3s hide timer (showToast never cancels a pending timeout, so
+        // an overlapping call would be truncated at the first toast's 3000ms).
+        setTimeout(function() {
+          showToast('ตัวส่วนเท่ากับ 100 พอดีติดกันหลายเดือน — ถ้า KPI นี้ไม่มีจำนวนจริงให้นับ ควรเปลี่ยนประเภทเป็น value แจ้งผู้ดูแลระบบ', 'info');
+        }, 3100);
+      }
     } else {
+      // Failure: the modal STAYS OPEN (closeEditModal no longer runs before
+      // the save) — the user sees the server's message and can fix and retry.
       showToast('Error: ' + (r && r.msg ? r.msg : 'unknown'), 'error');
     }
   }
@@ -3249,29 +4224,136 @@ html+='<div class="chart-container"><canvas id="chart-canvas"></canvas></div>';p
   }
 
 
+  // ★ measure-types Task 7 fix round (reviewer item 1): spec §6's dialog ban
+  // covers ALL paths that write to the server — Reset calls revertKPICellAPI,
+  // so it gets the same treatment as ekmSaveClick: in-page panel instead of a
+  // window dialog (iOS standalone PWA swallows those silently → dead button,
+  // user believes the cell was reverted when it wasn't), withFailureHandler,
+  // closeEditModal only AFTER a confirmed success, saving re-entry guard.
   function ekmResetClick() {
     if (!EKM_STATE.kpiId) return;
-    var msg = 'ต้องการคืนค่าเซลล์นี้กลับเป็น ค้างกรอก หรือ NA หรือไม่?\n\n' +
-              '(ค่าปัจจุบัน "' + (EKM_STATE.prevVal || '') + '" จะถูกแทนที่ตามตรรกะ Frequency)';
-    if (!confirm(msg)) return;
+    // ★ review C-2: reset is a WRITE to the same cell. Without this a user
+    // could reopen a cell whose save is still out and revert it, leaving two
+    // writes racing with nothing but the server lock deciding the winner.
+    if (kpwBusy(EKM_STATE.kpiId, EKM_STATE.month)) {
+      ekmShowWarn('⏳ ช่องนี้กำลังบันทึกอยู่ — รอผลก่อนแล้วค่อยคืนค่า', {});
+      return;
+    }
+    if (EKM_STATE.saving) return;
     var kpi = EKM_STATE.kpiId;
     var month = EKM_STATE.month;
-    closeEditModal();
-    showToast('กำลังคืนค่า...', 'info');
-    google.script.run.withSuccessHandler(function(r) {
-      if (r && r.ok) {
-        showToast('คืนค่าเป็น ' + r.sentinel + ' สำเร็จ', 'success');
-        if (!ekmUpdateCellLocally(kpi, month, r.sentinel)) {
-          refreshCurrentView();
-        }
-      } else {
-        showToast('Error: ' + (r && r.msg ? r.msg : 'unknown'), 'error');
+    ekmShowWarn('⚠ ต้องการคืนค่าเซลล์นี้กลับเป็น ค้างกรอก หรือ NA หรือไม่? (ค่าปัจจุบัน "' +
+                (EKM_STATE.prevVal || '') + '" จะถูกแทนที่ตามตรรกะ Frequency)', {
+      okLabel: 'ยืนยันคืนค่า',
+      cancelLabel: 'ยกเลิก',
+      onOk: function() {
+        EKM_STATE.saving = true;
+        ekmHideWarn();
+        showToast('กำลังคืนค่า...', 'info');
+        google.script.run.withSuccessHandler(function(r) {
+          EKM_STATE.saving = false;
+          if (r && r.ok) {
+            showToast('คืนค่าเป็น ' + r.sentinel + ' สำเร็จ', 'success');
+            // Same Aug-8 bug class as handleEKMSaveResult: the fast path below
+            // repaints one DOM cell only, while _bcache still holds the old
+            // arrays — navigate away and back and the reverted cell shows the
+            // pre-revert value again. Clear on every confirmed revert, same
+            // order as the save path (toast → bcClear → close → cell update).
+            bcClear();
+            closeEditModal();
+            if (!ekmUpdateCellLocally(kpi, month, r.sentinel)) {
+              refreshCurrentView();
+            } else {
+              // same card-staleness fix as handleEKMSaveResult's fast path
+              ekmSyncLocalModel(kpi, month, r.sentinel);
+            }
+          } else {
+            showToast('Error: ' + (r && r.msg ? r.msg : 'unknown'), 'error');
+          }
+        }).withFailureHandler(function(err) {
+          EKM_STATE.saving = false;
+          showToast('คืนค่าไม่สำเร็จ (เครือข่าย/เซิร์ฟเวอร์ขัดข้อง) — ' + ((err && err.message) ? err.message : err), 'error');
+        }).revertKPICellAPI(kpi, month, S.email, S.sessionToken);
       }
-    }).revertKPICellAPI(kpi, month, S.email, S.sessionToken);
+    });
   }
 
-function openComment(btn,kpiId,month){S.pendingComment={kpiId:kpiId,month:month};document.getElementById('modal-comment-info').textContent=kpiId+' เดือน '+month;document.getElementById('c-text').value='';openModal('modal-comment');}
-function submitComment(){var pc=S.pendingComment;google.script.run.withSuccessHandler(function(r){if(r.ok){bcClear();showToast('บันทึก comment สำเร็จ','success');closeModal('modal-comment');}else showToast('Error: '+r.msg,'error');}).saveComment(pc.kpiId,pc.month,document.getElementById('c-text').value.trim(),S.email);}
+// ── หมายเหตุ (10 ส.ค.69) ────────────────────────────────────────────────
+// A user typed "89" here meaning to update the KPI, saw "บันทึกสำเร็จ", and the
+// value never moved — the comment really did save, so the toast was honest and
+// the confusion total. That single mistake is what the whole phantom-save hunt
+// was chasing. Three changes: say plainly what this box is for, show the past
+// comments so it reads as a log rather than a data field, and stop a
+// numbers-only entry to ask whether they meant the value instead.
+function _cmtFindKpi(kpiId){
+  var lists=[window._deptKPIs,window._userKPIs];
+  for(var L=0;L<lists.length;L++){var l=lists[L];if(!l)continue;
+    for(var i=0;i<l.length;i++) if(String(l[i].id)===String(kpiId)) return l[i];}
+  return null;
+}
+function openComment(btn,kpiId,month){
+  S.pendingComment={kpiId:kpiId,month:month,forced:false};
+  document.getElementById('modal-comment-info').textContent=kpiId+' · เดือน '+month;
+  var kpi=_cmtFindKpi(kpiId);
+  var ta=document.getElementById('c-text');
+  // prefill the existing comment for THIS month — saving overwrites it, so
+  // showing it blank made an edit look like a fresh note and quietly wiped it
+  var cur='';
+  if(kpi&&kpi.months&&kpi.monthComments){var mi=kpi.months.indexOf(month);if(mi>=0)cur=kpi.monthComments[mi]||'';}
+  ta.value=cur;
+  document.getElementById('c-numwarn').style.display='none';
+  // last 3 months (excluding this one) that actually carry a comment
+  var box=document.getElementById('c-history'),html='';
+  if(kpi&&kpi.months&&kpi.monthComments){
+    var shown=0;
+    for(var j=kpi.months.length-1;j>=0&&shown<3;j--){
+      if(kpi.months[j]===month)continue;
+      var c=kpi.monthComments[j];
+      if(!c||String(c).trim()==='')continue;
+      html+='<div class="cmt-hist-row"><span class="cmt-hist-m">'+escHtml(kpi.months[j])+'</span>'+escHtml(String(c))+'</div>';
+      shown++;
+    }
+  }
+  if(html){box.innerHTML='<div class="cmt-hist-h">หมายเหตุ 3 ครั้งล่าสุดของ KPI นี้</div>'+html;box.style.display='';}
+  else{box.innerHTML='';box.style.display='none';}
+  openModal('modal-comment');
+}
+// A bare number (optionally with %) is almost never a real note — it is the
+// KPI value typed into the wrong box.
+function _cmtLooksLikeValue(t){ return /^\s*-?\d+(\.\d+)?\s*%?\s*$/.test(t); }
+function cmtGoToValue(){
+  var pc=S.pendingComment; if(!pc) return;
+  closeModal('modal-comment');
+  var sel='td.val-cell[data-kid="'+pc.kpiId+'"][data-month="'+pc.month+'"]';
+  var cell=null; try{cell=document.querySelector(sel);}catch(e){}
+  if(cell&&typeof dblEdit==='function'){ dblEdit(cell); }
+  else showToast('ดับเบิลคลิกที่ช่องตัวเลขของเดือน '+pc.month+' เพื่อกรอกค่า','info');
+}
+function cmtForceComment(){ if(S.pendingComment) S.pendingComment.forced=true; submitComment(); }
+function submitComment(){
+  var pc=S.pendingComment; if(!pc) return;
+  var txt=document.getElementById('c-text').value.trim();
+  if(txt!==''&&!pc.forced&&_cmtLooksLikeValue(txt)){
+    document.getElementById('c-numwarn-msg').innerHTML=
+      '⚠ คุณพิมพ์ตัวเลขล้วน (<b>'+escHtml(txt)+'</b>) — ถ้าตั้งใจจะ<b>กรอกค่า KPI</b> ต้องกรอกที่ช่องตัวเลข ไม่ใช่ที่นี่<br>'+
+      'บันทึกตรงนี้จะเก็บเป็น<b>ข้อความหมายเหตุ</b> ค่า KPI จะไม่เปลี่ยน';
+    document.getElementById('c-numwarn').style.display='block';
+    return;
+  }
+  google.script.run.withSuccessHandler(function(r){
+    if(r&&r.ok){
+      bcClear();
+      // name what was saved — "บันทึก comment สำเร็จ" alone is what let a
+      // mis-click read as a successful value entry
+      showToast('บันทึกหมายเหตุของ '+pc.kpiId+' '+pc.month+' แล้ว (ค่า KPI ไม่เปลี่ยน)','success');
+      var kpi=_cmtFindKpi(pc.kpiId);   // keep the local payload in step
+      if(kpi&&kpi.months&&kpi.monthComments){var mi=kpi.months.indexOf(pc.month);if(mi>=0)kpi.monthComments[mi]=txt;}
+      closeModal('modal-comment');
+    } else showToast('Error: '+((r&&r.msg)||'unknown'),'error');
+  }).withFailureHandler(function(e){
+    showToast('บันทึกหมายเหตุไม่สำเร็จ — '+((e&&e.message)||e),'error');
+  }).saveComment(pc.kpiId,pc.month,txt,S.email);
+}
 function openEditGoal(kpiId,kpiName,curGoal,curDir,month){S.pendingGoal={kpiId:kpiId,month:month};document.getElementById('modal-goal-info').textContent=kpiId+' — '+kpiName+' เดือน '+month;document.getElementById('g-goal').value=curGoal||'';document.getElementById('g-dir').value=(curDir==='↓'||curDir==='down')?'down':'up';openModal('modal-goal');}
 function submitGoal(){var pg=S.pendingGoal;var goal=document.getElementById('g-goal').value.trim();if(!goal){showToast('กรุณากรอก Goal','error');return;}var dir=document.getElementById('g-dir').value==='up'?'↑':'↓';google.script.run.withSuccessHandler(function(r){if(r.ok){bcClear();showToast('บันทึก Goal สำเร็จ','success');closeModal('modal-goal');}else showToast('Error: '+r.msg,'error');}).saveGoalOverride(pg.kpiId,pg.month,goal,dir,S.email);}
 
@@ -3320,6 +4402,40 @@ function buildMonthOptions(dataType) {
   }
 }
 
+// measure-types spec 2026-08-08 §7/§13.1: `rate` option stays hidden unless the
+// bootstrap payload said RATE_ENABLED === 'true' (S.rateEnabled, set at login) —
+// EXCEPT when the KPI being edited is already classified `rate` (spec §13.1:
+// an existing classification is a historical record, must stay visible/editable
+// even if the flag is later turned back off).
+function measureTypeCardsShowRate(forceShow) {
+  var card = document.getElementById('f-mt-card-rate');
+  if (!card) return;
+  // 'flex' not 'block' — .mt-card lays out radio + text as a flex row; 'block'
+  // would re-trigger the full-width-radio bullet bug the doctor reported 9 ส.ค.
+  card.style.display = (S.rateEnabled || forceShow) ? 'flex' : 'none';
+}
+function setMeasureTypeFormValue(mt) {
+  var val = (mt === 'rate' || mt === 'count' || mt === 'value') ? mt : 'value';
+  var radios = document.getElementsByName('f-measuretype');
+  for (var i = 0; i < radios.length; i++) radios[i].checked = (radios[i].value === val);
+}
+function getMeasureTypeFormValue() {
+  var radios = document.getElementsByName('f-measuretype');
+  for (var i = 0; i < radios.length; i++) if (radios[i].checked) return radios[i].value;
+  return 'value';
+}
+// measure-types spec §13.1 (Fable I1): only ADMIN may change an existing KPI's
+// measureType — client-side mirror of the saveKPIMeta server gate. Disables
+// (not hides) the radios so a non-ADMIN editor still sees the current
+// classification for context. The modal is reused between add/edit, so
+// openAddKPI() must reset this back to editable=true every time it opens.
+function setMeasureTypeCardsEditable(editable) {
+  var radios = document.getElementsByName('f-measuretype');
+  for (var i = 0; i < radios.length; i++) radios[i].disabled = !editable;
+  var wrap = document.getElementById('f-mt-cards');
+  if (wrap) wrap.style.opacity = editable ? '1' : '.55';
+}
+
 function openAddKPI() {
   S.editKpiId = null;
   document.getElementById('modal-kpi-title').textContent = 'เพิ่ม KPI ใหม่';
@@ -3346,6 +4462,16 @@ document.getElementById('f-customid').value = 'กำลังโหลด...';
   document.getElementById('f-definition').value = '';
   document.getElementById('f-valmin').value = '';
   document.getElementById('f-valmax').value = '';
+  // measure-types spec §13: new KPI creation has no silent default — the field
+  // stays required, but `value` is pre-selected (safest: unclassified behavior).
+  measureTypeCardsShowRate(false);
+  setMeasureTypeFormValue('value');
+  // spec §13.1 (Fable I1) is edit-only (addKPI has no ADMIN gate on measureType
+  // — any USER/ADMIN who can create a KPI classifies it at creation time) — but
+  // the modal DOM is reused between add/edit, so a prior edit-mode disable must
+  // be reset here every time the Add form opens.
+  setMeasureTypeCardsEditable(true);
+  S.editKpiMeasureTypeUnresolved = false;
   toggleStartMonth();
   openModal('modal-kpi');
 }
@@ -3360,9 +4486,22 @@ function openEditKPI(kpiId, name, unit, target, dir, freq) {
   document.getElementById('f-customid-wrap').style.display = 'none';
   document.getElementById('f-dtype-wrap').style.display = 'block';
   document.getElementById('f-start-wrap').style.display = 'block';
+  // measure-types spec §13.1 (Fable I2): search BOTH lists, not "dept OR user" —
+  // window._deptKPIs is never cleared when leaving the dept page, so a stale
+  // (wrong-dept) list would be truthy-but-not-containing-kpiId and the old
+  // `||` fallback to _userKPIs would never fire, silently editing with no
+  // curKpi context (measureType would then default to 'value' and could
+  // overwrite an ADMIN-set classification). If still unresolved after both,
+  // submitKPI() below must send measureType '' (server treats blank as
+  // no-change) instead of guessing.
   var curKpi = null;
-  var list = window._deptKPIs || window._userKPIs || [];
-  for (var i = 0; i < list.length; i++) { if (list[i].id === kpiId) { curKpi = list[i]; break; } }
+  var deptList = window._deptKPIs || [];
+  for (var i = 0; i < deptList.length; i++) { if (deptList[i].id === kpiId) { curKpi = deptList[i]; break; } }
+  if (!curKpi) {
+    var userList = window._userKPIs || [];
+    for (var iu = 0; iu < userList.length; iu++) { if (userList[iu].id === kpiId) { curKpi = userList[iu]; break; } }
+  }
+  S.editKpiMeasureTypeUnresolved = !curKpi;
   if (curKpi) {
     document.getElementById('f-datatype').value = curKpi.dataType || 'forward';
     toggleStartMonth();
@@ -3379,11 +4518,22 @@ function openEditKPI(kpiId, name, unit, target, dir, freq) {
     document.getElementById('f-definition').value = curKpi.definition || '';
     document.getElementById('f-valmin').value = curKpi.valMin !== null ? curKpi.valMin : '';
     document.getElementById('f-valmax').value = curKpi.valMax !== null ? curKpi.valMax : '';
+    // measure-types spec §13.1: an existing `rate` classification stays visible
+    // even if RATE_ENABLED is off (historical record, not a new choice).
+    measureTypeCardsShowRate(curKpi.measureType === 'rate');
+    setMeasureTypeFormValue(curKpi.measureType || 'value');
   } else {
     document.getElementById('f-definition').value = '';
     document.getElementById('f-valmin').value = '';
     document.getElementById('f-valmax').value = '';
+    measureTypeCardsShowRate(false);
+    setMeasureTypeFormValue('value');
   }
+  // measure-types spec §13.1 (Fable I1): "เปลี่ยน MeasureType ได้เฉพาะ ADMIN" —
+  // client-side mirror of the server gate in saveKPIMeta (belt-and-braces; the
+  // server is the real enforcement point). Non-ADMIN sees the current
+  // classification for context but cannot change it.
+  setMeasureTypeCardsEditable(S.role === 'ADMIN');
   openModal('modal-kpi');
 }
 function submitKPI() {
@@ -3392,6 +4542,12 @@ function submitKPI() {
   var target = document.getElementById('f-target').value.trim();
   var dir = document.getElementById('f-dir').value === 'up' ? '↑' : '↓';
   var freq = parseInt(document.getElementById('f-freq').value) || 1;
+  // measure-types spec §13.1 (Fable I2): if openEditKPI could not resolve
+  // curKpi (KPI not found in either _deptKPIs or _userKPIs — e.g. a cross-dept
+  // KPI reached from a stale page state), the radio group was never prefilled
+  // from real data and must not be trusted — send '' so the server treats it
+  // as no-change instead of silently reclassifying off a guessed default.
+  var measureType = (S.editKpiId && S.editKpiMeasureTypeUnresolved) ? '' : getMeasureTypeFormValue();
   if (!name) { showToast('กรุณากรอกชื่อ KPI', 'error'); return; }
   if (S.editKpiId) {
     google.script.run.withSuccessHandler(function(r) {
@@ -3415,7 +4571,8 @@ function submitKPI() {
 }).saveKPIMeta(S.editKpiId, name, unit, freq, S.email, target, dir, document.getElementById('f-datatype').value, document.getElementById('f-startmonth').value,
     document.getElementById('f-definition').value,
     document.getElementById('f-valmin').value,
-    document.getElementById('f-valmax').value);
+    document.getElementById('f-valmax').value,
+    measureType);
   } else {
   var dataType = document.getElementById('f-datatype').value;
   var startMonth = document.getElementById('f-startmonth').value;
@@ -3426,7 +4583,7 @@ function submitKPI() {
   google.script.run.withSuccessHandler(function(r) {
     if (r.ok) { bcClear(); showToast('เพิ่ม KPI สำเร็จ: ' + r.newId, 'success'); closeModal('modal-kpi'); if (dept) loadDept(dept); }
     else showToast('Error: ' + r.msg, 'error');
-  }).addKPI(dept, name, unit, target, dir, freq, S.email, dataType, startMonth, customId);
+  }).addKPI(dept, name, unit, target, dir, freq, S.email, dataType, startMonth, customId, measureType);
 }
 }
 function confirmDeleteKPI(kpiId){if(!confirm('ปิดการใช้งาน '+kpiId+'?'))return;google.script.run.withSuccessHandler(function(r){if(r.ok){bcClear();showToast('ปิดการใช้งาน '+kpiId,'success');var activePage=document.querySelector('.page.active');var pageId=activePage?activePage.id:'';if(pageId==='page-byuser'){loadMyKPIs();}else{var d=document.getElementById('btn-add-kpi').getAttribute('data-dept');if(d)loadDept(d);}}else showToast('Error: '+r.msg,'error');}).deleteKPI(kpiId,S.email);}
@@ -3465,7 +4622,7 @@ function renderMyDashFromKPIs(kpis){
   document.getElementById('my-dash').style.display='block';
   var now=new Date();
   var curLabel=MN[now.getMonth()]+' '+(now.getFullYear()+543);
-  var tot=0,hit=0,miss=0,na=0,byDept={};
+  var tot=0,hit=0,miss=0,na=0,noCase=0,curNoCase=0,byDept={};
   for(var i=0;i<kpis.length;i++){
     var kpi=kpis[i];
     var latestVal=getLatestVal(kpi);
@@ -3473,28 +4630,50 @@ function renderMyDashFromKPIs(kpis){
     var gi=months.indexOf(curLabel);
     var curGoal=(gi>=0 && goals[gi]!=null && goals[gi]!=='') ? goals[gi] : (kpi.target||'');
     var st=evalSt({target:curGoal,direction:kpi.direction},latestVal);
+    // ★ ไม่มีเคส card counts the CURRENT-MONTH cell (mirrors stats5 in 19_dashboard.js),
+    // NOT st — getLatestVal skips no-case months to grade from the last real value, so
+    // st==='no_case' only when the entire history is no-case and the card stayed 0
+    // (doctor-caught 9 ส.ค.69: PCT-46 showed the chip but the card read 0). Overlap is
+    // intended: the KPI still grades บรรลุ from its last real value ("ไม่นับเข้า % บรรลุ").
+    if(gi>=0 && String((kpi.values&&kpi.values[gi])||'').trim()==='ไม่มีเคส') curNoCase++;
+    // ★ fix round (I-1, ruling "display and denominator are one design"): tot/byDept[d].total
+    // stay UNCONDITIONAL — ทั้งหมด must match the full row count in the table below. The
+    // no_case exclusion happens ONLY in the separate `den` denominator used for the %
+    // cards/badges further down, not here.
     tot++;
     var d=kpi.dept||'(ไม่ระบุ)';
-    if(!byDept[d]) byDept[d]={total:0,hit:0,miss:0,na:0};
+    if(!byDept[d]) byDept[d]={total:0,hit:0,miss:0,na:0,noCase:0};
     byDept[d].total++;
     if(st==='hit'){hit++;byDept[d].hit++;}
     else if(st==='miss'){miss++;byDept[d].miss++;}
+    else if(st==='no_case'){noCase++;byDept[d].noCase++;/* ★ measure-types Task 10 (spec §8): own card, separate from
+      บรรลุ/ไม่บรรลุ/ค้างกรอก — NOT folded into byDept[d].na (dept table stays Task-4-scoped as-is). */}
     else {na++;byDept[d].na++;}
   }
   document.getElementById('my-total').textContent=tot;
   document.getElementById('my-hit').textContent=hit;
   document.getElementById('my-miss').textContent=miss;
   document.getElementById('my-na').textContent=na;
+  var myNoCaseEl=document.getElementById('my-nocase');
+  if(myNoCaseEl) myNoCaseEl.textContent=curNoCase;
   document.getElementById('my-month-label').textContent=curLabel;
-  var pct=function(n){return tot>0?Math.round(n/tot*100):0;};
-  document.getElementById('my-hit-pct').textContent=pct(hit)+'%';
-  document.getElementById('my-miss-pct').textContent=pct(miss)+'%';
-  document.getElementById('my-na-pct').textContent=pct(na)+'%';
+  // ★ fix round (I-1): % cards divide by (tot - noCase), not tot — a no-case month must
+  // not dilute the hit%/miss%/na% cards (same §8.1 bug class Task 4 already fixed in
+  // 19_dashboard.js's stats5/deptAgg). den===0 (every KPI no-case) -> '—', not a fake 0%.
+  var den = tot - noCase;
+  var pctTxt=function(n){return den>0?Math.round(n/den*100)+'%':'—';};
+  document.getElementById('my-hit-pct').textContent=pctTxt(hit);
+  document.getElementById('my-miss-pct').textContent=pctTxt(miss);
+  document.getElementById('my-na-pct').textContent=pctTxt(na);
   var tbody='',hasDept=false,dks=Object.keys(byDept).sort();
   for(var j=0;j<dks.length;j++){
     var dd=dks[j], ds=byDept[dd]; if(ds.total===0) continue; hasDept=true;
-    var dpct=ds.total>0?Math.round(ds.hit/ds.total*100):0;
-    var statusPill = dpct>=80 ? '<span class="pill hit">ดี '+dpct+'%</span>'
+    // ★ fix round (I-1): dept badge denominator excludes no-case too; dden===0 (dept is
+    // all-no-case this month) -> neutral gray ไม่มีเคส pill, not a false "ต้องปรับปรุง 0%".
+    var dden=ds.total-(ds.noCase||0);
+    var dpct=dden>0?Math.round(ds.hit/dden*100):0;
+    var statusPill = dden===0 ? '<span class="pill no_case">ไม่มีเคส</span>'
+      : dpct>=80 ? '<span class="pill hit">ดี '+dpct+'%</span>'
       : dpct>=50 ? '<span class="pill" style="background:rgba(251,191,36,.12);color:#fbbf24">พอใช้ '+dpct+'%</span>'
       : '<span class="pill miss">ต้องปรับปรุง '+dpct+'%</span>';
     tbody+='<tr data-dept="'+dd+'" onclick="navToDeptRow(this)" style="cursor:pointer">'
@@ -3725,8 +4904,12 @@ function openEditUser(userId){google.script.run.withSuccessHandler(function(user
 function submitUser(){var name=document.getElementById('u-name').value.trim();var email=document.getElementById('u-email').value.trim();var position=document.getElementById('u-position').value.trim();var role=document.getElementById('u-role').value;var status=document.getElementById('u-status').value;var kpis=document.getElementById('u-kpis').value.trim();var deptChecks=document.querySelectorAll('[name="u-dept-cb"]:checked');var dept=Array.prototype.map.call(deptChecks,function(cb){return cb.value;}).join(',');if(!name){showToast('กรุณากรอกชื่อ','error');return;}if(!email){showToast('กรุณากรอก Email','error');return;}if(!dept){showToast('กรุณาเลือกอย่างน้อย 1 ฝ่าย','error');return;}if(S_editUserId){google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('แก้ไข user สำเร็จ','success');closeModal('modal-user');loadUsers();}else showToast('Error: '+r.msg,'error');}).editUser(S_editUserId,name,email,dept,position,role,kpis,status,S.email,S.sessionToken);}else{google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('เพิ่ม user สำเร็จ ('+r.newId+')','success');closeModal('modal-user');loadUsers();}else showToast('Error: '+r.msg,'error');}).addUser(name,email,dept,position,role,kpis,S.email,S.sessionToken);}}
 function confirmDeleteUser(userId,name){if(!confirm('ปิดการใช้งาน '+name+'?'))return;google.script.run.withSuccessHandler(function(r){if(r.ok){showToast('ปิดการใช้งาน '+name+' สำเร็จ','success');loadUsers();}else showToast('Error: '+r.msg,'error');}).deleteUser(userId,S.email,S.sessionToken);}
 
-function getLatestVal(kpi){if(!kpi.values)return'NA';for(var i=kpi.values.length-1;i>=0;i--){var v=kpi.values[i];if(v!==null&&v!==''&&v!=='NA')return v;}return'NA';}
-function evalSt(info,val){if(val===null||val===undefined||val===''||val==='NA')return'na';var num=parseFloat(val);if(isNaN(num))return'na';var t=parseFloat((info.target||'').toString().replace(/[^0-9.]/g,''));if(isNaN(t))return'na';var dir=info.direction||'';if(dir==='↑'||dir==='up')return num>=t?'hit':'miss';if(dir==='↓'||dir==='down')return num<=t?'hit':'miss';return'na';}
+// DISPLAY_MARKERS_C — pinned to 05_gateway_rules.js DISPLAY_MARKERS (server pure module).
+// Caja cannot share server consts with client script blocks, so this client-side copy
+// must be kept in sync by hand whenever the server list changes (spec §11).
+var DISPLAY_MARKERS_C = ['ค้างกรอก','NA','ไม่มีเคส'];
+function getLatestVal(kpi){if(!kpi.values||!kpi.values.length)return'NA';var allNoCase=true;for(var i=kpi.values.length-1;i>=0;i--){var v=kpi.values[i];if(v!==DISPLAY_MARKERS_C[2])allNoCase=false;if(v!==null&&v!==''&&v!==DISPLAY_MARKERS_C[0]&&v!==DISPLAY_MARKERS_C[1]&&v!==DISPLAY_MARKERS_C[2])return v;}return allNoCase?DISPLAY_MARKERS_C[2]:'NA';}
+function evalSt(info,val){if(val===DISPLAY_MARKERS_C[2])return'no_case';if(val===null||val===undefined||val===''||val==='NA')return'na';var num=parseFloat(val);if(isNaN(num))return'na';var t=parseFloat((info.target||'').toString().replace(/[^0-9.]/g,''));if(isNaN(t))return'na';var dir=info.direction||'';if(dir==='↑'||dir==='up')return num>=t?'hit':'miss';if(dir==='↓'||dir==='down')return num<=t?'hit':'miss';return'na';}
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 // DocTa P2-T7: KPI definition viewer
@@ -4535,7 +5718,7 @@ function airepCopyFallback(text, btn) {
 }
 
 var _yoyChart=null;
-function loadYoY(){var dept=document.getElementById('yoy-dept-sel').value;document.getElementById('yoy-load').style.display='flex';document.getElementById('yoy-content').style.display='none';var cached=bcGet('yoy_'+dept);if(cached){renderYoY(cached);return;}google.script.run.withSuccessHandler(function(data){bcPut('yoy_'+dept,data,30);renderYoY(data);}).withFailureHandler(function(e){showToast('YoY Error: '+e.message,'error');}).getYoYStats(dept);}
+function loadYoY(){var dept=document.getElementById('yoy-dept-sel').value;document.getElementById('yoy-load').style.display='flex';document.getElementById('yoy-content').style.display='none';var cached=bcGet('yoy_'+dept);if(cached){renderYoY(cached);return;}google.script.run.withSuccessHandler(function(data){bcPut('yoy_'+dept,data,30);var _ys=document.getElementById('yoy-dept-sel');if(_ys&&_ys.value!==dept)return;renderYoY(data);}).withFailureHandler(function(e){showToast('YoY Error: '+e.message,'error');}).getYoYStats(dept);}
 function renderYoY(data){document.getElementById('yoy-load').style.display='none';document.getElementById('yoy-content').style.display='block';if(_yoyChart){_yoyChart.destroy();_yoyChart=null;}_yoyChart=new Chart(document.getElementById('yoy-canvas').getContext('2d'),{type:'line',data:{labels:data.months,datasets:[{label:'ปี '+data.thisYear,data:data.thisYearData,borderColor:'#1e90d4',backgroundColor:'#1e90d422',borderWidth:2.5,fill:true,tension:0.35,spanGaps:true,pointRadius:5,pointHoverRadius:7,pointBackgroundColor:'#1e90d4'},{label:'ปี '+data.lastYear,data:data.lastYearData,borderColor:'#94a3b8',backgroundColor:'#94a3b811',borderWidth:2,fill:false,tension:0.35,spanGaps:true,pointRadius:4,pointHoverRadius:6,borderDash:[6,3],pointBackgroundColor:'#94a3b8'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{family:'Sarabun',size:12},boxWidth:20}},tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+(ctx.parsed.y!==null?ctx.parsed.y+'%':'ไม่มีข้อมูล');}}}},scales:{x:{ticks:{font:{family:'Sarabun',size:11}},grid:{color:'#eee'}},y:{min:0,max:100,ticks:{font:{family:'Sarabun',size:11},callback:function(v){return v+'%';}},grid:{color:'#eee'}}}}});}
 function loadHeatmap(){document.getElementById('hm-load').style.display='flex';document.getElementById('hm-content').style.display='none';var cached=bcGet('heatmap');if(cached){renderHeatmap(cached);return;}google.script.run.withSuccessHandler(function(data){bcPut('heatmap',data,30);renderHeatmap(data);}).withFailureHandler(function(e){showToast('Heatmap Error: '+e.message,'error');}).getHeatmapStats();}
 function renderHeatmap(data){
@@ -5162,10 +6345,35 @@ function renderExecInsights(pctKpis, imKpis) {
         <div class="ekm-row"><strong>เป้า:</strong> <span id="ekm-target">-</span></div>
         <div id="ekm-def-card" style="display:none;font-size:12px;background:rgba(30,64,175,.12);border-left:3px solid #1e90d4;border-radius:6px;padding:8px 10px;margin:8px 0"></div>
         <hr style="margin:14px 0;border:none;border-top:1px solid rgba(125,211,252,0.15)">
-        <div class="ekm-input-row">
+        <div class="ekm-input-row" id="ekm-single-row">
           <label for="ekm-input">ค่าปัจจุบัน:</label>
-          <input id="ekm-input" type="number" step="any" style="margin-left:8px;padding:8px 10px;width:140px;font-size:15px;border:1.5px solid #1e90d4;border-radius:6px">
+          <input id="ekm-input" type="number" step="any" oninput="ekmSingleInputChanged()" style="margin-left:8px;padding:8px 10px;width:140px;font-size:15px;border:1.5px solid #1e90d4;border-radius:6px">
           <span id="ekm-unit" style="margin-left:6px;color:#7dd3fc"></span>
+        </div>
+        <!-- ★ RateSince §13.2: shown ONLY when a rate KPI opens a legacy month
+             (month before RateSince) — single %-field mode -->
+        <div id="ekm-legacy-hint" class="form-hint" style="display:none;font-size:12px;margin-top:5px">ข้อมูลระบบเดิม — กรอกเป็น %</div>
+        <!-- ★ measure-types Task 7 (spec §5.1): rate KPIs swap the single value
+             input for numerator/denominator + live computed-% preview -->
+        <div id="ekm-rate-rows" style="display:none">
+          <div class="ekm-input-row">
+            <label for="ekm-num">ตัวเศษ:</label>
+            <input id="ekm-num" type="number" step="any" min="0" oninput="ekmRateInputChanged()" style="margin-left:8px;padding:8px 10px;width:140px;font-size:15px;border:1.5px solid #1e90d4;border-radius:6px">
+          </div>
+          <div class="ekm-input-row">
+            <label for="ekm-denom">ตัวส่วน:</label>
+            <input id="ekm-denom" type="number" step="any" min="0" oninput="ekmRateInputChanged()" style="margin-left:8px;padding:8px 10px;width:140px;font-size:15px;border:1.5px solid #1e90d4;border-radius:6px">
+          </div>
+          <div id="ekm-rate-preview" class="ekm-row" style="margin-top:6px;font-weight:600;color:#7dd3fc"></div>
+        </div>
+        <!-- ★ measure-types Task 7 (spec §6): in-page warning panel — replaces
+             confirm()/alert(), which iOS standalone PWA swallows silently -->
+        <div id="ekm-warn" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);border-left:3px solid #fbbf24;border-radius:6px;font-size:13px">
+          <div id="ekm-warn-msg" style="color:#fbbf24;font-weight:600"></div>
+          <div id="ekm-warn-btns" style="display:none;margin-top:8px">
+            <button id="ekm-warn-ok" type="button" style="padding:6px 14px;background:rgba(251,191,36,0.18);color:#fbbf24;border:1px solid rgba(251,191,36,0.4);border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-right:8px"></button>
+            <button id="ekm-warn-cancel" type="button" style="padding:6px 14px;background:transparent;color:rgba(125,211,252,0.6);border:1px solid rgba(125,211,252,0.2);border-radius:6px;cursor:pointer;font-size:13px"></button>
+          </div>
         </div>
         <div class="ekm-history" style="margin-top:14px;padding:8px 10px;background:rgba(14,165,233,0.05);border-radius:6px;font-size:12px;color:rgba(125,211,252,0.6)">
           <strong>ประวัติ:</strong> <span id="ekm-history">กำลังโหลด...</span>

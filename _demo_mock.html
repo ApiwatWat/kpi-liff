@@ -27,7 +27,10 @@ body.has-demo-ribbon{padding-top:25px}
     if(opts.naMonths)opts.naMonths.forEach(function(idx){out[idx]='NA';});
     return out;
   }
-  function K(o){o.months=MONTHS.slice();o.monthGoals=o.months.map(function(){return (o.direction==='↑'?'≥':'≤')+o.target;});o.ownerName=o.ownerName||o.owner;return o;}
+  // measureType/rateSince ride on every KPI now (18_users.js:267). Unclassified
+  // is null on the server, not 'value' - the page treats both the same, but a
+  // demo that claimed everything was classified would misrepresent a real sheet.
+  function K(o){o.months=MONTHS.slice();o.monthGoals=o.months.map(function(){return (o.direction==='↑'?'≥':'≤')+o.target;});o.ownerName=o.ownerName||o.owner;if(o.measureType===undefined)o.measureType=null;if(o.rateSince===undefined)o.rateSince='';return o;}
 
   var KPIS=[
     K({id:'PCT-2', dept:'PCT', name:'อัตราการกลับมารักษาซ้ำใน 48 ชม. (Revisit)', unit:'%', target:'1.0', direction:'↓', frequency:1, owner:'somchai@hospital.demo', ownerName:'นพ.สมชาย (เดโม่)', startMonth:'', formula:'(ผู้ป่วยกลับมาซ้ำ ≤48 ชม.) ÷ (ผู้ป่วย ER ทั้งหมด) × 100', values:gen(0.45,0,0.12,{dec:2,min:0})}),
@@ -56,6 +59,67 @@ body.has-demo-ribbon{padding-top:25px}
     K({id:'HPH-1',dept:'HPH', name:'หญิงตั้งครรภ์ฝากครรภ์ก่อนอายุครรภ์ 12 สัปดาห์', unit:'%', target:'75', direction:'↑', frequency:1, owner:'suda@hospital.demo', ownerName:'พว.สุดา (เดโม่)', startMonth:'', formula:'(ANC ก่อน 12 สัปดาห์) ÷ (ฝากครรภ์รายใหม่) × 100', values:gen(72,0.25,2.5,{dec:0,max:100})}),
     K({id:'FIN-1',dept:'การเงิน', name:'อัตราส่วนทุนหมุนเวียน (Current Ratio)', unit:'เท่า', target:'1.5', direction:'↑', frequency:3, owner:'admin@hospital.demo', ownerName:'จนท.การเงิน (เดโม่)', startMonth:'', formula:'สินทรัพย์หมุนเวียน ÷ หนี้สินหมุนเวียน', values:gen(1.8,0,0.2,{dec:2,min:0,freq:3})}),
   ];
+
+
+  /* ===== DEMO_MEASURE_TYPES (18 ส.ค.69) =========================================
+     measure types went live across all 188 real KPIs; the demo has to show what that
+     actually changed on screen, which is three things:
+
+       rate KPIs      open numerator/denominator boxes with a live % preview
+       rateSince      months BEFORE the stamp are ระบบเดิม and still open the single
+                      %-field - so one KPI here is stamped mid-window on purpose,
+                      otherwise the legacy path never appears in a demo
+       ไม่มีเคส        0/0 is a CONFIRMED no-case, not a blank. It gets a gray chip,
+                      its own summary card, and it is excluded from the % denominators
+
+     Chosen so the classification is defensible rather than decorative: a rate is a
+     KPI that really is "how many out of how many". ราย counts and วัน/เท่า averages
+     stay value - misclassifying those is the exact mistake the ตัวส่วน=100 tripwire
+     in the real system exists to catch. */
+  (function(){
+    var RATE_SINCE = {
+      'PCT-10': MONTHS[0],    // rate for the whole visible window
+      'PCT-11': MONTHS[0],
+      'IC-4'  : MONTHS[0],
+      'ER-2'  : MONTHS[12]    // stamped mid-window -> first 12 months are ระบบเดิม
+    };
+    var VALUE_ONLY = ['PCT-19','PCT-20','PCT-30','RM-1','RM-3','FIN-1','IC-1'];
+    KPIS.forEach(function(k){
+      if (RATE_SINCE[k.id]) { k.measureType = 'rate'; k.rateSince = RATE_SINCE[k.id]; }
+      else if (VALUE_ONLY.indexOf(k.id) >= 0) { k.measureType = 'value'; }
+      // everything else stays null = unclassified, which is a real state in the sheet
+    });
+
+    /* ไม่มีเคส where it is clinically honest: a 30-bed hospital genuinely has months
+       with no STEMI and no severe hypoglycaemia. Putting it on a busy KPI instead
+       would look like missing data, which is the confusion the chip exists to end. */
+    function noCase(id, idxs){
+      var k = null;
+      for (var i=0;i<KPIS.length;i++){ if(KPIS[i].id===id){k=KPIS[i];break;} }
+      if (!k) return;
+      idxs.forEach(function(ix){ if(ix>=0 && ix<k.values.length) k.values[ix]='ไม่มีเคส'; });
+    }
+    noCase('PCT-12', [18, 20, 23]);   // STEMI - incl. the CURRENT month, so the card is non-zero
+    noCase('PCT-30', [21, 22, 23]);   // severe hypoglycaemia - three quiet months running
+  })();
+
+  /* Fractions behind the rate cells. The real getCellHistory returns the stored
+     numerator/denominator for the month being opened (22_ai.js) so the form can show
+     what the % was made of. Derived from the displayed value rather than stored
+     separately - two sources for one number is how a demo starts contradicting itself. */
+  function demoFraction(kpiId, month){
+    var k=null,i;
+    for (i=0;i<KPIS.length;i++){ if(KPIS[i].id===kpiId){k=KPIS[i];break;} }
+    if (!k || k.measureType!=='rate') return null;
+    if (k.rateSince && MONTHS.indexOf(month) < MONTHS.indexOf(k.rateSince)) return null; // ระบบเดิม
+    var mi = k.months.indexOf(month); if (mi < 0) return null;
+    var v = k.values[mi];
+    if (v==='ไม่มีเคส') return {numerator:0, denominator:0};
+    var pct = parseFloat(v); if (isNaN(pct)) return null;
+    // a plausible denominator per KPI, then the numerator that reproduces the %
+    var den = ({'PCT-10':520,'PCT-11':1176,'IC-4':400,'ER-2':310})[kpiId] || 100;
+    return {numerator: Math.round(pct*den/100), denominator: den};
+  }
 
   var DEPTS=['PCT','IC','IM','RM','ENV','HRD','HPH','การเงิน'];
   function kpisForDept(d){return KPIS.filter(function(k){return k.dept===d;});}
@@ -114,7 +178,32 @@ body.has-demo-ribbon{padding-top:25px}
     return {ok:true,showing:entries.length,total:entries.length,entries:entries};
   }
   function smartSuggestions(){
-    return {ok:true,suggestions:[{kpiId:'PCT-11',name:'ความดันโลหิตคุมได้',reason:'ค่าดิ่งลงต่อเนื่อง 5 เดือน หลุดเป้า',score:95},{kpiId:'IM-9',name:'AV ครอบคลุม',reason:'ใกล้เป้า เหลือ 2 เครื่อง',score:70},{kpiId:'PCT-10',name:'เบาหวานคุมได้',reason:'เดือนนี้ยังไม่กรอก',score:60}]};
+    // ssRender reads id/dept/currentValue/unit/target/direction/whyNow/action.
+    // Returning {kpiId,name,reason,score} printed "ค่า: undefined · เป้า: ↑ undefined"
+    // and two empty advice boxes on the panel that auto-opens on KPI ของฉัน.
+    function sug(id, whyNow, action){
+      var k = find(id);
+      if (!k) return null;
+      var cur = getLatest(k);
+      return {
+        id: k.id, name: k.name, dept: k.dept, unit: k.unit,
+        target: k.target, direction: k.direction,
+        // ยังไม่กรอก must be null, not the string - ssRender tests `!== null`
+        currentValue: (cur === '' || cur === 'ค้างกรอก' || cur === undefined) ? null : cur,
+        whyNow: whyNow, action: action
+      };
+    }
+    return {ok:true, fromCache:false, suggestions:[
+      sug('PCT-11',
+          'ค่าลดลงต่อเนื่อง 5 เดือนและหลุดเป้ามาตลอดไตรมาส — เป็นตัวชี้วัดที่ถอยชัดที่สุดในฝ่าย',
+          'ทบทวน flow ติดตามความดันที่บ้านในกลุ่มที่คุมไม่ได้ แล้วนัดทบทวนยาในคลินิก NCD รอบหน้า'),
+      sug('IM-9',
+          'ใกล้เป้าแล้ว เหลืออีกไม่กี่เครื่องก็ผ่าน — ปิดได้ในเดือนนี้ด้วยแรงน้อยที่สุด',
+          'ไล่เครื่องที่ยังไม่มี AV ตามห้อง แล้วติดตั้งรวดเดียว ไม่ต้องรอรอบตรวจถัดไป'),
+      sug('PCT-10',
+          'เดือนนี้ยังไม่ได้กรอก ทั้งที่ 3 เดือนก่อนหน้าบรรลุเป้าต่อเนื่อง — ขาดข้อมูลจะทำให้แนวโน้มขาดช่วง',
+          'ดึงผล HbA1c เดือนล่าสุดจาก HOSxP แล้วกรอกให้ครบก่อนประชุม PCT')
+    ].filter(function(x){return x;})};
   }
   function aiAnswer(question,email,key){
     var ok=KPIS.filter(function(k){return evalSt(k.target,k.direction,getLatest(k))==='hit';}).length;
@@ -262,8 +351,8 @@ body.has-demo-ribbon{padding-top:25px}
 
   // ---- the fake backend dispatch table ----
   var FAKE={
-    bootstrapPayload:function(arg){return {ok:true,user:{role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,userId:'USR-004',kpis:['ALL'],haFillActive:false},depts:DEPTS,primaryDept:'PCT',kpis:kpisForDept('PCT')};},
-    checkPermission:function(){return {role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,kpis:['ALL'],haFillActive:false};},
+    bootstrapPayload:function(arg){return {ok:true,rateEnabled:true,user:{role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,userId:'USR-004',kpis:['ALL'],haFillActive:false},depts:DEPTS,primaryDept:'PCT',kpis:kpisForDept('PCT')};},
+    checkPermission:function(){return {role:'ADMIN',rateEnabled:true,name:'ผู้ดูแลระบบ (เดโม่)',dept:'PCT',depts:DEPTS,kpis:['ALL'],haFillActive:false};},
     getDashboardStats:dashboardStats,
     getMyDashboardStats:dashboardStats,
     getKPIsByDept:function(dept){return (!dept||dept==='ALL')?KPIS.slice():kpisForDept(dept);},
@@ -283,7 +372,23 @@ body.has-demo-ribbon{padding-top:25px}
     generatePDCA:pdcaGen,
     getAvailableMonths:function(){return MONTHS.slice();},
     getDepartments:function(){return DEPTS.slice();},
-    getCellHistory:function(){return [];},
+    // {ok, history, fraction} since 10 ส.ค.69 - the form used to spend a second
+    // google.script.run just to fetch the fraction, and each one costs 2-4 s of
+    // Apps Script overhead. Returning [] here (the old shape) leaves the rate
+    // boxes empty and the history panel blank.
+    getCellHistory:function(kpiId, month){
+      var hist=[];
+      var k=null,i; for(i=0;i<KPIS.length;i++){ if(KPIS[i].id===kpiId){k=KPIS[i];break;} }
+      if(k){
+        var mi=k.months.indexOf(month);
+        if(mi>0){
+          for(var b=Math.max(0,mi-2);b<mi;b++){
+            hist.push({month:k.months[b], value:String(k.values[b]), by:k.ownerName, at:k.months[b]});
+          }
+        }
+      }
+      return {ok:true, history:hist, fraction:demoFraction(kpiId, month)};
+    },
     getActionPlans:function(){return {ok:true,plans:[]};},
     getRevenueData:function(){return {ok:true,months:MONTHS.slice(12),revenue:[2.1,2.3,2.0,2.4,2.2,2.5,2.3,2.6,2.4,2.5,2.3,2.7].map(function(x){return x*1e6;})};},
     getSlideOutlineText:function(){return {ok:true,text:'(ตัวอย่างโหมดสาธิต)'};},
@@ -296,7 +401,18 @@ body.has-demo-ribbon{padding-top:25px}
     saveSystemFeedback:function(){return {ok:true};},
     saveMeetingDecision:function(){return {ok:true};},
     // write ops — accept and echo ok so the UI behaves
-    saveKPIValue:function(){return {ok:true};},
+    // Track A (11 ส.ค.69): the form closes before this answers, and the toast is
+    // built from the reply - r.noop picks "ค่าเดิมอยู่แล้ว" over "บันทึกสำเร็จ", and
+    // suggest_reclassify raises the ตัวส่วน=100 advisory. Returning a bare {ok:true}
+    // means the demo can never show either.
+    saveKPIValue:function(kpiId, month, value, comment, numerator, denominator){
+      var isNoCase = (String(numerator)==='0' && String(denominator)==='0');
+      return {ok:true, noop:false, new_value:isNoCase?'ไม่มีเคส':value,
+              suggest_reclassify:(String(denominator)==='100')};
+    },
+    // Reset-to-blank. Unmocked until now, so the button in the edit form hit the
+    // Proxy fallback, got null, and did nothing at all.
+    revertKPICellAPI:function(){return {ok:true,new_value:'ค้างกรอก'};},
     saveKPIMeta:function(){return {ok:true};},
     saveGoalOverride:function(){return {ok:true};},
     saveComment:function(){return {ok:true};},
@@ -306,6 +422,62 @@ body.has-demo-ribbon{padding-top:25px}
     addUser:function(){return {ok:true,newId:'USR-NEW'};},
     editUser:function(){return {ok:true};},
     deleteUser:function(){return {ok:true};},
+
+    // ---- filled in 18 ส.ค.69: these are all in KPI_RPC_FN_NAMES, and every one of
+    // them used to fall through to the Proxy and answer null (= blank panel) ----
+    getNotifications:function(){return {ok:true,items:[
+      {id:'N1',type:'pending',text:'PCT-10 ยังไม่ได้กรอกเดือน '+CUR,at:CUR,read:false},
+      {id:'N2',type:'miss',text:'PCT-11 ต่ำกว่าเป้า 3 เดือนติด',at:CUR,read:false},
+      {id:'N3',type:'ok',text:'IC-4 กลับมาบรรลุเป้าแล้ว',at:PREV,read:true}
+    ],unread:2};},
+    getKPIDefinition:function(kpiId){
+      var k=null,i; for(i=0;i<KPIS.length;i++){ if(KPIS[i].id===kpiId){k=KPIS[i];break;} }
+      if(!k) return {ok:false,error:'ไม่พบตัวชี้วัด'};
+      return {ok:true,id:k.id,name:k.name,unit:k.unit,target:k.target,direction:k.direction,
+              frequency:k.frequency,formula:k.formula,dept:k.dept,ownerName:k.ownerName,
+              measureType:k.measureType,rateSince:k.rateSince};
+    },
+    getDashboardAggregates:function(){var s=dashboardStats();return {ok:true,cur:s.cur,prev:s.prev,depts:s.depts,deptStats:s.deptStats};},
+    listUsers:fakeUsers,
+    teamView:function(){return {ok:true,members:[
+      {name:'นพ.สมชาย (เดโม่)',dept:'PCT',assigned:7,filled:6,pct:86},
+      {name:'พว.สมศรี (เดโม่)',dept:'PCT',assigned:5,filled:5,pct:100},
+      {name:'พว.วิไล (เดโม่)',dept:'IC',assigned:3,filled:2,pct:67},
+      {name:'จนท.ไอที (เดโม่)',dept:'IM',assigned:3,filled:3,pct:100}
+    ]};},
+    getActionOwners:function(){return {ok:true,owners:[
+      {email:'somchai@hospital.demo',name:'นพ.สมชาย (เดโม่)'},
+      {email:'somsri@hospital.demo',name:'พว.สมศรี (เดโม่)'},
+      {email:'wilai@hospital.demo',name:'พว.วิไล (เดโม่)'}
+    ]};},
+    getActionFollowup:function(){return {ok:true,items:[
+      {kpiId:'PCT-11',title:'ทบทวน flow ติดตามความดันที่บ้าน',owner:'พว.สมศรี (เดโม่)',due:CUR,status:'กำลังทำ'},
+      {kpiId:'PCT-10',title:'เพิ่มการปรับยาเชิงรุกในกลุ่มคุมไม่ได้',owner:'นพ.สมชาย (เดโม่)',due:PREV,status:'เสร็จแล้ว'}
+    ]};},
+    // HA mapping / SAR queue (24_ha_mapping.js)
+    computeHAGapForUI:function(){return {ok:true,gaps:[
+      {std:'III-4.3 ก',title:'การดูแลผู้ป่วยโรคเรื้อรัง',covered:2,expected:3,kpis:['PCT-10','PCT-11']},
+      {std:'II-4.1',title:'การป้องกันการติดเชื้อ',covered:2,expected:2,kpis:['IC-1','IC-4']},
+      {std:'I-6.2',title:'ระบบสารสนเทศ',covered:1,expected:2,kpis:['IM-13']}
+    ],coveredPct:71};},
+    haQueueList:function(){return {ok:true,items:[
+      {kpiId:'PCT-10',std:'III-4.3 ก',status:'รอตรวจ',by:'นพ.สมชาย (เดโม่)',at:CUR},
+      {kpiId:'IC-4',std:'II-4.1',status:'ผ่านแล้ว',by:'พว.วิไล (เดโม่)',at:PREV}
+    ]};},
+    haQueueReview:function(){return {ok:true};},
+    haSarExport:function(){return {ok:true,url:'#demo',note:'โหมดสาธิต — ไม่มีไฟล์จริง'};},
+    // login paths: the demo auto-logs in, but the buttons still exist on screen
+    loginWithGoogle:function(){return {ok:true,role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)'};},
+    loginWithLine:function(){return {ok:true,role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)'};},
+    mapLineUser:function(){return {ok:true};},
+    otpRequest:function(email,channel){return {ok:true,via:channel||'line'};},
+    otpVerify:function(){return {ok:true,role:'ADMIN',name:'ผู้ดูแลระบบ (เดโม่)',sessionToken:'demo-token'};},
+    // exports: the demo overrides these with preview overlays further down, so these
+    // only matter if an override is ever removed - answer honestly rather than null
+    exportWordReport:function(){return {ok:true,url:'#demo',note:'โหมดสาธิต'};},
+    exportKPIToExcel:function(){return {ok:true,url:'#demo',note:'โหมดสาธิต'};},
+    generateMonthlySlideDeck:function(){return {ok:true,url:'#demo',note:'โหมดสาธิต'};},
+    bulkImportKPIsFromRows:function(rows){return {ok:true,added:(rows&&rows.length)||0,skipped:0};},
     getNextKpiId:function(){return 'DEMO-99';},
     forceClearCacheAPI:function(){return true;},
     warmCache:function(){return true;}
