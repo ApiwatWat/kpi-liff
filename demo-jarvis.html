@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<!--
+  Talk-to-KPI (JARVIS) — DEMO PAGE
+  ============================================================================
+  This is a STATIC DEMONSTRATION. There is NO live microphone and NO backend.
+  Clicking a preset question shows the prepared answer text and plays a
+  PRE-RECORDED audio file (real F5-TTS JARVIS voice, generated on cm1).
+
+  The 5 Q&A pairs + audio paths below are inlined as a JS const (no fetch),
+  so this works as a pure static file on GitHub Pages AND via file://.
+
+  To regenerate the audio: edit the sibling manifest `jarvis_audio/qa.json`
+  and re-run the F5-TTS pipeline (cm1) that writes jarvis_audio/q*.wav.
+  Keep the answer text here word-for-word identical to what the TTS speaks.
+  ============================================================================
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Talk-to-KPI (JARVIS) — เดโม่</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cyan:#35d6f0;
+    --cyan-2:#22b8d6;
+    --cyan-deep:#0e6a80;
+    --bg-0:#060d18;
+    --bg-1:#0a1a2e;
+    --text:#dff1fb;
+    --muted:#7fa8c0;
+    --card:rgba(12,28,46,.55);
+    --card-border:rgba(53,214,240,.22);
+    --glow:rgba(53,214,240,.55);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+
+  body{
+    font-family:'Sarabun',system-ui,-apple-system,sans-serif;
+    color:var(--text);
+    min-height:100vh;
+    min-height:100dvh;
+    background:
+      radial-gradient(1200px 900px at 50% -10%, rgba(34,184,214,.10), transparent 55%),
+      radial-gradient(900px 700px at 50% 120%, rgba(53,214,240,.08), transparent 60%),
+      radial-gradient(circle at 50% 40%, var(--bg-1) 0%, var(--bg-0) 70%);
+    background-attachment:fixed;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    padding:
+      calc(env(safe-area-inset-top) + 18px)
+      16px
+      calc(env(safe-area-inset-bottom) + 28px);
+    overflow-x:hidden;
+  }
+
+  /* faint moving starfield / scanline sheen */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.20), transparent),
+      radial-gradient(1px 1px at 75% 60%, rgba(255,255,255,.14), transparent),
+      radial-gradient(1px 1px at 45% 80%, rgba(255,255,255,.10), transparent),
+      radial-gradient(1px 1px at 88% 22%, rgba(255,255,255,.12), transparent);
+    pointer-events:none;
+    opacity:.6;
+    z-index:0;
+  }
+
+  .wrap{
+    position:relative;
+    z-index:1;
+    max-width:820px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:26px;
+  }
+
+  /* ---- top bar ---- */
+  .topbar{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    min-height:32px;
+  }
+  .back-link{
+    color:var(--muted);
+    text-decoration:none;
+    font-size:14px;
+    font-weight:500;
+    padding:6px 10px;
+    border-radius:10px;
+    border:1px solid transparent;
+    transition:.2s;
+    white-space:nowrap;
+  }
+  .back-link:hover{
+    color:var(--cyan);
+    border-color:var(--card-border);
+    background:rgba(53,214,240,.06);
+  }
+  .demo-badge{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.18em;
+    color:var(--cyan);
+    padding:4px 10px;
+    border:1px solid var(--card-border);
+    border-radius:999px;
+    background:rgba(53,214,240,.07);
+    text-transform:uppercase;
+    box-shadow:0 0 14px rgba(53,214,240,.12) inset;
+  }
+
+  /* ---- header ---- */
+  header{ text-align:center; margin-top:8px; }
+  .brand{
+    font-size:clamp(26px,6vw,40px);
+    font-weight:800;
+    letter-spacing:.42em;
+    padding-left:.42em; /* balance trailing letter-spacing */
+    color:var(--cyan);
+    text-shadow:0 0 22px rgba(53,214,240,.45), 0 0 4px rgba(53,214,240,.6);
+    margin:0;
+  }
+  .subtitle{
+    margin:8px 0 0;
+    font-size:clamp(12px,2.6vw,14.5px);
+    color:var(--muted);
+    font-weight:500;
+    letter-spacing:.01em;
+  }
+
+  /* ---- "ท่านถาม" card ---- */
+  .ask-card{
+    width:100%;
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:16px;
+    padding:16px 20px;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    box-shadow:0 8px 30px rgba(0,0,0,.35), 0 0 0 1px rgba(53,214,240,.04) inset;
+  }
+  .ask-label{
+    font-size:12.5px;
+    color:var(--cyan-2);
+    font-weight:600;
+    letter-spacing:.05em;
+    margin-bottom:6px;
+  }
+  .ask-text{
+    font-size:clamp(17px,3.4vw,21px);
+    font-weight:600;
+    color:#fff;
+    line-height:1.5;
+    transition:opacity .25s;
+  }
+
+  /* ---- orb ---- */
+  .orb-zone{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    padding:8px 0 2px;
+  }
+  .orb{
+    --size:210px;
+    position:relative;
+    width:var(--size);
+    height:var(--size);
+    display:grid;
+    place-items:center;
+    cursor:pointer;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .ring{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    border:1.5px solid rgba(53,214,240,.28);
+    animation:pulse 3.2s ease-out infinite;
+  }
+  .ring.r2{ inset:22px; border-color:rgba(53,214,240,.22); animation-delay:.5s; }
+  .ring.r3{ inset:44px; border-color:rgba(53,214,240,.16); animation-delay:1s; }
+  @keyframes pulse{
+    0%{ transform:scale(.82); opacity:.9; }
+    70%{ transform:scale(1.12); opacity:0; }
+    100%{ transform:scale(1.12); opacity:0; }
+  }
+  .core{
+    position:relative;
+    width:52%;
+    height:52%;
+    border-radius:50%;
+    background:
+      radial-gradient(circle at 38% 32%, #d6fbff 0%, var(--cyan) 34%, var(--cyan-2) 62%, var(--cyan-deep) 100%);
+    box-shadow:
+      0 0 34px 6px var(--glow),
+      0 0 90px 12px rgba(53,214,240,.25),
+      inset 0 0 22px rgba(255,255,255,.28);
+    display:grid;
+    place-items:center;
+    animation:breathe 3.6s ease-in-out infinite;
+    z-index:2;
+  }
+  @keyframes breathe{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.05); }
+  }
+  .core svg{ width:38%; height:38%; fill:#04222b; filter:drop-shadow(0 1px 1px rgba(255,255,255,.35)); }
+
+  /* speaking state — orb pulses harder + faster */
+  .orb.speaking .ring{ animation-duration:1.15s; border-color:rgba(53,214,240,.5); }
+  .orb.speaking .ring.r2{ border-color:rgba(53,214,240,.4); }
+  .orb.speaking .ring.r3{ border-color:rgba(53,214,240,.3); }
+  .orb.speaking .core{
+    animation-duration:.9s;
+    box-shadow:
+      0 0 50px 10px var(--glow),
+      0 0 130px 26px rgba(53,214,240,.4),
+      inset 0 0 26px rgba(255,255,255,.4);
+  }
+  /* thinking state — gentle fast shimmer */
+  .orb.thinking .core{ animation-duration:1.4s; }
+  .orb.thinking .ring{ animation-duration:1.8s; }
+
+  .orb-hint{
+    font-size:14.5px;
+    font-weight:600;
+    color:var(--cyan);
+    letter-spacing:.02em;
+    opacity:.9;
+  }
+
+  /* ---- JARVIS response card ---- */
+  .jarvis-card{
+    width:100%;
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:16px;
+    padding:18px 20px 16px;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    box-shadow:0 8px 30px rgba(0,0,0,.4), 0 0 0 1px rgba(53,214,240,.05) inset;
+    min-height:118px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .jarvis-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .jarvis-label{
+    font-size:12.5px;
+    font-weight:700;
+    letter-spacing:.16em;
+    color:var(--cyan);
+  }
+  .jarvis-icon{ font-size:16px; line-height:1; }
+  .jarvis-answer{
+    font-size:clamp(16px,3.2vw,19px);
+    line-height:1.72;
+    color:var(--text);
+    font-weight:500;
+    min-height:1.6em;
+  }
+  .jarvis-answer.reveal{ animation:fadeUp .5s ease both; }
+  @keyframes fadeUp{
+    from{ opacity:0; transform:translateY(6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  /* thinking dots */
+  .thinking-row{ display:flex; align-items:center; gap:10px; color:var(--muted); font-size:15px; }
+  .dots{ display:inline-flex; gap:5px; }
+  .dots i{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--cyan);
+    display:inline-block;
+    opacity:.4;
+    animation:blink 1.1s infinite;
+  }
+  .dots i:nth-child(2){ animation-delay:.18s; }
+  .dots i:nth-child(3){ animation-delay:.36s; }
+  @keyframes blink{ 0%,60%,100%{ opacity:.35; transform:translateY(0); } 30%{ opacity:1; transform:translateY(-3px); } }
+
+  .jarvis-meta{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-top:2px;
+  }
+  .meta-status{
+    font-size:13px;
+    color:var(--muted);
+    min-height:1em;
+  }
+  .meta-status.playing{ color:var(--cyan); }
+  .replay-btn{
+    font-family:inherit;
+    font-size:13px;
+    font-weight:600;
+    color:var(--cyan);
+    background:rgba(53,214,240,.08);
+    border:1px solid var(--card-border);
+    border-radius:999px;
+    padding:6px 14px;
+    cursor:pointer;
+    transition:.18s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .replay-btn:hover{ background:rgba(53,214,240,.16); }
+  .replay-btn:disabled{ opacity:.35; cursor:default; }
+
+  /* ---- chips ---- */
+  .chip-zone{ width:100%; text-align:center; }
+  .chip-label{
+    font-size:13.5px;
+    color:var(--muted);
+    font-weight:600;
+    margin-bottom:12px;
+    letter-spacing:.04em;
+  }
+  .chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+  }
+  .chip{
+    font-family:inherit;
+    font-size:14.5px;
+    font-weight:600;
+    color:var(--text);
+    background:rgba(12,28,46,.6);
+    border:1px solid var(--card-border);
+    border-radius:999px;
+    padding:9px 16px;
+    cursor:pointer;
+    transition:.18s;
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .chip:hover{
+    border-color:var(--cyan);
+    background:rgba(53,214,240,.12);
+    box-shadow:0 0 18px rgba(53,214,240,.15);
+    transform:translateY(-1px);
+  }
+  .chip.active{
+    border-color:var(--cyan);
+    background:rgba(53,214,240,.18);
+    color:#fff;
+    box-shadow:0 0 20px rgba(53,214,240,.22);
+  }
+  .chip .chip-ico{ font-size:15px; }
+
+  /* ---- footer ---- */
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:var(--muted);
+    opacity:.75;
+    line-height:1.7;
+    padding-top:6px;
+    max-width:640px;
+  }
+
+  /* ---- responsive ---- */
+  @media (max-width:600px){
+    .orb{ --size:168px; }
+    .ask-card,.jarvis-card{ padding:14px 16px; }
+    .brand{ letter-spacing:.3em; padding-left:.3em; }
+    .wrap{ gap:22px; }
+    .chip{ font-size:13.5px; padding:8px 13px; }
+  }
+  @media (max-width:360px){
+    .orb{ --size:148px; }
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .ring,.core,.dots i,body::before{ animation:none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="topbar">
+      <a class="back-link" href="demo.html">&larr; กลับหน้าเดโม่หลัก</a>
+      <span class="demo-badge">Demo</span>
+    </div>
+
+    <header>
+      <h1 class="brand">J.A.R.V.I.S</h1>
+      <p class="subtitle">ผู้ช่วยอัจฉริยะ KPI · รพ.ค่ายเขตอุดมศักดิ์ มทบ.44</p>
+    </header>
+
+    <section class="ask-card">
+      <div class="ask-label">ท่านถาม</div>
+      <div class="ask-text" id="askText">แตะไมโครโฟน หรือเลือกคำถามด้านล่างเพื่อเริ่ม</div>
+    </section>
+
+    <div class="orb-zone">
+      <div class="orb" id="orb" role="button" tabindex="0" aria-label="ถาม JARVIS">
+        <span class="ring r1"></span>
+        <span class="ring r2"></span>
+        <span class="ring r3"></span>
+        <span class="core">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3z"/>
+            <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21a1 1 0 1 0 2 0v-3.08A7 7 0 0 0 19 11z"/>
+          </svg>
+        </span>
+      </div>
+      <div class="orb-hint">แตะเพื่อถามต่อ</div>
+    </div>
+
+    <section class="jarvis-card">
+      <div class="jarvis-head">
+        <span class="jarvis-icon" id="jarvisIcon">🤖</span>
+        <span class="jarvis-label">JARVIS</span>
+      </div>
+      <div class="jarvis-answer" id="answerBox">
+        สวัสดีครับท่าน ผมพร้อมรายงานตัวชี้วัดของโรงพยาบาลแล้ว กรุณาเลือกคำถามได้เลยครับ
+      </div>
+      <div class="jarvis-meta">
+        <span class="meta-status" id="metaStatus"></span>
+        <button class="replay-btn" id="replayBtn" disabled>▶ เล่นเสียงอีกครั้ง</button>
+      </div>
+    </section>
+
+    <section class="chip-zone">
+      <div class="chip-label">ลองถาม:</div>
+      <div class="chips" id="chips"></div>
+    </section>
+
+    <footer>
+      เสียง JARVIS = local F5-TTS (cm1) · สมอง = qwen local · ข้อมูล KPI จริงจากระบบ · ใช้ภายใน
+    </footer>
+
+  </div>
+
+<script>
+  // ===== Inlined Q&A data (no fetch — works on file:// and GitHub Pages) =====
+  // Answer text MUST stay word-for-word identical to the recorded audio.
+  const QA = [
+    {"id":"q1_dm","icon":"🩸","q":"เบาหวานคุมน้ำตาลได้กี่%","a":"ผู้ป่วยเบาหวานคุมระดับน้ำตาลสะสมได้ตามเป้า 68% ครับท่าน ดีขึ้นจากไตรมาสก่อนที่ 61% ผมขอชมเชยทีมคลินิก NCD ที่ผลงานกำลังมาครับ","audio":"jarvis_audio/q1_dm.wav"},
+    {"id":"q2_ht","icon":"❤️","q":"ความดันคุมได้เท่าไหร่","a":"ผู้ป่วยความดันโลหิตสูงคุมได้ต่ำกว่า 140 ส่วน 90 อยู่ที่ 72% ครับท่าน เกินเป้า 50% ไปพอสมควร ถือว่าอยู่ในเกณฑ์ที่น่าพอใจครับ","audio":"jarvis_audio/q2_ht.wav"},
+    {"id":"q3_er","icon":"🚑","q":"ER เดือนนี้มากี่ราย","a":"เดือนนี้แผนกฉุกเฉินให้บริการ 452 ครั้งครับท่าน อัตรากลับมาซ้ำภายใน 48 ชั่วโมงที่ไม่ใช่การทำแผลอยู่ที่ 0.5% ต่ำกว่าเกณฑ์มาตรฐานครับ","audio":"jarvis_audio/q3_er.wav"},
+    {"id":"q4_revenue","icon":"💰","q":"รายได้เดือนนี้เป็นไง","a":"รายได้รวมเดือนนี้อยู่ที่ 12.3 ล้านบาทครับท่าน สูงกว่าค่าเฉลี่ย 6 เดือนราว 8% โดยเป็นรายได้จากสิทธิ์เบิกจ่ายตรงเป็นสัดส่วนหลักครับ","audio":"jarvis_audio/q4_revenue.wav"},
+    {"id":"q5_military","icon":"🎖️","q":"กำลังพลตรวจสุขภาพครบไหม","a":"กำลังพลมณฑลทหารบกที่ 44 เข้ารับการตรวจสุขภาพประจำปีแล้ว 94% ครับท่าน เหลืออีก 73 นายที่ยังไม่มา ผมแนะนำให้ประสานหน่วยต้นสังกัดติดตามในสัปดาห์นี้ครับ","audio":"jarvis_audio/q5_military.wav"}
+  ];
+
+  // ===== element refs =====
+  const orb        = document.getElementById('orb');
+  const askText    = document.getElementById('askText');
+  const answerBox  = document.getElementById('answerBox');
+  const metaStatus = document.getElementById('metaStatus');
+  const replayBtn  = document.getElementById('replayBtn');
+  const jarvisIcon = document.getElementById('jarvisIcon');
+  const chipsWrap  = document.getElementById('chips');
+
+  // ===== audio: one <Audio> per question, metadata preload only =====
+  const audios = QA.map(item => {
+    const a = new Audio();
+    a.src = item.audio;
+    a.preload = 'metadata';
+    return a;
+  });
+
+  let currentIdx = -1;
+  let currentAudio = null;
+  let thinkTimer = null;
+
+  // build chips
+  QA.forEach((item, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'chip';
+    btn.dataset.idx = i;
+    btn.innerHTML = '<span class="chip-ico">' + item.icon + '</span>' + item.q;
+    btn.addEventListener('click', () => ask(i));
+    chipsWrap.appendChild(btn);
+  });
+
+  function stopAudio(){
+    if(currentAudio){
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio.onended = null;
+      currentAudio.onerror = null;
+    }
+  }
+
+  function setActiveChip(i){
+    document.querySelectorAll('.chip').forEach(c => {
+      c.classList.toggle('active', Number(c.dataset.idx) === i);
+    });
+  }
+
+  function ask(i){
+    if(thinkTimer){ clearTimeout(thinkTimer); thinkTimer = null; }
+    stopAudio();
+
+    const item = QA[i];
+    currentIdx = i;
+    setActiveChip(i);
+
+    // 1. update "ท่านถาม"
+    askText.style.opacity = 0;
+    setTimeout(() => { askText.textContent = item.q; askText.style.opacity = 1; }, 120);
+
+    // 2. thinking state
+    jarvisIcon.textContent = item.icon;
+    orb.classList.remove('speaking');
+    orb.classList.add('thinking');
+    answerBox.classList.remove('reveal');
+    answerBox.innerHTML =
+      '<span class="thinking-row">กำลังคิด' +
+      '<span class="dots"><i></i><i></i><i></i></span></span>';
+    metaStatus.textContent = '';
+    metaStatus.classList.remove('playing');
+    replayBtn.disabled = true;
+
+    // 3. reveal + play after brief think
+    thinkTimer = setTimeout(() => {
+      orb.classList.remove('thinking');
+      answerBox.textContent = item.a;
+      answerBox.classList.add('reveal');
+      playAnswer(i);
+    }, 700);
+  }
+
+  function playAnswer(i){
+    stopAudio();
+    const audio = audios[i];
+    currentAudio = audio;
+
+    orb.classList.add('speaking');
+    metaStatus.textContent = '🔊 กำลังพูด...';
+    metaStatus.classList.add('playing');
+    replayBtn.disabled = false;
+
+    audio.currentTime = 0;
+    audio.onended = () => {
+      orb.classList.remove('speaking');
+      metaStatus.textContent = 'พูดจบแล้ว · แตะ ▶ เพื่อฟังอีกครั้ง';
+      metaStatus.classList.remove('playing');
+    };
+    // guard against a mid-stream media error leaving the orb stuck on "กำลังพูด..."
+    audio.onerror = () => {
+      orb.classList.remove('speaking');
+      metaStatus.textContent = '🔇 เล่นเสียงไม่ได้ · แตะ ▶ ลองอีกครั้ง';
+      metaStatus.classList.remove('playing');
+    };
+    const p = audio.play();
+    if(p && p.catch){
+      p.catch(() => {
+        // playback blocked (rare, since triggered by gesture) — degrade gracefully
+        orb.classList.remove('speaking');
+        metaStatus.textContent = '🔇 แตะ ▶ เพื่อเล่นเสียง';
+        metaStatus.classList.remove('playing');
+      });
+    }
+  }
+
+  // replay current answer's audio
+  replayBtn.addEventListener('click', () => {
+    if(currentIdx >= 0) playAnswer(currentIdx);
+  });
+
+  // orb click = next question (cycle)
+  function nextQuestion(){
+    const next = (currentIdx + 1) % QA.length;
+    ask(next);
+  }
+  orb.addEventListener('click', nextQuestion);
+  orb.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); nextQuestion(); }
+  });
+</script>
+</body>
+</html>
