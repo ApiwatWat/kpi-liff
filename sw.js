@@ -12,7 +12,7 @@
 
 /* v2-20260808: daily-coach.html rate two-field entry (Task 9) — daily-coach
  * is in PRECACHE_URLS, so this bump is what evicts the old cached copy. */
-var CACHE_VERSION = 'kpi-liff-v2-20260808';
+var CACHE_VERSION = 'kpi-liff-v2-20260902';
 var STATIC_CACHE = CACHE_VERSION + '-static';
 var API_CACHE = CACHE_VERSION + '-api';
 

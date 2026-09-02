@@ -493,8 +493,8 @@
     if (num === 0 && denom === 0) {
       return { state: 'nocase', msg: '⚠ ไม่มีเคสเข้าเกณฑ์ → บันทึกเป็น "ไม่มีเคส" ไม่ใช่ 0%', num: 0, denom: 0, pct: null };
     }
-    // round(x, 1) — parity with autosync and computeRateOutcome_ (05_gateway_rules.js)
-    var pct = Math.round((num / denom) * 100 * 10) / 10;
+    // round(x, 2) — parity with autosync and computeRateOutcome_ (05_gateway_rules.js)
+    var pct = Math.round((num / denom) * 100 * 100) / 100;
     if (num > denom) {
       return { state: 'over100', msg: 'ตัวเศษมากกว่าตัวส่วน — ผลลัพธ์ ' + pct + '% (เกิน 100%) · บาง KPI นับซ้ำได้ ถ้าตัวเลขถูกต้องบันทึกได้เลย', num: num, denom: denom, pct: pct };
     }
