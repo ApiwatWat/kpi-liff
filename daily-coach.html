@@ -870,11 +870,17 @@
     btn.textContent = 'กำลังลงทะเบียน...';
     emailInput.disabled = true;
 
-    apiCall('register_line_by_email', {
-      line_id: state.profile.userId,
-      display_name: state.profile.displayName,
-      email: email
-    }).then(function(r) {
+    // POST with the idToken: Apps Script checks it with LINE and takes the LINE id
+    // from that answer. It is a login credential, so it stays out of the URL.
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'register_line_verified',
+        id_token: liff.getIDToken() || '',
+        email: email
+      })
+    }).then(function(resp) { return resp.json(); }).then(function(r) {
       if (r.ok) {
         var greetName = r.user_name || email;
         showToast('✅ ลงทะเบียนสำเร็จ ยินดีต้อนรับ ' + greetName);
